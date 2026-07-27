@@ -1,0 +1,18 @@
+import type { Metadata, Viewport } from "next";
+import { Toaster } from "sonner";
+import "./globals.css";
+import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
+import { InstallPrompt } from "@/components/pwa/install-prompt";
+
+export const metadata: Metadata = {
+  title: { default: "MultiShop POS", template: "%s | MultiShop POS" },
+  description: "Offline-first multi-shop point of sale and inventory management system",
+  applicationName: "MultiShop POS",
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "MultiShop POS" },
+};
+
+export const viewport: Viewport = { themeColor: "#0f2a5f", colorScheme: "light" };
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  return <html lang="en"><body>{children}<ServiceWorkerRegister /><InstallPrompt /><Toaster richColors position="top-right" /></body></html>;
+}

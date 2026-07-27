@@ -1,0 +1,2 @@
+import { CircleX } from "lucide-react";
+export default function AccountDisabledPage(){return <main className="flex min-h-screen items-center justify-center p-6"><div className="surface max-w-lg rounded-3xl p-8 text-center"><CircleX className="mx-auto h-12 w-12 text-red-600"/><h1 className="mt-4 text-2xl font-black">Account unavailable</h1><p className="mt-2 text-slate-500">Contact the administrator to reactivate or reassign this shop account.</p></div></main>}
