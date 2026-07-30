@@ -6,7 +6,15 @@ import { LockKeyhole, Mail, Loader2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export function LoginForm() {
+export function LoginForm({
+  emailPlaceholder = "shop@example.com",
+  passwordPlaceholder = "Enter password",
+  helpText = "Shop accounts are created and managed only by the administrator.",
+}: {
+  emailPlaceholder?: string;
+  passwordPlaceholder?: string;
+  helpText?: string;
+}) {
   const router = useRouter();
   const params = useSearchParams();
   const [email, setEmail] = useState("");
@@ -52,7 +60,7 @@ export function LoginForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="pl-10"
-          placeholder="Enter password"
+          placeholder={passwordPlaceholder}
           required
         />
         <button
@@ -67,6 +75,6 @@ export function LoginForm() {
     </div>
     {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
     <Button className="w-full" size="lg" disabled={loading}>{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LockKeyhole className="h-4 w-4" />}{loading ? "Signing in..." : "Sign in securely"}</Button>
-    <p className="text-center text-xs text-slate-500">Shop accounts are created and managed only by the administrator.</p>
+    <p className="text-center text-xs text-slate-500">{helpText}</p>
   </form>;
 }
