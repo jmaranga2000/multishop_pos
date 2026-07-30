@@ -1,11 +1,4 @@
-export type IndexDescription = {
-  key: Record<string, 1 | -1>;
-  name?: string;
-  unique?: boolean;
-  sparse?: boolean;
-  partialFilterExpression?: Record<string, unknown>;
-  [key: string]: unknown;
-};
+export type IndexDescription = import("mongoose").mongo.IndexDescription;
 
 export interface BaseDocument {
   id: string;
@@ -480,11 +473,8 @@ export interface ScheduledJobLogDocument extends BaseDocument {
   completedAt?: Date | null;
 }
 
-import type { mongo } from "mongoose";
-
 export type DefaultValue = unknown | (() => unknown);
 export type TimestampMode = "both" | "created" | "updated" | false;
-export type IndexDescription = mongo.IndexDescription;
 
 export type MongoModelDefinition<TDocument extends BaseDocument = BaseDocument> = {
   collection: string;

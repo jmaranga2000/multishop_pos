@@ -36,7 +36,7 @@ export default async function NotificationsPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2"><p className="font-extrabold">{item.title}</p><Badge tone={item.priority === "URGENT" || item.priority === "HIGH" ? "danger" : "info"}>{item.type.replaceAll("_", " ")}</Badge></div>
                     <p className="mt-1 text-sm text-slate-600">{item.message}</p>
-                    <p className="mt-2 text-xs text-slate-400">{item.shop?.name ?? "Business-wide"} • {item.createdAt.toLocaleString("en-KE")}</p>
+                    <p className="mt-2 text-xs text-slate-400">{item.shop?.name ?? "Business-wide"} • {item.createdAt?.toLocaleString("en-KE") ?? "Unknown date"}</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {item.actionUrl ? <Link href={item.actionUrl}><Button size="sm" variant="secondary">Open</Button></Link> : null}
                       {!item.isRead ? <form action={markNotificationReadAction}><input type="hidden" name="notificationId" value={item.id} /><Button size="sm" variant="ghost">Mark read</Button></form> : null}

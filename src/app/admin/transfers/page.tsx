@@ -21,7 +21,32 @@ export default async function TransfersPage() {
       <div className="grid gap-5 xl:grid-cols-[1fr_390px]">
         <Card className="overflow-hidden">
           <CardHeader><h2 className="font-extrabold">Transfer history</h2></CardHeader>
-          {transfers.length ? <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Transfer</th><th>Route</th><th>Items</th><th>Status</th><th>Created</th><th>Action</th></tr></thead><tbody>{transfers.map((transfer) => <tr key={transfer.id}><td><p className="font-bold">{transfer.transferNumber}</p></td><td><div className="flex items-center gap-2 text-sm"><span>{transfer.sourceShop.name}</span><ArrowRight className="h-4 w-4 text-slate-400" /><span>{transfer.destinationShop.name}</span></div></td><td>{transfer.items.map((item) => <p key={item.id} className="text-xs">{item.product.name}: {item.requestedQuantity}</p>)}</td><td><Badge tone={tone(transfer.status)}>{transfer.status.replaceAll("_", " ")}</Badge></td><td>{transfer.createdAt.toLocaleDateString("en-KE")}</td><td>{transfer.status === "DRAFT" ? <form action={dispatchTransferAction}><input type="hidden" name="transferId" value={transfer.id} /><Button size="sm"><PackageCheck className="h-4 w-4" />Dispatch</Button></form> : <span className="text-xs text-slate-500">Awaiting workflow</span>}</td></tr>)}</tbody></table></div> : <EmptyState title="No transfers" description="Create the first transfer using the form." />}
+          {transfers.length ? 
+          <div className="overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Transfer</th>
+                  <th>Route</th>
+                  <th>Items</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th>Action</th>
+                  </tr>
+                  </thead>
+                  <tbody>
+                    {transfers.map((transfer) =>
+                       <tr key={transfer.id}>
+                        <td>
+                          <p className="font-bold">{transfer.transferNumber}
+                            </p>
+                            </td>
+                            <td>
+                              <div className="flex items-center gap-2 text-sm">
+                                <span>{transfer.sourceShop.name}</span>
+                                <ArrowRight className="h-4 w-4 text-slate-400" />
+                                <span>{transfer.destinationShop.name}</span>
+                                </div></td><td>{transfer.items.map((item: typeof transfer.items[number]) => <p key={item.id} className="text-xs">{item.product.name}: {item.requestedQuantity}</p>)}</td><td><Badge tone={tone(transfer.status)}>{transfer.status.replaceAll("_", " ")}</Badge></td><td>{transfer.createdAt?.toLocaleDateString("en-KE") ?? "Unknown date"}</td><td>{transfer.status === "DRAFT" ? <form action={dispatchTransferAction}><input type="hidden" name="transferId" value={transfer.id} /><Button size="sm"><PackageCheck className="h-4 w-4" />Dispatch</Button></form> : <span className="text-xs text-slate-500">Awaiting workflow</span>}</td></tr>)}</tbody></table></div> : <EmptyState title="No transfers" description="Create the first transfer using the form." />}
         </Card>
         <Card>
           <CardHeader><div><h2 className="font-extrabold">Create transfer</h2><p className="text-sm text-slate-500">Draft first, then dispatch after verification.</p></div></CardHeader>
