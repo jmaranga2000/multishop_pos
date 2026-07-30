@@ -113,6 +113,8 @@ export async function updateShopAndAccount(admin: { id: string; businessId: stri
   const shop = await db.shop.findFirst({ where: { id: input.shopId, businessId: admin.businessId }, include: { account: true } });
   if (!shop) throw new AppError("Shop was not found.", "SHOP_NOT_FOUND", 404);
 
+  const activateShop = Boolean(input.password);
+
   await db.$transaction(async (tx) => {
     await tx.shop.update({
       where: { id: shop.id },
@@ -122,35 +124,39 @@ export async function updateShopAndAccount(admin: { id: string; businessId: stri
         email: input.email ?? shop.email,
         phone: input.phone || null,
         address: input.address || null,
+        isActive: activateShop || shop.isActive,
       },
     });
 
     if (shop.account) {
+      const accountUpdates: Record<string, unknown> = {};
       if (input.email && input.email !== shop.account.email) {
-        await tx.user.update({ where: { id: shop.account.id }, data: { email: input.email } });
+        accountUpdates.email = input.email;
       }
-      if (input.password) {
-        const passwordHash = await argon2.hash(input.password);
-        await tx.user.update({
-          where: { id: shop.account.id },
-          data: { passwordHash, passwordVersion: { increment: 1 }, failedLoginAttempts: 0, lockedUntil: null },
-        });
+      if (activateShop && input.password) {
+        accountUpdates.passwordHash = await argon2.hash(input.password);
+        accountUpdates.passwordVersion = { increment: 1 };
+        accountUpdates.failedLoginAttempts = 0;
+        accountUpdates.lockedUntil = null;
+        accountUpdates.status = "ACTIVE";
       }
-    } else {
-      if (input.email && input.password) {
-        const passwordHash = await argon2.hash(input.password);
-        await tx.user.create({
-          data: {
-            businessId: admin.businessId,
-            shopId: shop.id,
-            name: `${input.name} account`,
-            email: input.email,
-            passwordHash,
-            role: "SHOP",
-            createdById: admin.id,
-          },
-        });
+      if (Object.keys(accountUpdates).length > 0) {
+        await tx.user.update({ where: { id: shop.account.id }, data: accountUpdates });
       }
+    } else if (input.email && activateShop && input.password) {
+      const passwordHash = await argon2.hash(input.password);
+      await tx.user.create({
+        data: {
+          businessId: admin.businessId,
+          shopId: shop.id,
+          name: `${input.name} account`,
+          email: input.email,
+          passwordHash,
+          role: "SHOP",
+          status: "ACTIVE",
+          createdById: admin.id,
+        },
+      });
     }
 
     await writeAuditLog(tx, {
