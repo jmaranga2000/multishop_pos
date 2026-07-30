@@ -5,15 +5,25 @@ import { useState } from "react";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { SignOutButton } from "@/components/layout/sign-out-button";
 
-export function AppShell({ children, navItems, userName, accountLabel, notificationCount = 0, headerExtra }: {
+export function AppShell({ children, navItems, userName, userEmail, accountLabel, notificationCount = 0, headerExtra }: {
   children: React.ReactNode;
   navItems: { href: string; label: string; icon: string }[];
   userName: string;
+  userEmail?: string;
   accountLabel: string;
   notificationCount?: number;
   headerExtra?: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const handleToggle = () => {
+    if (typeof window !== "undefined" && window.innerWidth <= 900) {
+      setMobileOpen((s) => !s);
+    } else {
+      setCollapsed((s) => !s);
+    }
+  };
 
   return <div className={`app-grid ${collapsed ? "sidebar-collapsed" : ""}`}>
     <aside className={`app-sidebar ${collapsed ? "collapsed" : ""}`}>
@@ -24,11 +34,23 @@ export function AppShell({ children, navItems, userName, accountLabel, notificat
     <div className="app-main">
       <header className="app-header flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button aria-label="Toggle menu" onClick={() => setCollapsed((s) => !s)} className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600"><Menu className="h-5 w-5" /></button>
+          <button aria-label="Toggle menu" onClick={handleToggle} className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600"><Menu className="h-5 w-5" /></button>
           <div>{headerExtra}</div>
+        </div>
+        <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none text-center">
+          <p className="text-sm font-bold text-slate-900">{userName}</p>
+          {userEmail && <p className="text-xs text-slate-500">{userEmail}</p>}
         </div>
         <div className="flex items-center gap-3"><button className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600"><Bell className="h-5 w-5" />{notificationCount > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">{notificationCount > 99 ? "99+" : notificationCount}</span>}</button><div className="hidden text-right sm:block"><p className="text-sm font-bold text-slate-900">{userName}</p><p className="text-xs text-slate-500">{accountLabel}</p></div></div>
       </header>
+      {mobileOpen && <div className="fixed inset-0 z-40">
+        <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
+        <aside className="absolute left-0 top-0 h-full w-64 bg-[#0b1739] p-6">
+          <div className="flex items-center gap-3 mb-4"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-500 text-white"><Store className="h-6 w-6" /></div><div><p className="font-extrabold text-white">MultiShop POS</p><p className="text-xs text-blue-200">{accountLabel}</p></div></div>
+          <SidebarNav items={navItems} />
+          <div className="mt-6"><SignOutButton /></div>
+        </aside>
+      </div>}
       <main className="app-content">{children}</main>
     </div>
   </div>;

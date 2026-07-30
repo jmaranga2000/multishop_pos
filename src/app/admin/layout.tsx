@@ -22,5 +22,5 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: "/admin/salespeople", label: "Salespeople", icon: "UsersRound" },
     { href: "/admin/settings", label: "Settings", icon: "Settings" },
   ];
-  return <AppShell navItems={nav} userName={user.name} accountLabel="Administrator" notificationCount={unread}>{children}</AppShell>;
+  return <AppShell navItems={nav} userName={user.name} userEmail={user.email} accountLabel="Administrator" notificationCount={unread}>{children}</AppShell>;
 }

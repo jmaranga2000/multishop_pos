@@ -20,5 +20,5 @@ const nav=[
 	{ href: "/shop/synchronization", label: "Synchronization", icon: "RefreshCw" },
 	{ href: "/shop/profile", label: "Profile", icon: "Settings" },
 ];
- return <OfflineProvider shopId={user.shopId} shopName={user.shop.name}><AppShell navItems={nav} userName={user.shop.name} accountLabel={`Shop account • ${user.shop.code}`} headerExtra={<ConnectivityStatus/>}>{children}</AppShell></OfflineProvider>;
+ return <OfflineProvider shopId={user.shopId} shopName={user.shop.name}><AppShell navItems={nav} userName={user.shop.name} userEmail={user.email} accountLabel={`Shop account • ${user.shop.code}`} headerExtra={<ConnectivityStatus/>}>{children}</AppShell></OfflineProvider>;
 }
