@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeading } from "@/components/ui/page-heading";
-import { SalesChart } from "@/components/admin/sales-chart";
+import dynamicImport from "next/dynamic";
+const SalesChart = dynamicImport(() => import("@/components/admin/sales-chart").then((m) => m.SalesChart), { ssr: false });
 
 export const dynamic = "force-dynamic";
 
