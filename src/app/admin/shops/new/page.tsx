@@ -3,7 +3,6 @@ import { PageHeading } from "@/components/ui/page-heading";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { createShopWithAccount } from "@/services/admin/shop-service";
 import { createShopAction } from "@/actions/admin/shop-actions";
 
 export const dynamic = "force-dynamic";

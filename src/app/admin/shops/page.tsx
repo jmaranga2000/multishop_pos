@@ -1,11 +1,8 @@
-import { Building2, KeyRound, Plus, Power } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
-import { createShopAction, resetShopPasswordAction, toggleShopAction } from "@/actions/admin/shop-actions";
 import { listAdminShops } from "@/services/admin/shop-service";
 import { PageHeading } from "@/components/ui/page-heading";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Card, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -47,36 +44,18 @@ export default async function ShopsPage() {
                       <td>{shop._count.sales}</td>
                       <td><Badge tone={shop.isActive ? "success" : "danger"}>{shop.isActive ? "Active" : "Suspended"}</Badge></td>
                       <td>
-                        <div className="flex min-w-72 flex-col gap-2">
-                          <div className="flex gap-2">
-                            <a href={`/admin/shops/${shop.id}`} className="btn inline-flex items-center rounded-lg border px-3 py-2 text-sm">View</a>
-                            <a href="/admin/shops/new" className="btn inline-flex items-center rounded-lg border px-3 py-2 text-sm">New</a>
-                          </div>
-                          {shop.account ? (
-                            <form action={resetShopPasswordAction} className="flex gap-2">
-                              <input type="hidden" name="userId" value={shop.account.id} />
-                              <Input name="password" type="password" placeholder="New temporary password" minLength={8} required />
-                              <Button size="sm" variant="secondary"><KeyRound className="h-4 w-4" />Reset</Button>
-                            </form>
-                          ) : null}
-                          <form action={toggleShopAction}>
-                            <input type="hidden" name="shopId" value={shop.id} />
-                            <input type="hidden" name="isActive" value={String(!shop.isActive)} />
-                            <Button size="sm" variant={shop.isActive ? "danger" : "success"} className="w-full">
-                              <Power className="h-4 w-4" />{shop.isActive ? "Suspend shop" : "Activate shop"}
-                            <td>
-                              <div className="flex gap-2">
-                                <a href={`/admin/shops/${shop.id}`} className="inline-flex items-center rounded-lg border px-3 py-2 text-sm">View</a>
-                              </div>
-                            </td>
-              <Input name="email" type="email" placeholder="Shop login email" required />
-              <Input name="password" type="password" minLength={8} placeholder="Temporary password" required />
-              <Input name="phone" placeholder="Phone (optional)" />
-              <textarea name="address" placeholder="Physical address" className="min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-blue-500" />
-              <Button className="w-full"><Plus className="h-4 w-4" />Create shop and account</Button>
-            </form>
-          </CardContent>
+                        <div className="flex gap-2">
+                          <a href={`/admin/shops/${shop.id}`} className="inline-flex items-center rounded-lg border px-3 py-2 text-sm">View</a>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : <EmptyState title="No shops yet" description="Use the creation form to add the first shop and login account." />}
         </Card>
+
       </div>
     </>
   );
