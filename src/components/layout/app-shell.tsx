@@ -1,11 +1,10 @@
 import { Bell, Store } from "lucide-react";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { SignOutButton } from "@/components/layout/sign-out-button";
-import type { LucideIcon } from "lucide-react";
 
 export function AppShell({ children, navItems, userName, accountLabel, notificationCount = 0, headerExtra }: {
   children: React.ReactNode;
-  navItems: { href: string; label: string; icon: LucideIcon }[];
+  navItems: { href: string; label: string; icon: string }[];
   userName: string;
   accountLabel: string;
   notificationCount?: number;
