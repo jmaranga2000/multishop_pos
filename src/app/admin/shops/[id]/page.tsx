@@ -10,9 +10,11 @@ import { Building2 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-export default async function ShopDetailsPage({ params }: { params: { id: string } }) {
+type ShopDetailsPageProps = { params: { id: string } };
+
+export default async function ShopDetailsPage(props: ShopDetailsPageProps) {
   const user = await requireAdmin();
-  const shop = await getAdminShopById(user.businessId, params.id);
+  const shop = await getAdminShopById(user.businessId, props.params.id);
   if (!shop) return <p className="p-6">Shop not found.</p>;
 
   return (
