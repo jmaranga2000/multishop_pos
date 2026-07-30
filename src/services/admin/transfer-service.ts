@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
 import { createDocumentNumber } from "@/lib/ids/document-number";
 import { reconcileStockAlert } from "@/lib/stock-alerts";
@@ -11,9 +11,9 @@ type AdminContext = { id: string; email: string; businessId: string };
 
 export async function getTransferManagementData(businessId: string) {
   const [shops, products, transfers] = await Promise.all([
-    prisma.shop.findMany({ where: { businessId, isActive: true }, orderBy: { name: "asc" } }),
-    prisma.product.findMany({ where: { businessId, status: "ACTIVE" }, orderBy: { name: "asc" } }),
-    prisma.stockTransfer.findMany({
+    db.shop.findMany({ where: { businessId, isActive: true }, orderBy: { name: "asc" } }),
+    db.product.findMany({ where: { businessId, status: "ACTIVE" }, orderBy: { name: "asc" } }),
+    db.stockTransfer.findMany({
       where: { sourceShop: { businessId } },
       include: { sourceShop: true, destinationShop: true, items: { include: { product: true } } },
       orderBy: { createdAt: "desc" },
@@ -25,15 +25,15 @@ export async function getTransferManagementData(businessId: string) {
 
 export async function createStockTransfer(admin: AdminContext, input: CreateTransferInput) {
   const [source, destination, product, inventory] = await Promise.all([
-    prisma.shop.findFirst({ where: { id: input.sourceShopId, businessId: admin.businessId, isActive: true } }),
-    prisma.shop.findFirst({ where: { id: input.destinationShopId, businessId: admin.businessId, isActive: true } }),
-    prisma.product.findFirst({ where: { id: input.productId, businessId: admin.businessId, status: "ACTIVE" } }),
-    prisma.shopInventory.findUnique({ where: { shopId_productId: { shopId: input.sourceShopId, productId: input.productId } } }),
+    db.shop.findFirst({ where: { id: input.sourceShopId, businessId: admin.businessId, isActive: true } }),
+    db.shop.findFirst({ where: { id: input.destinationShopId, businessId: admin.businessId, isActive: true } }),
+    db.product.findFirst({ where: { id: input.productId, businessId: admin.businessId, status: "ACTIVE" } }),
+    db.shopInventory.findUnique({ where: { shopId_productId: { shopId: input.sourceShopId, productId: input.productId } } }),
   ]);
   if (!source || !destination || !product) throw new AppError("The selected shop or product was not found.");
   if (!inventory || inventory.quantity < input.quantity) throw new AppError("The source shop does not have enough stock.");
 
-  const transfer = await prisma.stockTransfer.create({
+  const transfer = await db.stockTransfer.create({
     data: {
       transferNumber: createDocumentNumber("TRF", source.code),
       sourceShopId: source.id,
@@ -42,7 +42,7 @@ export async function createStockTransfer(admin: AdminContext, input: CreateTran
       items: { create: { productId: product.id, requestedQuantity: input.quantity } },
     },
   });
-  await writeAuditLog(prisma, {
+  await writeAuditLog(db, {
     userId: admin.id,
     shopId: source.id,
     action: "STOCK_TRANSFER_CREATED",
@@ -54,14 +54,14 @@ export async function createStockTransfer(admin: AdminContext, input: CreateTran
 }
 
 export async function dispatchStockTransfer(admin: AdminContext, transferId: string) {
-  const transfer = await prisma.stockTransfer.findFirst({
+  const transfer = await db.stockTransfer.findFirst({
     where: { id: transferId, sourceShop: { businessId: admin.businessId } },
     include: { sourceShop: true, destinationShop: true, items: { include: { product: true } } },
   });
   if (!transfer) throw new AppError("Transfer was not found.", "TRANSFER_NOT_FOUND", 404);
   if (transfer.status !== "DRAFT") throw new AppError("Only draft transfers can be dispatched.");
 
-  return prisma.$transaction(async (tx) => {
+  return db.$transaction(async (tx) => {
     for (const item of transfer.items) {
       const inventory = await tx.shopInventory.findUnique({
         where: { shopId_productId: { shopId: transfer.sourceShopId, productId: item.productId } },

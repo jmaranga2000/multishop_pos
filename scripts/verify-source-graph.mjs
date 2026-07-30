@@ -3,7 +3,7 @@ import path from "node:path";
 import ts from "typescript";
 
 const root = process.cwd();
-const roots = [path.join(root, "src"), path.join(root, "prisma")];
+const roots = [path.join(root, "src")];
 
 function walk(directory) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {

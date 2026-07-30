@@ -1,5 +1,5 @@
 import argon2 from "argon2";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
 import { writeAuditLog } from "@/services/shared/audit-service";
 import type { z } from "zod";
@@ -10,7 +10,7 @@ type ResetShopPasswordInput = z.infer<typeof resetShopPasswordSchema>;
 type ToggleShopInput = z.infer<typeof toggleShopSchema>;
 
 export async function listAdminShops(businessId: string) {
-  return prisma.shop.findMany({
+  return db.shop.findMany({
     where: { businessId },
     include: { account: { select: { id: true, email: true, status: true } }, _count: { select: { inventory: true, sales: true } } },
     orderBy: { name: "asc" },
@@ -19,7 +19,7 @@ export async function listAdminShops(businessId: string) {
 
 export async function createShopWithAccount(admin: { id: string; businessId: string }, input: CreateShopInput) {
   const passwordHash = await argon2.hash(input.password);
-  return prisma.$transaction(async (tx) => {
+  return db.$transaction(async (tx) => {
     const shop = await tx.shop.create({
       data: {
         businessId: admin.businessId,
@@ -55,10 +55,10 @@ export async function createShopWithAccount(admin: { id: string; businessId: str
 }
 
 export async function resetShopPassword(admin: { id: string; businessId: string }, input: ResetShopPasswordInput) {
-  const account = await prisma.user.findFirst({ where: { id: input.userId, businessId: admin.businessId, role: "SHOP" } });
+  const account = await db.user.findFirst({ where: { id: input.userId, businessId: admin.businessId, role: "SHOP" } });
   if (!account) throw new AppError("Shop account was not found.", "SHOP_ACCOUNT_NOT_FOUND", 404);
   const passwordHash = await argon2.hash(input.password);
-  await prisma.$transaction(async (tx) => {
+  await db.$transaction(async (tx) => {
     await tx.user.update({
       where: { id: account.id },
       data: { passwordHash, passwordVersion: { increment: 1 }, failedLoginAttempts: 0, lockedUntil: null },
@@ -75,10 +75,10 @@ export async function resetShopPassword(admin: { id: string; businessId: string 
 }
 
 export async function setShopActiveState(admin: { id: string; businessId: string }, input: ToggleShopInput) {
-  const shop = await prisma.shop.findFirst({ where: { id: input.shopId, businessId: admin.businessId }, include: { account: true } });
+  const shop = await db.shop.findFirst({ where: { id: input.shopId, businessId: admin.businessId }, include: { account: true } });
   if (!shop) throw new AppError("Shop was not found.", "SHOP_NOT_FOUND", 404);
   const active = input.isActive === "true";
-  await prisma.$transaction(async (tx) => {
+  await db.$transaction(async (tx) => {
     await tx.shop.update({ where: { id: shop.id }, data: { isActive: active } });
     if (shop.account) {
       await tx.user.update({

@@ -1,5 +1,5 @@
 import { createHash } from "crypto";
-import { prisma } from "@/lib/prisma";
+import { db as database } from "@/lib/db";
 import { absoluteUrl } from "@/lib/utils";
 
 type Tx = any;
@@ -32,7 +32,7 @@ type QueueNotificationInput = {
 };
 
 export async function queueNotification(input: QueueNotificationInput) {
-  const db = input.tx ?? prisma;
+  const db = input.tx ?? database;
   await db.notification.create({
     data: {
       userId: input.userId,

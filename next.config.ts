@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   reactStrictMode: true,
   poweredByHeader: false,
-  serverExternalPackages: ["@react-pdf/renderer", "exceljs", "argon2", "web-push", "nodemailer"],
+  serverExternalPackages: ["@react-pdf/renderer", "exceljs", "argon2", "mongoose", "web-push", "nodemailer"],
   experimental: {
     cpus: 2,
     serverActions: {

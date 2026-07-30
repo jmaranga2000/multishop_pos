@@ -1,9 +1,9 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 
 export async function getAdminRegisterPageData(businessId: string) {
   const [business, sessions] = await Promise.all([
-    prisma.business.findUniqueOrThrow({ where: { id: businessId } }),
-    prisma.registerSession.findMany({
+    db.business.findUniqueOrThrow({ where: { id: businessId } }),
+    db.registerSession.findMany({
       where: { shop: { businessId } },
       include: { shop: true, register: true, salesperson: true, _count: { select: { sales: true, transactions: true } } },
       orderBy: { openedAt: "desc" },

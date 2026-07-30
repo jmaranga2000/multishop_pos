@@ -43,7 +43,7 @@ export default async function ProductsPage() {
           ) : <EmptyState title="No products created" description="Create products here, then add stock per shop from Inventory." />}
         </Card>
         <Card>
-          <CardHeader><div><h2 className="font-extrabold">Create product</h2><p className="text-sm text-slate-500">This writes validated product data directly to Postgres.</p></div></CardHeader>
+          <CardHeader><div><h2 className="font-extrabold">Create product</h2><p className="text-sm text-slate-500">This writes validated product data directly to MongoDB.</p></div></CardHeader>
           <CardContent>
             <form action={createProductAction} className="space-y-3">
               <Input name="name" placeholder="Product name" required />

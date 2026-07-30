@@ -1,14 +1,15 @@
 import { endOfDay, format, startOfDay, subDays } from "date-fns";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { getStockStatus } from "@/lib/utils";
+import type { SaleItemDocument } from "@/models/model.types";
 
 export async function getAdminDashboardData(businessId: string) {
   const todayStart = startOfDay(new Date());
   const todayEnd = endOfDay(new Date());
   const [business, shops, sales, inventory, expenses] = await Promise.all([
-    prisma.business.findUniqueOrThrow({ where: { id: businessId } }),
-    prisma.shop.findMany({ where: { businessId, isActive: true }, orderBy: { name: "asc" } }),
-    prisma.sale.findMany({
+    db.business.findUniqueOrThrow({ where: { id: businessId } }),
+    db.shop.findMany({ where: { businessId, isActive: true }, orderBy: { name: "asc" } }),
+    db.sale.findMany({
       where: {
         shop: { businessId },
         occurredAt: { gte: subDays(todayStart, 6), lte: todayEnd },
@@ -16,11 +17,11 @@ export async function getAdminDashboardData(businessId: string) {
       },
       include: { items: true, shop: true },
     }),
-    prisma.shopInventory.findMany({
+    db.shopInventory.findMany({
       where: { shop: { businessId } },
       include: { product: true, shop: true },
     }),
-    prisma.expense.aggregate({
+    db.expense.aggregate({
       where: { shop: { businessId }, status: "APPROVED", occurredAt: { gte: todayStart, lte: todayEnd } },
       _sum: { amount: true },
     }),
@@ -30,7 +31,7 @@ export async function getAdminDashboardData(businessId: string) {
   const totalToday = todaySales.reduce((sum, sale) => sum + Number(sale.total), 0);
   const grossProfit = todaySales.reduce(
     (sum, sale) => sum + sale.items.reduce(
-      (itemSum, item) => itemSum + (Number(item.unitPrice) - Number(item.unitCost)) * item.quantity,
+      (itemSum: number, item: SaleItemDocument) => itemSum + (Number(item.unitPrice) - Number(item.unitCost)) * item.quantity,
       0,
     ),
     0,

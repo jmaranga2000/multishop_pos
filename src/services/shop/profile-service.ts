@@ -1,7 +1,7 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 
 export async function getShopProfile(userId: string, shopId: string) {
-  return prisma.user.findFirstOrThrow({
+  return db.user.findFirstOrThrow({
     where: { id: userId, shopId },
     select: {
       id: true,

@@ -1,1 +1,1 @@
-// next-auth types removed after migration to custom RBAC and Supabase auth.
+// Authentication uses the application's signed-cookie RBAC flow and MongoDB user records.

@@ -1,8 +1,9 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
 import { createDocumentNumber } from "@/lib/ids/document-number";
 import { reconcileStockAlert } from "@/lib/stock-alerts";
 import { writeAuditLog } from "@/services/shared/audit-service";
+import type { SaleItemDocument } from "@/models/model.types";
 import type { z } from "zod";
 import type { reviewRefundSchema } from "@/validators/admin/review-validator";
 
@@ -11,8 +12,8 @@ type AdminContext = { id: string; email: string; businessId: string };
 
 export async function getAdminRefundPageData(businessId: string) {
   const [business, requests] = await Promise.all([
-    prisma.business.findUniqueOrThrow({ where: { id: businessId } }),
-    prisma.refundRequest.findMany({
+    db.business.findUniqueOrThrow({ where: { id: businessId } }),
+    db.refundRequest.findMany({
       where: { shop: { businessId } },
       include: { shop: true, sale: { include: { items: true } } },
       orderBy: { requestedAt: "desc" },
@@ -23,7 +24,7 @@ export async function getAdminRefundPageData(businessId: string) {
 }
 
 export async function reviewRefundRequest(admin: AdminContext, input: ReviewRefundInput) {
-  const request = await prisma.refundRequest.findFirst({
+  const request = await db.refundRequest.findFirst({
     where: { id: input.refundRequestId, shop: { businessId: admin.businessId } },
     include: { shop: true, sale: { include: { items: { include: { product: true } }, refunds: true } } },
   });
@@ -31,11 +32,11 @@ export async function reviewRefundRequest(admin: AdminContext, input: ReviewRefu
   if (request.status !== "PENDING") throw new AppError("This refund request has already been reviewed.");
 
   if (input.decision === "REJECTED") {
-    const rejected = await prisma.refundRequest.update({
+    const rejected = await db.refundRequest.update({
       where: { id: request.id },
       data: { status: "REJECTED", reviewedAt: new Date(), reviewNote: input.reviewNote || null },
     });
-    await writeAuditLog(prisma, {
+    await writeAuditLog(db, {
       userId: admin.id,
       shopId: request.shopId,
       action: "REFUND_REJECTED",
@@ -48,7 +49,7 @@ export async function reviewRefundRequest(admin: AdminContext, input: ReviewRefu
 
   if (request.sale.refunds.length > 0) throw new AppError("This sale already has a completed refund.");
 
-  return prisma.$transaction(async (tx) => {
+  return db.$transaction(async (tx) => {
     const refund = await tx.refund.create({
       data: {
         saleId: request.saleId,
@@ -56,7 +57,7 @@ export async function reviewRefundRequest(admin: AdminContext, input: ReviewRefu
         total: request.sale.total,
         reason: request.reason,
         items: {
-          create: request.sale.items.map((item) => ({
+          create: request.sale.items.map((item: SaleItemDocument) => ({
             productId: item.productId,
             quantity: item.quantity,
             amount: item.lineTotal,

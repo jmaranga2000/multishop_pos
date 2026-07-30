@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { toMinorUnits } from "@/lib/utils";
 
 export async function bootstrapShopDevice(input: {
@@ -11,8 +11,8 @@ export async function bootstrapShopDevice(input: {
   userAgent?: string | null;
 }) {
   const [business, inventory] = await Promise.all([
-    prisma.business.findUniqueOrThrow({ where: { id: input.businessId }, select: { offlineSessionHours: true } }),
-    prisma.shopInventory.findMany({
+    db.business.findUniqueOrThrow({ where: { id: input.businessId }, select: { offlineSessionHours: true } }),
+    db.shopInventory.findMany({
       where: { shopId: input.shopId, product: { status: "ACTIVE" } },
       include: { product: { include: { category: true } } },
       orderBy: { product: { name: "asc" } },
@@ -21,7 +21,7 @@ export async function bootstrapShopDevice(input: {
 
   const now = new Date();
   const offlineAccessExpiresAt = new Date(now.getTime() + business.offlineSessionHours * 60 * 60 * 1000);
-  await prisma.offlineDevice.upsert({
+  await db.offlineDevice.upsert({
     where: { id: input.deviceId },
     update: {
       shopId: input.shopId,

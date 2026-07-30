@@ -25,8 +25,8 @@ const uiFiles = allFiles.filter((file) => {
   return name.startsWith("src/components/") || /src\/app\/.*\/(page|layout)\.tsx$/.test(name);
 });
 for (const file of uiFiles) {
-  if (contents.get(file).includes('from "@/lib/prisma"') || contents.get(file).includes("from '@/lib/prisma'")) {
-    failures.push(`${relative(file)} imports Prisma directly. UI files must call services.`);
+  if (contents.get(file).includes('from "@/lib/db"') || contents.get(file).includes("from '@/lib/db'")) {
+    failures.push(`${relative(file)} imports the MongoDB data layer directly. UI files must call services.`);
   }
 }
 

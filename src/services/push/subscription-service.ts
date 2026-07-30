@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { hashEndpoint } from "@/lib/notifications/service";
 
 export async function savePushSubscription(input: {
@@ -10,7 +10,7 @@ export async function savePushSubscription(input: {
   userAgent?: string | null;
 }) {
   const endpointHash = hashEndpoint(input.endpoint);
-  return prisma.pushSubscription.upsert({
+  return db.pushSubscription.upsert({
     where: { endpointHash },
     update: {
       userId: input.userId,
@@ -36,7 +36,7 @@ export async function savePushSubscription(input: {
 }
 
 export async function disablePushSubscription(userId: string, endpoint: string) {
-  return prisma.pushSubscription.updateMany({
+  return db.pushSubscription.updateMany({
     where: { userId, endpointHash: hashEndpoint(endpoint) },
     data: { isActive: false },
   });

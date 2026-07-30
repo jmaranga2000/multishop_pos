@@ -1,5 +1,5 @@
 import { endOfDay, startOfDay, subDays } from "date-fns";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { getStockStatus } from "@/lib/utils";
 import { queueNotification } from "@/lib/notifications/service";
 
@@ -13,10 +13,10 @@ export function previousWeekRange(reference = new Date()) {
 
 export async function generateInventoryReport(businessId: string, periodStart: Date, periodEnd: Date) {
   const [business, inventory, movements, admin] = await Promise.all([
-    prisma.business.findUniqueOrThrow({ where: { id: businessId } }),
-    prisma.shopInventory.findMany({ where: { shop: { businessId } }, include: { shop: true, product: true } }),
-    prisma.stockMovement.findMany({ where: { shop: { businessId }, createdAt: { gte: periodStart, lte: periodEnd } } }),
-    prisma.user.findFirstOrThrow({ where: { businessId, role: "ADMIN", status: "ACTIVE" } }),
+    db.business.findUniqueOrThrow({ where: { id: businessId } }),
+    db.shopInventory.findMany({ where: { shop: { businessId } }, include: { shop: true, product: true } }),
+    db.stockMovement.findMany({ where: { shop: { businessId }, createdAt: { gte: periodStart, lte: periodEnd } } }),
+    db.user.findFirstOrThrow({ where: { businessId, role: "ADMIN", status: "ACTIVE" } }),
   ]);
 
   const movementMap = new Map<string, typeof movements>();
@@ -55,7 +55,7 @@ export async function generateInventoryReport(businessId: string, periodStart: D
   const lowStockCount = rows.filter((row) => row.stockStatus === "LOW_STOCK").length;
   const criticalStockCount = rows.filter((row) => row.stockStatus === "CRITICAL").length;
   const outOfStockCount = rows.filter((row) => row.stockStatus === "OUT_OF_STOCK").length;
-  const report = await prisma.$transaction(async (tx) => {
+  const report = await db.$transaction(async (tx) => {
     const existing = await tx.inventoryReport.findUnique({ where: { businessId_periodStart_periodEnd: { businessId, periodStart, periodEnd } } });
     if (existing) await tx.inventoryReportItem.deleteMany({ where: { reportId: existing.id } });
     const saved = await tx.inventoryReport.upsert({

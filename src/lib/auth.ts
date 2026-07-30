@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { supabaseServiceRoleClient } from "./supabase";
+import { db } from "./db";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -18,12 +18,6 @@ const AUTH_SECRET = process.env.AUTH_SECRET as string;
 if (!AUTH_SECRET) {
   throw new Error("AUTH_SECRET is required for production authentication.");
 }
-
-if (!supabaseServiceRoleClient) {
-  throw new Error("SUPABASE_SERVICE_ROLE_KEY is required to access the Supabase service role client.");
-}
-
-const svc = supabaseServiceRoleClient!;
 
 type SessionPayload = {
   userId: string;
@@ -90,32 +84,27 @@ export async function authenticateUser(email: string, password: string) {
   if (!parsed.success) return null;
 
   const normalizedEmail = parsed.data.email.trim().toLowerCase();
-  const { data: user, error } = await svc
-    .from("\"User\"")
-    .select("*")
-    .eq("email", normalizedEmail)
-    .maybeSingle();
-
-  if (error || !user || user.status !== "ACTIVE") return null;
+  const user = await db.user.findUnique({ where: { email: normalizedEmail } });
+  if (!user || user.status !== "ACTIVE") return null;
   if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) return null;
 
   const valid = await argon2.verify(user.passwordHash, parsed.data.password);
   if (!valid) {
     const attempts = (user.failedLoginAttempts ?? 0) + 1;
-    await svc
-      .from("\"User\"")
-      .update({
+    await db.user.update({
+      where: { id: user.id },
+      data: {
         failedLoginAttempts: attempts,
         lockedUntil: attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null,
-      })
-      .eq("id", user.id);
+      },
+    });
     return null;
   }
 
-  await svc
-    .from("\"User\"")
-    .update({ failedLoginAttempts: 0, lockedUntil: null, lastLoginAt: new Date() })
-    .eq("id", user.id);
+  await db.user.update({
+    where: { id: user.id },
+    data: { failedLoginAttempts: 0, lockedUntil: null, lastLoginAt: new Date() },
+  });
 
   return {
     id: user.id,
@@ -166,13 +155,21 @@ export async function getCurrentUser() {
   const session = verifySessionToken(cookie);
   if (!session) return null;
 
-  const { data: user, error } = await svc
-    .from("\"User\"")
-    .select("id,name,email,role,businessId,shopId,status,passwordVersion")
-    .eq("id", session.userId)
-    .maybeSingle();
+  const user = await db.user.findUnique({
+    where: { id: session.userId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      businessId: true,
+      shopId: true,
+      status: true,
+      passwordVersion: true,
+    },
+  });
 
-  if (error || !user || user.status !== "ACTIVE" || user.passwordVersion !== session.passwordVersion) {
+  if (!user || user.status !== "ACTIVE" || user.passwordVersion !== session.passwordVersion) {
     return null;
   }
 
@@ -189,12 +186,11 @@ export async function getCurrentUser() {
 
   if (user.role === "SHOP") {
     if (!user.shopId) return null;
-    const { data: shop, error: shopError } = await svc
-      .from("\"Shop\"")
-      .select("id,name,code,isActive")
-      .eq("id", user.shopId)
-      .maybeSingle();
-    if (shopError || !shop || !shop.isActive) return null;
+    const shop = await db.shop.findUnique({
+      where: { id: user.shopId },
+      select: { id: true, name: true, code: true, isActive: true },
+    });
+    if (!shop || !shop.isActive) return null;
     result.shop = shop;
   }
 

@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
 import { writeAuditLog } from "@/services/shared/audit-service";
 import type { z } from "zod";
@@ -9,8 +9,8 @@ type ShopContext = { id: string; shopId: string; businessId: string };
 
 export async function getShopRefundPageData(shopId: string, businessId: string) {
   const [business, requests] = await Promise.all([
-    prisma.business.findUniqueOrThrow({ where: { id: businessId } }),
-    prisma.refundRequest.findMany({
+    db.business.findUniqueOrThrow({ where: { id: businessId } }),
+    db.refundRequest.findMany({
       where: { shopId },
       include: { sale: { select: { receiptNumber: true, total: true, occurredAt: true } } },
       orderBy: { requestedAt: "desc" },
@@ -21,14 +21,14 @@ export async function getShopRefundPageData(shopId: string, businessId: string) 
 }
 
 export async function createShopRefundRequest(shopUser: ShopContext, input: CreateRefundRequestInput) {
-  const sale = await prisma.sale.findFirst({
+  const sale = await db.sale.findFirst({
     where: { receiptNumber: input.receiptNumber, shopId: shopUser.shopId, status: "COMPLETED" },
   });
   if (!sale) throw new AppError("A completed sale with that receipt number was not found.");
-  const existing = await prisma.refundRequest.findFirst({ where: { saleId: sale.id, status: { in: ["PENDING", "APPROVED", "COMPLETED"] } } });
+  const existing = await db.refundRequest.findFirst({ where: { saleId: sale.id, status: { in: ["PENDING", "APPROVED", "COMPLETED"] } } });
   if (existing) throw new AppError("A refund request already exists for this sale.");
 
-  return prisma.$transaction(async (tx) => {
+  return db.$transaction(async (tx) => {
     const request = await tx.refundRequest.create({
       data: { saleId: sale.id, shopId: shopUser.shopId, reason: input.reason },
     });

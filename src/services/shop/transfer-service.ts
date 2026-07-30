@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
 import { reconcileStockAlert } from "@/lib/stock-alerts";
 import { writeAuditLog } from "@/services/shared/audit-service";
@@ -6,7 +6,7 @@ import { writeAuditLog } from "@/services/shared/audit-service";
 type ShopContext = { id: string; shopId: string; businessId: string };
 
 export async function listIncomingTransfers(shopId: string) {
-  return prisma.stockTransfer.findMany({
+  return db.stockTransfer.findMany({
     where: { destinationShopId: shopId },
     include: { sourceShop: true, destinationShop: true, items: { include: { product: true } } },
     orderBy: { createdAt: "desc" },
@@ -15,7 +15,7 @@ export async function listIncomingTransfers(shopId: string) {
 }
 
 export async function receiveIncomingTransfer(shopUser: ShopContext, transferId: string) {
-  const transfer = await prisma.stockTransfer.findFirst({
+  const transfer = await db.stockTransfer.findFirst({
     where: { id: transferId, destinationShopId: shopUser.shopId },
     include: { sourceShop: true, destinationShop: true, items: { include: { product: true } } },
   });
@@ -23,10 +23,10 @@ export async function receiveIncomingTransfer(shopUser: ShopContext, transferId:
   if (transfer.status !== "DISPATCHED" && transfer.status !== "PARTIALLY_RECEIVED") {
     throw new AppError("This transfer is not awaiting receipt.");
   }
-  const admin = await prisma.user.findFirst({ where: { businessId: shopUser.businessId, role: "ADMIN", status: "ACTIVE" } });
+  const admin = await db.user.findFirst({ where: { businessId: shopUser.businessId, role: "ADMIN", status: "ACTIVE" } });
   if (!admin) throw new AppError("Administrator account was not found.");
 
-  return prisma.$transaction(async (tx) => {
+  return db.$transaction(async (tx) => {
     for (const item of transfer.items) {
       const quantity = item.dispatchedQuantity - item.receivedQuantity;
       if (quantity <= 0) continue;

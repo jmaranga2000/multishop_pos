@@ -1,9 +1,9 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
 import { writeAuditLog } from "@/services/shared/audit-service";
 
 export async function listBusinessDevices(businessId: string) {
-  return prisma.offlineDevice.findMany({
+  return db.offlineDevice.findMany({
     where: { shop: { businessId } },
     include: { shop: true, _count: { select: { conflicts: true, syncBatches: true } } },
     orderBy: { lastSeenAt: "desc" },
@@ -14,12 +14,12 @@ export async function setDeviceAccess(
   admin: { id: string; businessId: string },
   input: { deviceId: string; enabled: boolean },
 ) {
-  const device = await prisma.offlineDevice.findFirst({
+  const device = await db.offlineDevice.findFirst({
     where: { id: input.deviceId, shop: { businessId: admin.businessId } },
     include: { shop: true },
   });
   if (!device) throw new AppError("Device was not found.", "DEVICE_NOT_FOUND", 404);
-  return prisma.$transaction(async (tx) => {
+  return db.$transaction(async (tx) => {
     const updated = await tx.offlineDevice.update({
       where: { id: device.id },
       data: { isActive: input.enabled, isTrusted: input.enabled },

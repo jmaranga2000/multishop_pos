@@ -1,8 +1,8 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { writeAuditLog } from "@/services/shared/audit-service";
 
 export async function getAdminSettingsData(businessId: string) {
-  return prisma.business.findUniqueOrThrow({
+  return db.business.findUniqueOrThrow({
     where: { id: businessId },
     include: { notificationPreference: true },
   });
@@ -27,7 +27,7 @@ export async function updateBusinessSettings(
     weeklyReportHour: number;
   },
 ) {
-  return prisma.$transaction(async (tx) => {
+  return db.$transaction(async (tx) => {
     const business = await tx.business.update({
       where: { id: admin.businessId },
       data: {
@@ -75,7 +75,7 @@ export async function updateNotificationPreferences(
     weeklyReportEmail: boolean;
   },
 ) {
-  return prisma.$transaction(async (tx) => {
+  return db.$transaction(async (tx) => {
     const preferences = await tx.notificationPreference.upsert({
       where: { businessId: admin.businessId },
       create: { businessId: admin.businessId, ...input },

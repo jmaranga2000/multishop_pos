@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
 import { reconcileStockAlert } from "@/lib/stock-alerts";
 import { writeAuditLog } from "@/services/shared/audit-service";
@@ -12,10 +12,10 @@ type AdminContext = { id: string; email: string; businessId: string };
 
 export async function getInventoryManagementData(businessId: string) {
   const [business, shops, products, inventory] = await Promise.all([
-    prisma.business.findUniqueOrThrow({ where: { id: businessId } }),
-    prisma.shop.findMany({ where: { businessId, isActive: true }, orderBy: { name: "asc" } }),
-    prisma.product.findMany({ where: { businessId, status: "ACTIVE" }, orderBy: { name: "asc" } }),
-    prisma.shopInventory.findMany({
+    db.business.findUniqueOrThrow({ where: { id: businessId } }),
+    db.shop.findMany({ where: { businessId, isActive: true }, orderBy: { name: "asc" } }),
+    db.product.findMany({ where: { businessId, status: "ACTIVE" }, orderBy: { name: "asc" } }),
+    db.shopInventory.findMany({
       where: { shop: { businessId } },
       include: { shop: true, product: true },
       orderBy: [{ shop: { name: "asc" } }, { product: { name: "asc" } }],
@@ -26,12 +26,12 @@ export async function getInventoryManagementData(businessId: string) {
 
 export async function addStock(admin: AdminContext, input: AddStockInput) {
   const [shop, product] = await Promise.all([
-    prisma.shop.findFirst({ where: { id: input.shopId, businessId: admin.businessId } }),
-    prisma.product.findFirst({ where: { id: input.productId, businessId: admin.businessId } }),
+    db.shop.findFirst({ where: { id: input.shopId, businessId: admin.businessId } }),
+    db.product.findFirst({ where: { id: input.productId, businessId: admin.businessId } }),
   ]);
   if (!shop || !product) throw new AppError("The selected shop or product was not found.");
 
-  return prisma.$transaction(async (tx) => {
+  return db.$transaction(async (tx) => {
     const existing = await tx.shopInventory.findUnique({ where: { shopId_productId: { shopId: shop.id, productId: product.id } } });
     const before = existing?.quantity ?? 0;
     const inventory = await tx.shopInventory.upsert({
@@ -95,14 +95,14 @@ export async function addStock(admin: AdminContext, input: AddStockInput) {
 }
 
 export async function adjustStock(admin: AdminContext, input: AdjustStockInput) {
-  const inventory = await prisma.shopInventory.findFirst({
+  const inventory = await db.shopInventory.findFirst({
     where: { id: input.inventoryId, shop: { businessId: admin.businessId } },
     include: { shop: true, product: true },
   });
   if (!inventory) throw new AppError("Inventory record was not found.", "INVENTORY_NOT_FOUND", 404);
   if (input.quantity < 0) throw new AppError("Stock quantity cannot be negative.");
 
-  return prisma.$transaction(async (tx) => {
+  return db.$transaction(async (tx) => {
     const updated = await tx.shopInventory.update({
       where: { id: inventory.id },
       data: { quantity: input.quantity, isAvailable: input.quantity > 0, version: { increment: 1 } },

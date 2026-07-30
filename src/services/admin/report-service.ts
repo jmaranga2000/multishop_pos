@@ -1,16 +1,16 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { generateInventoryReport, previousWeekRange } from "@/lib/reports/weekly-inventory";
 
 export async function listInventoryReports(businessId: string) {
   const [business, reports] = await Promise.all([
-    prisma.business.findUniqueOrThrow({ where: { id: businessId } }),
-    prisma.inventoryReport.findMany({ where: { businessId }, orderBy: { periodEnd: "desc" } }),
+    db.business.findUniqueOrThrow({ where: { id: businessId } }),
+    db.inventoryReport.findMany({ where: { businessId }, orderBy: { periodEnd: "desc" } }),
   ]);
   return { business, reports };
 }
 
 export async function getInventoryReportDetail(businessId: string, reportId: string) {
-  return prisma.inventoryReport.findFirst({
+  return db.inventoryReport.findFirst({
     where: { id: reportId, businessId },
     include: {
       business: true,

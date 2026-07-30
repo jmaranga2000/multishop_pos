@@ -20,7 +20,7 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <PageHeading title="Business settings" description="Operational settings come from Postgres; deployment secrets remain in environment variables." />
+      <PageHeading title="Business settings" description="Operational settings come from MongoDB; deployment secrets remain in environment variables." />
       <div className="grid gap-4 xl:grid-cols-[1.2fr_.8fr]">
         <Card>
           <CardHeader><div><h2 className="font-extrabold">Business and operations</h2><p className="text-sm text-slate-500">These values are loaded by reports, receipts, stock defaults and offline clients.</p></div></CardHeader>

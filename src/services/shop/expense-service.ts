@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
 import { writeAuditLog } from "@/services/shared/audit-service";
 import type { z } from "zod";
@@ -9,17 +9,17 @@ type ShopContext = { id: string; shopId: string; businessId: string };
 
 export async function getShopExpenseData(shopId: string, businessId: string) {
   const [business, categories, expenses] = await Promise.all([
-    prisma.business.findUniqueOrThrow({ where: { id: businessId } }),
-    prisma.expenseCategory.findMany({ where: { businessId, isActive: true }, orderBy: { name: "asc" } }),
-    prisma.expense.findMany({ where: { shopId }, include: { category: true }, orderBy: { occurredAt: "desc" }, take: 100 }),
+    db.business.findUniqueOrThrow({ where: { id: businessId } }),
+    db.expenseCategory.findMany({ where: { businessId, isActive: true }, orderBy: { name: "asc" } }),
+    db.expense.findMany({ where: { shopId }, include: { category: true }, orderBy: { occurredAt: "desc" }, take: 100 }),
   ]);
   return { business, categories, expenses };
 }
 
 export async function createShopExpense(shopUser: ShopContext, input: CreateExpenseInput) {
-  const category = await prisma.expenseCategory.findFirst({ where: { id: input.categoryId, businessId: shopUser.businessId, isActive: true } });
+  const category = await db.expenseCategory.findFirst({ where: { id: input.categoryId, businessId: shopUser.businessId, isActive: true } });
   if (!category) throw new AppError("Expense category was not found.");
-  const expense = await prisma.$transaction(async (tx) => {
+  const expense = await db.$transaction(async (tx) => {
     const created = await tx.expense.create({
       data: {
         shopId: shopUser.shopId,

@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { fromMinorUnits } from "@/lib/utils";
 import { reconcileStockAlert } from "@/lib/stock-alerts";
 import { AppError } from "@/lib/errors/app-error";
@@ -28,18 +28,18 @@ function createReceiptNumber(shopCode: string, date: Date, localId: string) {
 }
 
 export async function synchronizeOfflineSales(user: ShopSyncContext, payload: OfflineSyncPayload) {
-  const device = await prisma.offlineDevice.findFirst({
+  const device = await db.offlineDevice.findFirst({
     where: { id: payload.deviceId, shopId: user.shopId, isActive: true, isTrusted: true },
   });
   if (!device) throw new AppError("This device is not authorized for offline synchronization.", "DEVICE_NOT_AUTHORIZED", 403);
 
-  const admin = await prisma.user.findFirst({
+  const admin = await db.user.findFirst({
     where: { businessId: user.businessId, role: "ADMIN", status: "ACTIVE" },
     select: { id: true, email: true },
   });
   if (!admin) throw new AppError("No active administrator account is configured.", "ADMIN_NOT_CONFIGURED", 409);
 
-  const batch = await prisma.offlineSyncBatch.create({
+  const batch = await db.offlineSyncBatch.create({
     data: { shopId: user.shopId, deviceId: device.id, status: "PROCESSING", recordCount: payload.sales.length },
   });
   const results: SyncResult[] = [];
@@ -53,14 +53,14 @@ export async function synchronizeOfflineSales(user: ShopSyncContext, payload: Of
         throw new AppError("Shop or device mismatch.", "SHOP_DEVICE_MISMATCH", 403);
       }
 
-      const existing = await prisma.idempotencyRecord.findUnique({ where: { key: entry.sale.idempotencyKey } });
+      const existing = await db.idempotencyRecord.findUnique({ where: { key: entry.sale.idempotencyKey } });
       if (existing?.responseData) {
         results.push(existing.responseData as unknown as SyncResult);
         successCount += 1;
         continue;
       }
 
-      const result = await prisma.$transaction(async (tx) => {
+      const result = await db.$transaction(async (tx) => {
         const existingSale = await tx.sale.findUnique({ where: { clientReference: entry.sale.localId } });
         if (existingSale) {
           const response: SyncResult = {
@@ -231,7 +231,7 @@ export async function synchronizeOfflineSales(user: ShopSyncContext, payload: Of
     }
   }
 
-  await prisma.offlineSyncBatch.update({
+  await db.offlineSyncBatch.update({
     where: { id: batch.id },
     data: {
       status: errorCount ? (successCount || conflictCount ? "PARTIAL" : "FAILED") : "COMPLETED",
@@ -241,6 +241,6 @@ export async function synchronizeOfflineSales(user: ShopSyncContext, payload: Of
       completedAt: new Date(),
     },
   });
-  await prisma.offlineDevice.update({ where: { id: device.id }, data: { lastSeenAt: new Date(), lastSyncAt: new Date() } });
+  await db.offlineDevice.update({ where: { id: device.id }, data: { lastSeenAt: new Date(), lastSyncAt: new Date() } });
   return { batchId: batch.id, results };
 }

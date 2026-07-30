@@ -1,9 +1,9 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 
 export async function getAdminSalesPageData(businessId: string) {
   const [business, sales] = await Promise.all([
-    prisma.business.findUniqueOrThrow({ where: { id: businessId } }),
-    prisma.sale.findMany({
+    db.business.findUniqueOrThrow({ where: { id: businessId } }),
+    db.sale.findMany({
       where: { shop: { businessId } },
       include: { shop: true, salesperson: true, payments: true, _count: { select: { items: true } } },
       orderBy: { occurredAt: "desc" },

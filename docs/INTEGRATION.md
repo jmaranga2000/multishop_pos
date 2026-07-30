@@ -4,13 +4,13 @@ The UI does not query the database directly. Each feature follows one of these p
 
 ```text
 Server-rendered query
-Page or layout → query service → Prisma → Postgres
+Page or layout → query service → native data layer → MongoDB
 
 Mutation
-Page form → Server Action → Zod validator → domain service → Prisma transaction → Postgres
+Page form → Server Action → Zod validator → domain service → MongoDB session → MongoDB
 
 Offline POS
-Client component → offline service → Dexie/IndexedDB → synchronization service → API route → domain service → Prisma transaction → Postgres
+Client component → offline service → Dexie/IndexedDB → synchronization service → API route → domain service → MongoDB session → MongoDB
 ```
 
 ## Administrator modules

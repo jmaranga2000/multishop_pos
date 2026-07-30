@@ -1,16 +1,16 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
 import { writeAuditLog } from "@/services/shared/audit-service";
 
 export async function getSynchronizationMonitorData(businessId: string) {
   const [batches, conflicts] = await Promise.all([
-    prisma.offlineSyncBatch.findMany({
+    db.offlineSyncBatch.findMany({
       where: { shop: { businessId } },
       include: { shop: true, device: true },
       orderBy: { startedAt: "desc" },
       take: 100,
     }),
-    prisma.offlineSyncConflict.findMany({
+    db.offlineSyncConflict.findMany({
       where: { shop: { businessId }, status: "OPEN" },
       include: { shop: true, device: true },
       orderBy: { createdAt: "desc" },
@@ -24,12 +24,12 @@ export async function resolveSynchronizationConflict(
   admin: { id: string; businessId: string },
   conflictId: string,
 ) {
-  const conflict = await prisma.offlineSyncConflict.findFirst({
+  const conflict = await db.offlineSyncConflict.findFirst({
     where: { id: conflictId, shop: { businessId: admin.businessId } },
     include: { shop: true },
   });
   if (!conflict) throw new AppError("Synchronization conflict was not found.", "SYNC_CONFLICT_NOT_FOUND", 404);
-  return prisma.$transaction(async (tx) => {
+  return db.$transaction(async (tx) => {
     const updated = await tx.offlineSyncConflict.update({
       where: { id: conflict.id },
       data: { status: "RESOLVED", resolvedAt: new Date() },

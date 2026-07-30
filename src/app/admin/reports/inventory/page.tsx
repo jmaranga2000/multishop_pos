@@ -19,7 +19,7 @@ export default async function InventoryReportsPage() {
     <>
       <PageHeading
         title="Weekly inventory reports"
-        description="Generated from Postgres inventory movements; no dashboard figures are hardcoded."
+        description="Generated from MongoDB inventory movements; no dashboard figures are hardcoded."
         actions={<form action={generateInventoryReportAction}><Button><Plus className="h-4 w-4" />Generate report now</Button></form>}
       />
       <Card className="overflow-hidden">
