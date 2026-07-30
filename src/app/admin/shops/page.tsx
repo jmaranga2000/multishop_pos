@@ -18,7 +18,10 @@ export default async function ShopsPage() {
   return (
     <>
       <PageHeading title="Shops and login accounts" description="Create each physical location and issue one shared shop login." />
-      <div className="grid gap-5 xl:grid-cols-[1fr_380px]">
+      <div className="flex justify-end mb-4">
+        <a href="/admin/shops/new" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">New shop</a>
+      </div>
+      <div className="grid gap-5">
         <Card className="overflow-hidden">
           <CardHeader>
             <div>
@@ -61,24 +64,11 @@ export default async function ShopsPage() {
                             <input type="hidden" name="isActive" value={String(!shop.isActive)} />
                             <Button size="sm" variant={shop.isActive ? "danger" : "success"} className="w-full">
                               <Power className="h-4 w-4" />{shop.isActive ? "Suspend shop" : "Activate shop"}
-                            </Button>
-                          </form>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : <EmptyState title="No shops yet" description="Use the creation form to add the first shop and login account." />}
-        </Card>
-
-        <Card>
-          <CardHeader><div><h2 className="font-extrabold">Create shop</h2><p className="text-sm text-slate-500">The email and password become the shop credentials.</p></div></CardHeader>
-          <CardContent>
-            <form action={createShopAction} className="space-y-3">
-              <Input name="name" placeholder="Shop name" required />
-              <Input name="code" placeholder="Unique code, e.g. NBI-CBD" required />
+                            <td>
+                              <div className="flex gap-2">
+                                <a href={`/admin/shops/${shop.id}`} className="inline-flex items-center rounded-lg border px-3 py-2 text-sm">View</a>
+                              </div>
+                            </td>
               <Input name="email" type="email" placeholder="Shop login email" required />
               <Input name="password" type="password" minLength={8} placeholder="Temporary password" required />
               <Input name="phone" placeholder="Phone (optional)" />
