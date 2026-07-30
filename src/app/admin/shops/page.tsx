@@ -45,6 +45,10 @@ export default async function ShopsPage() {
                       <td><Badge tone={shop.isActive ? "success" : "danger"}>{shop.isActive ? "Active" : "Suspended"}</Badge></td>
                       <td>
                         <div className="flex min-w-72 flex-col gap-2">
+                          <div className="flex gap-2">
+                            <a href={`/admin/shops/${shop.id}`} className="btn inline-flex items-center rounded-lg border px-3 py-2 text-sm">View</a>
+                            <a href="/admin/shops/new" className="btn inline-flex items-center rounded-lg border px-3 py-2 text-sm">New</a>
+                          </div>
                           {shop.account ? (
                             <form action={resetShopPasswordAction} className="flex gap-2">
                               <input type="hidden" name="userId" value={shop.account.id} />

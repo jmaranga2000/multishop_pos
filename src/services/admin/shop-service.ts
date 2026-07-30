@@ -3,17 +3,29 @@ import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
 import { writeAuditLog } from "@/services/shared/audit-service";
 import type { z } from "zod";
-import type { createShopSchema, resetShopPasswordSchema, toggleShopSchema } from "@/validators/admin/shop-validator";
+import type { createShopSchema, resetShopPasswordSchema, toggleShopSchema, updateShopSchema } from "@/validators/admin/shop-validator";
 
 type CreateShopInput = z.infer<typeof createShopSchema>;
 type ResetShopPasswordInput = z.infer<typeof resetShopPasswordSchema>;
 type ToggleShopInput = z.infer<typeof toggleShopSchema>;
+type UpdateShopInput = z.infer<typeof updateShopSchema>;
 
 export async function listAdminShops(businessId: string) {
   return db.shop.findMany({
     where: { businessId },
     include: { account: { select: { id: true, email: true, status: true } }, _count: { select: { inventory: true, sales: true } } },
     orderBy: { name: "asc" },
+  });
+}
+
+export async function getAdminShopById(businessId: string, shopId: string) {
+  return db.shop.findFirst({
+    where: { id: shopId, businessId },
+    include: {
+      account: { select: { id: true, email: true, status: true } },
+      _count: { select: { inventory: true, sales: true } },
+      registers: true,
+    },
   });
 }
 
@@ -93,6 +105,61 @@ export async function setShopActiveState(admin: { id: string; businessId: string
       entityType: "SHOP",
       entityId: shop.id,
       description: `${active ? "Activated" : "Suspended"} ${shop.name}.`,
+    });
+  });
+}
+
+export async function updateShopAndAccount(admin: { id: string; businessId: string }, input: UpdateShopInput) {
+  const shop = await db.shop.findFirst({ where: { id: input.shopId, businessId: admin.businessId }, include: { account: true } });
+  if (!shop) throw new AppError("Shop was not found.", "SHOP_NOT_FOUND", 404);
+
+  await db.$transaction(async (tx) => {
+    await tx.shop.update({
+      where: { id: shop.id },
+      data: {
+        name: input.name,
+        code: input.code,
+        email: input.email ?? shop.email,
+        phone: input.phone || null,
+        address: input.address || null,
+      },
+    });
+
+    if (shop.account) {
+      if (input.email && input.email !== shop.account.email) {
+        await tx.user.update({ where: { id: shop.account.id }, data: { email: input.email } });
+      }
+      if (input.password) {
+        const passwordHash = await argon2.hash(input.password);
+        await tx.user.update({
+          where: { id: shop.account.id },
+          data: { passwordHash, passwordVersion: { increment: 1 }, failedLoginAttempts: 0, lockedUntil: null },
+        });
+      }
+    } else {
+      if (input.email && input.password) {
+        const passwordHash = await argon2.hash(input.password);
+        await tx.user.create({
+          data: {
+            businessId: admin.businessId,
+            shopId: shop.id,
+            name: `${input.name} account`,
+            email: input.email,
+            passwordHash,
+            role: "SHOP",
+            createdById: admin.id,
+          },
+        });
+      }
+    }
+
+    await writeAuditLog(tx, {
+      userId: admin.id,
+      shopId: shop.id,
+      action: "SHOP_UPDATED",
+      entityType: "SHOP",
+      entityId: shop.id,
+      description: `Updated ${input.name} (${shop.id}).`,
     });
   });
 }
