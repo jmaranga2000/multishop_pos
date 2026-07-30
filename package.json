@@ -27,7 +27,7 @@
     "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",
     "lucide-react": "^0.468.0",
-    "mongoose": "9.7.4",
+    "mongoose": "^9.7.4",
     "next": "16.2.11",
     "nodemailer": "^7.0.10",
     "react": "19.2.8",
