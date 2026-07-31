@@ -10,6 +10,24 @@ export async function listBusinessDevices(businessId: string) {
   });
 }
 
+export async function getAdminDeviceById(businessId: string, deviceId: string) {
+  return db.offlineDevice.findFirst({
+    where: { id: deviceId, shop: { businessId } },
+    include: {
+      shop: true,
+      syncBatches: {
+        orderBy: { startedAt: "desc" },
+        take: 10,
+      },
+      conflicts: {
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      },
+      _count: { select: { conflicts: true, syncBatches: true } },
+    },
+  });
+}
+
 export async function setDeviceAccess(
   admin: { id: string; businessId: string },
   input: { deviceId: string; enabled: boolean },
