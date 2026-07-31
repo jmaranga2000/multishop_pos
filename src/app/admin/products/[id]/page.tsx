@@ -43,6 +43,21 @@ export default async function ProductDetailsPage({ params }: { params: Promise<{
                 <p className="text-sm">Inventory: {product._count.inventory} stock records</p>
               </div>
             </div>
+                {product.pricingUnits?.length ? (
+                  <div className="mt-4">
+                    <h3 className="font-bold">Pricing options</h3>
+                    <div className="mt-2 space-y-2">
+                      {product.pricingUnits.map((p: { id: string; unitId: string; unit?: { name?: string | null; symbol?: string | null }; costPrice: number; sellingPrice: number }, idx: number) => (
+                        <div key={p.id} className="flex items-center justify-between rounded-xl border p-3">
+                          <div>
+                            <p className="font-semibold">{p.unit?.name ?? p.unitId} {idx === 0 ? <span className="ml-2 text-xs text-slate-500">(default)</span> : null}</p>
+                            <p className="text-xs text-slate-500">Cost: {formatMoney(p.costPrice.toString(), business.currency)} • Price: {formatMoney(p.sellingPrice.toString(), business.currency)} {p.unit?.symbol ? `• ${p.unit.symbol}` : ''}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
           </CardContent>
         </Card>
 

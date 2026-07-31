@@ -29,7 +29,7 @@ export async function listAdminProducts(businessId: string) {
     db.business.findUniqueOrThrow({ where: { id: businessId } }),
     db.product.findMany({
       where: { businessId },
-      include: { category: true, brand: true, unit: true, _count: { select: { inventory: true } } },
+      include: { category: true, brand: true, unit: true, pricingUnits: { include: { unit: true } }, _count: { select: { inventory: true } } },
       orderBy: { name: "asc" },
     }),
   ]);
@@ -41,7 +41,7 @@ export async function getProductManagementData(businessId: string) {
     db.business.findUniqueOrThrow({ where: { id: businessId } }),
     db.product.findMany({
       where: { businessId },
-      include: { category: true, brand: true, unit: true, _count: { select: { inventory: true } } },
+      include: { category: true, brand: true, unit: true, pricingUnits: { include: { unit: true } }, _count: { select: { inventory: true } } },
       orderBy: { name: "asc" },
     }),
     db.category.findMany({ where: { businessId, isActive: true }, orderBy: { name: "asc" } }),

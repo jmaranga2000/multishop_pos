@@ -2,7 +2,7 @@ import Link from "next/link";
 import { SlidersHorizontal } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
 import { getInventoryManagementData } from "@/services/admin/inventory-service";
-import { adjustStockAction } from "@/actions/admin/inventory-actions";
+import { adjustStockAction, updateInventoryAction } from "@/actions/admin/inventory-actions";
 import { PageHeading } from "@/components/ui/page-heading";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 export default async function InventoryDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireAdmin();
   const { id } = await params;
-  const { business, inventory } = await getInventoryManagementData(user.businessId);
+  const { business, shops, products, inventory } = await getInventoryManagementData(user.businessId);
   const item = inventory.find((entry) => entry.id === id);
 
   if (!item) return <p className="p-6">Inventory record not found.</p>;
@@ -50,32 +50,56 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
                 <p className="mt-1 font-bold">{item.shop.name}</p>
                 <p className="text-sm text-slate-500">{item.shop.code}</p>
               </div>
-              <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-wide text-slate-500">Quantity</p>
-                <p className="mt-1 font-black text-xl">{item.quantity}</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-wide text-slate-500">Status</p>
-                <div className="mt-1">
-                  <Badge tone={status === "IN_STOCK" ? "success" : status === "LOW_STOCK" ? "warning" : "danger"}>{status.replaceAll("_", " ")}</Badge>
+              <form action={updateInventoryAction} className="grid gap-3 md:grid-cols-2">
+                <input type="hidden" name="inventoryId" value={item.id} />
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <p className="text-xs uppercase tracking-wide text-slate-500">Product</p>
+                  <select name="productId" defaultValue={item.productId} className="mt-1 w-full rounded-md border px-2 py-2 text-sm">
+                    {products.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
+                  </select>
                 </div>
-              </div>
-              <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-wide text-slate-500">Selling price</p>
-                <p className="mt-1 font-bold">{formatMoney(item.sellingPrice.toString(), business.currency)}</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-wide text-slate-500">Cost price</p>
-                <p className="mt-1 font-bold">{formatMoney(item.costPrice.toString(), business.currency)}</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-wide text-slate-500">Reorder level</p>
-                <p className="mt-1 font-bold">{item.reorderLevel}</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-wide text-slate-500">Critical level</p>
-                <p className="mt-1 font-bold">{item.criticalLevel}</p>
-              </div>
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <p className="text-xs uppercase tracking-wide text-slate-500">Shop</p>
+                  <select name="shopId" defaultValue={item.shopId} className="mt-1 w-full rounded-md border px-2 py-2 text-sm">
+                    {shops.map((s) => (<option key={s.id} value={s.id}>{s.name}</option>))}
+                  </select>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <p className="text-xs uppercase tracking-wide text-slate-500">Quantity</p>
+                  <input name="quantity" type="number" defaultValue={item.quantity} className="mt-1 w-full rounded-md border px-2 py-2 text-sm" />
+                </div>
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <p className="text-xs uppercase tracking-wide text-slate-500">Status</p>
+                  <div className="mt-1">
+                    <Badge tone={status === "IN_STOCK" ? "success" : status === "LOW_STOCK" ? "warning" : "danger"}>{status.replaceAll("_", " ")}</Badge>
+                  </div>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <p className="text-xs uppercase tracking-wide text-slate-500">Selling price</p>
+                  <input name="sellingPrice" type="number" step="0.01" defaultValue={Number(item.sellingPrice)} className="mt-1 w-full rounded-md border px-2 py-2 text-sm" />
+                </div>
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <p className="text-xs uppercase tracking-wide text-slate-500">Cost price</p>
+                  <input name="costPrice" type="number" step="0.01" defaultValue={Number(item.costPrice)} className="mt-1 w-full rounded-md border px-2 py-2 text-sm" />
+                </div>
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <p className="text-xs uppercase tracking-wide text-slate-500">Reorder level</p>
+                  <input name="reorderLevel" type="number" defaultValue={item.reorderLevel} className="mt-1 w-full rounded-md border px-2 py-2 text-sm" />
+                </div>
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <p className="text-xs uppercase tracking-wide text-slate-500">Critical level</p>
+                  <input name="criticalLevel" type="number" defaultValue={item.criticalLevel} className="mt-1 w-full rounded-md border px-2 py-2 text-sm" />
+                </div>
+                <div className="rounded-xl bg-slate-50 p-4 md:col-span-2">
+                  <label className="inline-flex items-center gap-2"><input type="checkbox" name="isAvailable" defaultChecked={item.isAvailable} /> <span className="text-sm">Available for sale</span></label>
+                </div>
+                <div className="md:col-span-2">
+                  <div className="flex gap-2">
+                    <Button type="submit" className="w-full">Save changes</Button>
+                    <Link href="/admin/inventory" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm">Cancel</Link>
+                  </div>
+                </div>
+              </form>
             </div>
           </CardContent>
         </Card>

@@ -56,21 +56,28 @@ export default async function ProductsPage() {
                 <tbody>
                   {products.map((product) => (
                     <tr key={product.id}>
-                      <td>
-                        <div className="flex items-center gap-3">
-                          <div className="rounded-xl bg-blue-50 p-2 text-blue-700"><Package className="h-4 w-4" /></div>
-                          <div>
-                            <p className="font-bold">{product.name}</p>
-                            <p className="text-xs text-slate-500">{product.brand?.name ?? "Unbranded"} • {product.unit?.symbol ?? "unit"}</p>
+                        <td>
+                          <div className="flex items-center gap-3">
+                            <div className="rounded-xl bg-blue-50 p-2 text-blue-700"><Package className="h-4 w-4" /></div>
+                            <div>
+                              <p className="font-bold">{product.name}</p>
+                              <p className="text-xs text-slate-500">
+                                {product.brand?.name ?? "Unbranded"} • {product.unit?.symbol ?? (product.pricingUnits?.[0]?.unit?.symbol ?? "unit")}
+                                {product.pricingUnits && product.pricingUnits.length > 1 ? (
+                                  <span className="ml-2 text-xs text-slate-500">• {product.pricingUnits.length} options</span>
+                                ) : null}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
                       <td>
                         <p className="font-mono text-xs">{product.sku}</p>
                         <p className="text-xs text-slate-500">{product.barcode ?? "No barcode"}</p>
                       </td>
                       <td>{product.category?.name ?? "Uncategorized"}</td>
-                      <td className="font-bold">{formatMoney(product.defaultSellingPrice.toString(), business.currency)}</td>
+                      <td className="font-bold">
+                        {formatMoney(product.defaultSellingPrice.toString(), business.currency)} {product.unit?.symbol ?? (product.pricingUnits?.[0]?.unit?.symbol ?? "")}
+                      </td>
                       <td>{product._count.inventory}</td>
                       <td><Badge tone={product.status === "ACTIVE" ? "success" : "neutral"}>{product.status}</Badge></td>
                       <td>

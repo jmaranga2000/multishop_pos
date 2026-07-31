@@ -41,6 +41,9 @@ export function PosShell() {
   const [category, setCategory] = useState("All");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [selectedUnits, setSelectedUnits] = useState<Record<string, string>>({});
+  const [unitModalOpen, setUnitModalOpen] = useState(false);
+  const [unitModalEntry, setUnitModalEntry] = useState<((typeof products)[number]) | null>(null);
+  const [unitModalSelected, setUnitModalSelected] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [amountReceived, setAmountReceived] = useState("");
 
@@ -75,6 +78,13 @@ export function PosShell() {
   function add(entry: (typeof products)[number]) {
     const product = entry.product!;
     if (entry.projectedQuantity <= 0 || !entry.isAvailable) return toast.error(`${product.name} is out of stock`);
+    // If product has multiple pricing options and no selected unit, open modal to force selection
+    if (product.pricingOptions?.length && product.pricingOptions.length > 1 && !selectedUnits[product.id]) {
+      setUnitModalEntry(entry);
+      setUnitModalSelected(product.pricingOptions[0].unitId ?? null);
+      setUnitModalOpen(true);
+      return;
+    }
     const pricingOption = getPricingOption(entry);
     setCart((current) => {
       const existing = current.find((item) => item.productId === product.id && item.unitId === pricingOption.unitId);
@@ -101,6 +111,50 @@ export function PosShell() {
         },
       ];
     });
+  }
+
+  function confirmUnitSelection() {
+    if (!unitModalEntry) return setUnitModalOpen(false);
+    const entry = unitModalEntry;
+    const product = entry.product!;
+    const selectedId = unitModalSelected;
+    const pricingOption = product.pricingOptions?.find((o) => o.unitId === selectedId) ?? getPricingOption(entry);
+    // remember selection for future adds
+    if (product.id && selectedId) setSelectedUnits((cur) => ({ ...cur, [product.id]: selectedId }));
+    // add to cart using chosen pricing
+    setCart((current) => {
+      const existing = current.find((item) => item.productId === product.id && item.unitId === pricingOption.unitId);
+      if (existing) {
+        if (existing.quantity >= entry.projectedQuantity) {
+          toast.warning(`Only ${entry.projectedQuantity} units are projected to be available`);
+          return current;
+        }
+        return current.map((item) => item.productId === product.id && item.unitId === pricingOption.unitId ? { ...item, quantity: item.quantity + 1 } : item);
+      }
+      return [
+        ...current,
+        {
+          productId: product.id,
+          name: product.name,
+          sku: product.sku,
+          unitId: pricingOption.unitId,
+          unitName: pricingOption.unitName,
+          unitSymbol: pricingOption.unitSymbol,
+          quantity: 1,
+          unitPriceMinor: pricingOption.sellingPriceMinor,
+          unitCostMinor: pricingOption.costPriceMinor,
+          available: entry.projectedQuantity,
+        },
+      ];
+    });
+    setUnitModalOpen(false);
+    setUnitModalEntry(null);
+  }
+
+  function cancelUnitSelection() {
+    setUnitModalOpen(false);
+    setUnitModalEntry(null);
+    setUnitModalSelected(null);
   }
 
   function changeQuantity(productId: string, unitId: string | null | undefined, delta: number) {
@@ -196,5 +250,29 @@ export function PosShell() {
         </div>
       </Card>
     </div>
+    {unitModalOpen && unitModalEntry ? (
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="absolute inset-0 bg-black opacity-40" onClick={cancelUnitSelection} />
+        <div className="relative z-10 w-full max-w-md rounded-xl bg-white p-6">
+          <h3 className="text-lg font-bold">Pick unit for {unitModalEntry.product!.name}</h3>
+          <p className="mt-1 text-sm text-slate-500">Select the unit to use for this sale line.</p>
+          <div className="mt-4 space-y-3">
+            {unitModalEntry.product!.pricingOptions?.map((opt) => (
+              <label key={opt.unitId ?? "default"} className="flex items-center gap-3 rounded-lg border p-3">
+                <input type="radio" name="unitPick" checked={unitModalSelected === (opt.unitId ?? null)} onChange={() => setUnitModalSelected(opt.unitId ?? null)} />
+                <div>
+                  <div className="font-semibold">{opt.unitName ?? opt.unitSymbol ?? "Unit"}</div>
+                  <div className="text-xs text-slate-500">{formatMoney(fromMinorUnits(opt.sellingPriceMinor))}{opt.unitSymbol ? ` / ${opt.unitSymbol}` : ''}</div>
+                </div>
+              </label>
+            ))}
+          </div>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="ghost" onClick={cancelUnitSelection}>Cancel</Button>
+            <Button onClick={() => confirmUnitSelection()}>Add with selected unit</Button>
+          </div>
+        </div>
+      </div>
+    ) : null}
   </div>;
 }

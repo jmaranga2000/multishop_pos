@@ -143,3 +143,59 @@ export async function adjustStock(admin: AdminContext, input: AdjustStockInput) 
     return updated;
   });
 }
+
+export async function updateInventory(admin: AdminContext, input: z.infer<typeof import("@/validators/admin/inventory-validator").updateInventorySchema>) {
+  const inventory = await db.shopInventory.findFirst({ where: { id: input.inventoryId, shop: { businessId: admin.businessId } } });
+  if (!inventory) throw new AppError("Inventory record was not found.", "INVENTORY_NOT_FOUND", 404);
+
+  const [shop, product] = await Promise.all([
+    db.shop.findFirst({ where: { id: input.shopId, businessId: admin.businessId } }),
+    db.product.findFirst({ where: { id: input.productId, businessId: admin.businessId } }),
+  ]);
+  if (!shop || !product) throw new AppError("Selected shop or product not found.");
+
+  // Prevent duplicate shop+product pair when changing shop/product
+  const existing = await db.shopInventory.findFirst({ where: { shopId: input.shopId, productId: input.productId } });
+  if (existing && existing.id !== inventory.id) throw new AppError("An inventory record for that shop and product already exists.");
+
+  return db.$transaction(async (tx) => {
+    const updated = await tx.shopInventory.update({
+      where: { id: inventory.id },
+      data: {
+        shopId: shop.id,
+        productId: product.id,
+        costPrice: input.costPrice,
+        sellingPrice: input.sellingPrice,
+        reorderLevel: input.reorderLevel,
+        criticalLevel: input.criticalLevel,
+        isAvailable: !!input.isAvailable,
+        version: { increment: 1 },
+      },
+    });
+
+    await reconcileStockAlert(tx, {
+      businessId: admin.businessId,
+      shopId: updated.shopId,
+      shopName: shop.name,
+      productId: updated.productId,
+      productName: product.name,
+      quantity: updated.quantity,
+      reorderLevel: updated.reorderLevel,
+      criticalLevel: updated.criticalLevel,
+      adminId: admin.id,
+      adminEmail: admin.email,
+    });
+
+    await writeAuditLog(tx, {
+      userId: admin.id,
+      shopId: updated.shopId,
+      action: "INVENTORY_UPDATED",
+      entityType: "SHOP_INVENTORY",
+      entityId: updated.id,
+      description: `Updated inventory ${updated.id} (${product.name} @ ${shop.name}).`,
+      metadata: { before: inventory, after: updated },
+    });
+
+    return updated;
+  });
+}
