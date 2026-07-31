@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Building2 } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
 import { listAdminShops } from "@/services/admin/shop-service";
@@ -16,7 +17,7 @@ export default async function ShopsPage() {
     <>
       <PageHeading title="Shops and login accounts" description="Create each physical location and issue one shared shop login." />
       <div className="flex justify-end mb-4">
-        <a href="/admin/shops/new" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">New shop</a>
+        <Link href="/admin/shops/new" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">New shop</Link>
       </div>
       <div className="grid gap-5">
         <Card className="overflow-hidden">
