@@ -14,7 +14,7 @@ export async function bootstrapShopDevice(input: {
     db.business.findUniqueOrThrow({ where: { id: input.businessId }, select: { offlineSessionHours: true } }),
     db.shopInventory.findMany({
       where: { shopId: input.shopId, product: { status: "ACTIVE" } },
-      include: { product: { include: { category: true } } },
+      include: { product: { include: { category: true, unit: true, pricingUnits: { include: { unit: true } } } } },
       orderBy: { product: { name: "asc" } },
     }),
   ]);
@@ -53,6 +53,16 @@ export async function bootstrapShopDevice(input: {
       barcode: entry.product.barcode,
       categoryName: entry.product.category?.name ?? null,
       imageUrl: entry.product.imageUrl,
+      unitId: entry.product.unitId ?? null,
+      unitName: entry.product.unit?.name ?? null,
+      unitSymbol: entry.product.unit?.symbol ?? null,
+      pricingOptions: (entry.product.pricingUnits ?? []).map((pricing: { unitId: string; unit?: { name: string | null; symbol: string | null }; costPrice: number; sellingPrice: number }) => ({
+        unitId: pricing.unitId,
+        unitName: pricing.unit?.name ?? null,
+        unitSymbol: pricing.unit?.symbol ?? null,
+        costPriceMinor: toMinorUnits(pricing.costPrice.toString()),
+        sellingPriceMinor: toMinorUnits(pricing.sellingPrice.toString()),
+      })),
       status: entry.product.status,
     })),
     inventory: inventory.map((entry) => ({

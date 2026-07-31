@@ -122,6 +122,13 @@ export interface ProductDocument extends BaseDocument {
   status: ProductStatus;
 }
 
+export interface ProductPricingUnitDocument extends BaseDocument {
+  productId: string;
+  unitId: string;
+  costPrice: number;
+  sellingPrice: number;
+}
+
 export interface ShopInventoryDocument extends BaseDocument {
   shopId: string;
   productId: string;
@@ -194,6 +201,9 @@ export interface SaleItemDocument extends BaseDocument {
   productId: string;
   productName: string;
   sku: string;
+  unitId?: string | null;
+  unitName?: string | null;
+  unitSymbol?: string | null;
   quantity: number;
   unitCost: number;
   unitPrice: number;

@@ -7,6 +7,7 @@ import { PageHeading } from "@/components/ui/page-heading";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ProductPricingBuilder } from "@/components/admin/product-pricing-builder";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +62,7 @@ export default async function NewProductPage() {
               </select>
               <a href="/admin/products/units/new" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm">New</a>
             </div>
+            <ProductPricingBuilder units={units} />
             <div className="grid grid-cols-2 gap-3">
               <Input name="defaultCostPrice" type="number" min="0" step="0.01" placeholder="Cost price" required />
               <Input name="defaultSellingPrice" type="number" min="0.01" step="0.01" placeholder="Selling price" required />

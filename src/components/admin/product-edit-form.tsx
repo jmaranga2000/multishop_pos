@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { updateProductAction } from "@/actions/admin/product-actions";
+import { ProductPricingBuilder } from "@/components/admin/product-pricing-builder";
 
 export type ProductEditFormProps = {
   product: {
@@ -19,6 +20,7 @@ export type ProductEditFormProps = {
     defaultCostPrice: number;
     defaultSellingPrice: number;
     status: string;
+    pricingUnits?: Array<{ unitId: string; costPrice: number; sellingPrice: number }>;
   };
   categories: Array<{ id: string; name: string }>;
   brands: Array<{ id: string; name: string }>;
@@ -39,6 +41,23 @@ export function ProductEditForm({ product, categories, brands, units }: ProductE
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  const pricingInitialRows = useMemo(() => {
+    if (product.pricingUnits?.length) {
+      return product.pricingUnits.map((entry) => ({
+        unitId: entry.unitId,
+        costPrice: entry.costPrice,
+        sellingPrice: entry.sellingPrice,
+      }));
+    }
+    return [
+      {
+        unitId: product.unitId ?? "",
+        costPrice: product.defaultCostPrice,
+        sellingPrice: product.defaultSellingPrice,
+      },
+    ];
+  }, [product.pricingUnits, product.unitId, product.defaultCostPrice, product.defaultSellingPrice]);
 
   function updateField(key: keyof typeof values, value: string) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -94,6 +113,7 @@ export function ProductEditForm({ product, categories, brands, units }: ProductE
         </select>
         <a href="/admin/products/units/new" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm">New</a>
       </div>
+      <ProductPricingBuilder units={units} initialRows={pricingInitialRows} />
       <div className="grid grid-cols-2 gap-3">
         <Input name="defaultCostPrice" value={values.defaultCostPrice} onChange={(event) => updateField("defaultCostPrice", event.target.value)} type="number" min="0" step="0.01" placeholder="Cost price" required />
         <Input name="defaultSellingPrice" value={values.defaultSellingPrice} onChange={(event) => updateField("defaultSellingPrice", event.target.value)} type="number" min="0.01" step="0.01" placeholder="Selling price" required />

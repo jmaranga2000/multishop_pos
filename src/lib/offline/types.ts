@@ -6,6 +6,16 @@ export type OfflineProduct = {
   categoryName: string | null;
   imageUrl: string | null;
   status: "ACTIVE" | "INACTIVE";
+  unitId?: string | null;
+  unitName?: string | null;
+  unitSymbol?: string | null;
+  pricingOptions?: Array<{
+    unitId: string;
+    unitName?: string | null;
+    unitSymbol?: string | null;
+    costPriceMinor: number;
+    sellingPriceMinor: number;
+  }>;
 };
 
 export type OfflineInventory = {
@@ -52,6 +62,9 @@ export type OfflineSaleItem = {
   productId: string;
   productName: string;
   sku: string;
+  unitId?: string | null;
+  unitName?: string | null;
+  unitSymbol?: string | null;
   quantity: number;
   unitPriceMinor: number;
   unitCostMinor: number;

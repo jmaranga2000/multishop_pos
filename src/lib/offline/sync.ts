@@ -39,7 +39,17 @@ export async function createLocalSale(input: {
   paymentMethod: "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER";
   paymentReference?: string | null;
   amountPaidMinor: number;
-  items: Array<{ productId: string; productName: string; sku: string; quantity: number; unitPriceMinor: number; unitCostMinor: number }>;
+  items: Array<{
+    productId: string;
+    productName: string;
+    sku: string;
+    unitId?: string | null;
+    unitName?: string | null;
+    unitSymbol?: string | null;
+    quantity: number;
+    unitPriceMinor: number;
+    unitCostMinor: number;
+  }>;
 }) {
   if (!navigator.onLine && input.paymentMethod !== "CASH") throw new Error("Only cash sales can be completed while offline.");
   const expires = await offlineDb.syncMetadata.get("offlineAccessExpiresAt");
@@ -65,6 +75,9 @@ export async function createLocalSale(input: {
   };
   const saleItems: OfflineSaleItem[] = input.items.map((item) => ({
     id: crypto.randomUUID(), saleLocalId: localId, productId: item.productId, productName: item.productName, sku: item.sku,
+    unitId: item.unitId ?? null,
+    unitName: item.unitName ?? null,
+    unitSymbol: item.unitSymbol ?? null,
     quantity: item.quantity, unitPriceMinor: item.unitPriceMinor, unitCostMinor: item.unitCostMinor,
     lineTotalMinor: item.quantity * item.unitPriceMinor,
   }));

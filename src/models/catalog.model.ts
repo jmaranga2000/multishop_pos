@@ -3,6 +3,7 @@ import type {
   BrandDocument,
   CategoryDocument,
   ProductDocument,
+  ProductPricingUnitDocument,
   SalespersonProfileDocument,
   UnitDocument,
 } from "./model.types";
@@ -52,10 +53,22 @@ export const ProductModel = defineModel<ProductDocument>({
   ],
 });
 
+export const ProductPricingUnitModel = defineModel<ProductPricingUnitDocument>({
+  collection: "productPricingUnits",
+  required: ["productId", "unitId", "costPrice", "sellingPrice"],
+  defaults: {},
+  indexes: [
+    index({ productId: 1, unitId: 1 }, { unique: true }),
+    index({ unitId: 1 }),
+  ],
+  timestamps: false,
+});
+
 export const catalogModels = {
   salespersonProfile: SalespersonProfileModel,
   category: CategoryModel,
   brand: BrandModel,
   unit: UnitModel,
   product: ProductModel,
+  productPricingUnit: ProductPricingUnitModel,
 };

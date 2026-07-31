@@ -71,12 +71,14 @@ export const modelRelations: Record<string, Record<string, RelationDefinition>> 
   unit: {
     business: relation("business", "businessId", "id"),
     products: relation("product", "id", "unitId", true),
+    pricingUnits: relation("productPricingUnit", "id", "unitId", true),
   },
   product: {
     business: relation("business", "businessId", "id"),
     category: relation("category", "categoryId", "id"),
     brand: relation("brand", "brandId", "id"),
     unit: relation("unit", "unitId", "id"),
+    pricingUnits: relation("productPricingUnit", "id", "productId", true),
     inventory: relation("shopInventory", "id", "productId", true),
     saleItems: relation("saleItem", "id", "productId", true),
     stockMovements: relation("stockMovement", "id", "productId", true),
@@ -125,6 +127,10 @@ export const modelRelations: Record<string, Record<string, RelationDefinition>> 
     sourceShop: relation("shop", "sourceShopId", "id"),
     destinationShop: relation("shop", "destinationShopId", "id"),
     items: relation("stockTransferItem", "id", "transferId", true),
+  },
+  productPricingUnit: {
+    product: relation("product", "productId", "id"),
+    unit: relation("unit", "unitId", "id"),
   },
   stockTransferItem: {
     transfer: relation("stockTransfer", "transferId", "id"),

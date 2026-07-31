@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+const pricingEntrySchema = z.object({
+  unitId: z.string().min(1),
+  costPrice: z.coerce.number().nonnegative(),
+  sellingPrice: z.coerce.number().positive(),
+});
+
 export const createProductSchema = z.object({
   name: z.string().trim().min(2).max(160),
   sku: z.string().trim().min(2).max(60).transform((value) => value.toUpperCase()),
@@ -9,6 +15,16 @@ export const createProductSchema = z.object({
   unitId: z.string().optional(),
   defaultCostPrice: z.coerce.number().nonnegative(),
   defaultSellingPrice: z.coerce.number().positive(),
+  unitPricing: z.string().optional().transform((value) => {
+    if (!value) return [];
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      const array = Array.isArray(parsed) ? parsed : [];
+      return pricingEntrySchema.array().parse(array);
+    } catch {
+      return [];
+    }
+  }),
 });
 
 export const updateProductSchema = z.object({
@@ -21,6 +37,16 @@ export const updateProductSchema = z.object({
   unitId: z.string().optional(),
   defaultCostPrice: z.coerce.number().nonnegative(),
   defaultSellingPrice: z.coerce.number().positive(),
+  unitPricing: z.string().optional().transform((value) => {
+    if (!value) return [];
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      const array = Array.isArray(parsed) ? parsed : [];
+      return pricingEntrySchema.array().parse(array);
+    } catch {
+      return [];
+    }
+  }),
 });
 
 export const createProductCategorySchema = z.object({

@@ -54,7 +54,7 @@ export async function getProductManagementData(businessId: string) {
 export async function getAdminProductById(businessId: string, productId: string) {
   return db.product.findFirst({
     where: { id: productId, businessId },
-    include: { category: true, brand: true, unit: true, _count: { select: { inventory: true } } },
+    include: { category: true, brand: true, unit: true, pricingUnits: true, _count: { select: { inventory: true } } },
   });
 }
 
@@ -71,6 +71,7 @@ export async function listAdminProductUnits(businessId: string) {
 }
 
 export async function createProduct(admin: { id: string; businessId: string }, input: CreateProductInput) {
+  const firstUnitPricing = input.unitPricing?.[0] ?? null;
   const product = await db.product.create({
     data: {
       businessId: admin.businessId,
@@ -79,11 +80,23 @@ export async function createProduct(admin: { id: string; businessId: string }, i
       barcode: input.barcode || null,
       categoryId: input.categoryId || null,
       brandId: input.brandId || null,
-      unitId: input.unitId || null,
-      defaultCostPrice: input.defaultCostPrice,
-      defaultSellingPrice: input.defaultSellingPrice,
+      unitId: firstUnitPricing?.unitId ?? input.unitId ?? null,
+      defaultCostPrice: firstUnitPricing?.costPrice ?? input.defaultCostPrice,
+      defaultSellingPrice: firstUnitPricing?.sellingPrice ?? input.defaultSellingPrice,
     },
   });
+
+  if (input.unitPricing?.length) {
+    await db.productPricingUnit.deleteMany({ where: { productId: product.id } });
+    await db.productPricingUnit.createMany({
+      data: input.unitPricing.map((entry) => ({
+        productId: product.id,
+        unitId: entry.unitId,
+        costPrice: entry.costPrice,
+        sellingPrice: entry.sellingPrice,
+      })),
+    });
+  }
   await writeAuditLog(db, {
     userId: admin.id,
     action: "PRODUCT_CREATED",
@@ -98,6 +111,7 @@ export async function updateProduct(admin: { id: string; businessId: string }, i
   const product = await db.product.findFirst({ where: { id: input.productId, businessId: admin.businessId } });
   if (!product) throw new Error("Product not found.");
 
+  const firstUnitPricing = input.unitPricing?.[0] ?? null;
   const updatedProduct = await db.product.update({
     where: { id: input.productId },
     data: {
@@ -106,11 +120,23 @@ export async function updateProduct(admin: { id: string; businessId: string }, i
       barcode: input.barcode || null,
       categoryId: input.categoryId || null,
       brandId: input.brandId || null,
-      unitId: input.unitId || null,
-      defaultCostPrice: input.defaultCostPrice,
-      defaultSellingPrice: input.defaultSellingPrice,
+      unitId: firstUnitPricing?.unitId ?? input.unitId ?? null,
+      defaultCostPrice: firstUnitPricing?.costPrice ?? input.defaultCostPrice,
+      defaultSellingPrice: firstUnitPricing?.sellingPrice ?? input.defaultSellingPrice,
     },
   });
+
+  await db.productPricingUnit.deleteMany({ where: { productId: updatedProduct.id } });
+  if (input.unitPricing?.length) {
+    await db.productPricingUnit.createMany({
+      data: input.unitPricing.map((entry) => ({
+        productId: updatedProduct.id,
+        unitId: entry.unitId,
+        costPrice: entry.costPrice,
+        sellingPrice: entry.sellingPrice,
+      })),
+    });
+  }
 
   await writeAuditLog(db, {
     userId: admin.id,
