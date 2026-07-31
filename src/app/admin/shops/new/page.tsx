@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAdmin } from "@/lib/rbac";
 import { PageHeading } from "@/components/ui/page-heading";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -13,6 +14,11 @@ export default async function NewShopPage() {
   return (
     <>
       <PageHeading title="Create shop" description="Create a new physical location and its login account." />
+      <div className="mb-4">
+        <Link href="/admin/shops" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+          Back to list
+        </Link>
+      </div>
       <Card>
         <CardHeader><h2 className="font-extrabold">New shop</h2></CardHeader>
         <CardContent>

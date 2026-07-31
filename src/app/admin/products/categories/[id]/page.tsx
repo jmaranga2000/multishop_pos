@@ -19,6 +19,11 @@ export default async function CategoryDetailPage({ params }: { params: Promise<{
   return (
     <>
       <PageHeading title={category.name} description={`Slug: ${category.slug}`} />
+      <div className="mb-4">
+        <Link href="/admin/products/categories" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+          Back to list
+        </Link>
+      </div>
       <div className="mb-4 flex flex-wrap gap-2">
         <Link href="#edit-category" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
           Edit

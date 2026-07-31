@@ -19,6 +19,11 @@ export default async function UnitDetailPage({ params }: { params: Promise<{ id:
   return (
     <>
       <PageHeading title={unit.name} description={`Symbol: ${unit.symbol}`} />
+      <div className="mb-4">
+        <Link href="/admin/products/units" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+          Back to list
+        </Link>
+      </div>
       <div className="mb-4 flex flex-wrap gap-2">
         <Link href="#edit-unit" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
           Edit

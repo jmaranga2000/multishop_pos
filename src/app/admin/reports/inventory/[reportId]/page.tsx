@@ -24,6 +24,11 @@ export default async function ReportDetail({ params }: { params: Promise<{ repor
         description={`${report.periodStart.toLocaleDateString("en-KE")} – ${report.periodEnd.toLocaleDateString("en-KE")}`}
         actions={<div className="flex gap-2"><Link href={`/api/reports/inventory/${report.id}/excel`}><Button variant="secondary"><FileSpreadsheet className="h-4 w-4" />Excel</Button></Link><Link href={`/api/reports/inventory/${report.id}/pdf`}><Button><Download className="h-4 w-4" />PDF</Button></Link></div>}
       />
+      <div className="mb-4">
+        <Link href="/admin/reports/inventory" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+          Back to list
+        </Link>
+      </div>
       <div className="kpi-grid">
         <Card className="p-5"><p className="text-sm text-slate-500">Units remaining</p><p className="mt-2 text-2xl font-black">{report.totalStockQuantity}</p></Card>
         <Card className="p-5"><p className="text-sm text-slate-500">Cost value</p><p className="mt-2 text-2xl font-black">{formatMoney(report.totalCostValue.toString(), report.business.currency)}</p></Card>

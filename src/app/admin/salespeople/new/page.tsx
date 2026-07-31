@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAdmin } from "@/lib/rbac";
 import { getSalespersonManagementData } from "@/services/admin/salesperson-service";
 import { PageHeading } from "@/components/ui/page-heading";
@@ -15,6 +16,11 @@ export default async function NewSalespersonPage() {
   return (
     <>
       <PageHeading title="Create salesperson" description="Create a managed PIN profile for a shop operator." />
+      <div className="mb-4">
+        <Link href="/admin/salespeople" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+          Back to list
+        </Link>
+      </div>
       <Card>
         <CardHeader><h2 className="font-extrabold">New salesperson profile</h2></CardHeader>
         <CardContent>

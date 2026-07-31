@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Package, Plus } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
 import { createProductAction } from "@/actions/admin/product-actions";
@@ -16,6 +17,11 @@ export default async function NewProductPage() {
   return (
     <>
       <PageHeading title="Create product" description="Add a product to the catalog before assigning stock to shops." />
+      <div className="mb-4">
+        <Link href="/admin/products" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+          Back to list
+        </Link>
+      </div>
       <Card>
         <CardHeader>
           <div>

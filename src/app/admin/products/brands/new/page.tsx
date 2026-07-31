@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAdmin } from "@/lib/rbac";
 import { PageHeading } from "@/components/ui/page-heading";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -12,6 +13,11 @@ export default async function NewBrandPage() {
   return (
     <>
       <PageHeading title="Create brand" description="Add a new product brand." />
+      <div className="mb-4">
+        <Link href="/admin/products/brands" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+          Back to list
+        </Link>
+      </div>
       <Card>
         <CardHeader><h2 className="font-extrabold">New brand</h2></CardHeader>
         <CardContent>

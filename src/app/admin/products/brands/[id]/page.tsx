@@ -19,6 +19,11 @@ export default async function BrandDetailPage({ params }: { params: Promise<{ id
   return (
     <>
       <PageHeading title={brand.name} description="Product brand" />
+      <div className="mb-4">
+        <Link href="/admin/products/brands" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+          Back to list
+        </Link>
+      </div>
       <div className="mb-4 flex flex-wrap gap-2">
         <Link href="#edit-brand" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
           Edit

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAdmin } from "@/lib/rbac";
 import { getAdminShopById } from "@/services/admin/shop-service";
 import { PageHeading } from "@/components/ui/page-heading";
@@ -17,6 +18,11 @@ export default async function ShopDetailsPage({ params }: { params: Promise<{ id
   return (
     <>
       <PageHeading title={shop.name} description={`Code: ${shop.code}`} />
+      <div className="mb-4">
+        <Link href="/admin/shops" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+          Back to list
+        </Link>
+      </div>
       <div className="grid gap-5">
         <Card>
           <CardHeader><h2 className="font-extrabold">Details</h2></CardHeader>

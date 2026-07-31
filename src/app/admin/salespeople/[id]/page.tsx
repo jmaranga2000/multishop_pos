@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { UserRoundCheck } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
 import { getAdminSalespersonById } from "@/services/admin/salesperson-service";
@@ -18,6 +19,11 @@ export default async function SalespersonDetailsPage({ params }: { params: Promi
   return (
     <>
       <PageHeading title={salesperson.name} description={`Code: ${salesperson.code}`} />
+      <div className="mb-4">
+        <Link href="/admin/salespeople" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+          Back to list
+        </Link>
+      </div>
       <div className="grid gap-5">
         <Card>
           <CardHeader><h2 className="font-extrabold">Details</h2></CardHeader>
