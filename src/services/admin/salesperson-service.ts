@@ -3,10 +3,11 @@ import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
 import { writeAuditLog } from "@/services/shared/audit-service";
 import type { z } from "zod";
-import type { createSalespersonSchema, toggleSalespersonSchema } from "@/validators/admin/salesperson-validator";
+import type { createSalespersonSchema, toggleSalespersonSchema, updateSalespersonSchema } from "@/validators/admin/salesperson-validator";
 
 type CreateSalespersonInput = z.infer<typeof createSalespersonSchema>;
 type ToggleSalespersonInput = z.infer<typeof toggleSalespersonSchema>;
+type UpdateSalespersonInput = z.infer<typeof updateSalespersonSchema>;
 
 export async function getSalespersonManagementData(businessId: string) {
   const [shops, salespeople] = await Promise.all([
@@ -18,6 +19,13 @@ export async function getSalespersonManagementData(businessId: string) {
     }),
   ]);
   return { shops, salespeople };
+}
+
+export async function getAdminSalespersonById(businessId: string, id: string) {
+  return db.salespersonProfile.findFirst({
+    where: { id, shop: { businessId } },
+    include: { shop: true, _count: { select: { sales: true, sessions: true } } },
+  });
 }
 
 export async function createSalesperson(admin: { id: string; businessId: string }, input: CreateSalespersonInput) {
@@ -35,6 +43,33 @@ export async function createSalesperson(admin: { id: string; businessId: string 
     description: `Created salesperson ${profile.name} for ${shop.name}.`,
   });
   return profile;
+}
+
+export async function updateSalesperson(admin: { id: string; businessId: string }, input: UpdateSalespersonInput) {
+  const profile = await db.salespersonProfile.findFirst({
+    where: { id: input.salespersonId, shop: { businessId: admin.businessId } },
+    include: { shop: true },
+  });
+  if (!profile) throw new AppError("Salesperson profile was not found.");
+
+  const updated = await db.salespersonProfile.update({
+    where: { id: profile.id },
+    data: {
+      name: input.name,
+      code: input.code,
+    },
+  });
+
+  await writeAuditLog(db, {
+    userId: admin.id,
+    shopId: profile.shopId,
+    action: "SALESPERSON_UPDATED",
+    entityType: "SALESPERSON_PROFILE",
+    entityId: updated.id,
+    description: `Updated salesperson ${updated.name}.`,
+  });
+
+  return updated;
 }
 
 export async function setSalespersonActiveState(admin: { id: string; businessId: string }, input: ToggleSalespersonInput) {

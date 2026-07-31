@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAdmin } from "@/lib/rbac";
 import { getAdminBrandById } from "@/services/admin/product-service";
 import { PageHeading } from "@/components/ui/page-heading";
@@ -18,11 +19,20 @@ export default async function BrandDetailPage({ params }: { params: Promise<{ id
   return (
     <>
       <PageHeading title={brand.name} description="Product brand" />
+      <div className="mb-4 flex flex-wrap gap-2">
+        <Link href="#edit-brand" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+          Edit
+        </Link>
+        <form action={deleteProductBrandAction} className="inline">
+          <input type="hidden" name="id" value={brand.id} />
+          <Button variant="danger">Delete</Button>
+        </form>
+      </div>
       <div className="grid gap-5">
         <Card>
           <CardHeader><h2 className="font-extrabold">Edit brand</h2></CardHeader>
           <CardContent>
-            <form action={updateProductBrandAction} className="space-y-3">
+            <form id="edit-brand" action={updateProductBrandAction} className="space-y-3">
               <input type="hidden" name="id" value={brand.id} />
               <Input name="name" defaultValue={brand.name} placeholder="Brand name" required />
               <Button className="w-full">Save brand</Button>
@@ -32,10 +42,6 @@ export default async function BrandDetailPage({ params }: { params: Promise<{ id
                 <input type="hidden" name="id" value={brand.id} />
                 <input type="hidden" name="isActive" value={!brand.isActive ? "true" : "false"} />
                 <Button variant={brand.isActive ? "secondary" : "primary"}>{brand.isActive ? "Suspend" : "Activate"}</Button>
-              </form>
-              <form action={deleteProductBrandAction} className="inline" onSubmit={(e) => { if (!confirm('Delete brand? This cannot be undone.')) e.preventDefault(); }}>
-                <input type="hidden" name="id" value={brand.id} />
-                <Button variant="danger">Delete</Button>
               </form>
             </div>
           </CardContent>
