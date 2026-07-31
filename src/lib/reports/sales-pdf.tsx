@@ -9,54 +9,142 @@ type SalesPdfReport = {
 };
 
 const styles = StyleSheet.create({
-  page: { padding: 28, fontSize: 10, color: "#172033" },
-  title: { fontSize: 18, fontWeight: 700, marginBottom: 8 },
-  subtitle: { color: "#667085", marginBottom: 12 },
-  summaryRow: { display: "flex", flexDirection: "row", gap: 10, marginBottom: 14 },
-  summaryCard: { border: "1 solid #d8dee9", borderRadius: 5, padding: 8, flexGrow: 1 },
-  summaryLabel: { fontSize: 7, color: "#667085", textTransform: "uppercase" },
-  summaryValue: { fontSize: 14, fontWeight: 700, marginTop: 3 },
-  tableHeader: { display: "flex", flexDirection: "row", backgroundColor: "#eef3ff", padding: 6, fontWeight: 700 },
-  tableRow: { display: "flex", flexDirection: "row", padding: 6, borderBottom: "1 solid #e8ebf0" },
-  c1: { width: "20%" },
-  c2: { width: "20%" },
-  c3: { width: "20%" },
-  c4: { width: "15%" },
-  c5: { width: "25%" },
+  page: {
+    padding: 24,
+    fontSize: 10,
+    color: "#111827",
+    fontFamily: "Helvetica",
+    backgroundColor: "#f8fafc",
+  },
+  header: {
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottom: "1 solid #e2e8f0",
+  },
+  titleRow: {
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    marginBottom: 10,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 700,
+    color: "#0f172a",
+  },
+  meta: {
+    fontSize: 10,
+    color: "#475569",
+  },
+  subtitle: {
+    marginTop: 4,
+    fontSize: 10,
+    color: "#64748b",
+  },
+  summaryGrid: {
+    display: "flex",
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 12,
+  },
+  summaryCard: {
+    flexGrow: 1,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: "#e0e7ff",
+  },
+  summaryLabel: {
+    fontSize: 8,
+    color: "#475569",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: 4,
+  },
+  summaryValue: {
+    fontSize: 16,
+    fontWeight: 700,
+    color: "#0f172a",
+  },
+  tableContainer: {
+    marginTop: 18,
+  },
+  tableHeader: {
+    display: "flex",
+    flexDirection: "row",
+    backgroundColor: "#1f2937",
+    padding: 10,
+    borderRadius: 8,
+  },
+  tableHeaderText: {
+    color: "#f8fafc",
+    fontSize: 9,
+    fontWeight: 700,
+  },
+  tableRow: {
+    display: "flex",
+    flexDirection: "row",
+    padding: 10,
+    borderBottom: "1 solid #e2e8f0",
+    backgroundColor: "#ffffff",
+  },
+  tableRowAlt: {
+    backgroundColor: "#f8fafc",
+  },
+  cell: {
+    fontSize: 9,
+    color: "#0f172a",
+  },
+  receipt: { width: "20%" },
+  shop: { width: "20%" },
+  date: { width: "20%" },
+  items: { width: "15%" },
+  payment: { width: "25%" },
 });
 
 export function SalesReportPdf({ report }: { report: SalesPdfReport }) {
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
-        <Text style={styles.title}>{report.businessName} — Sales Report</Text>
-        <Text style={styles.subtitle}>{report.period}</Text>
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Total sales</Text>
-            <Text style={styles.summaryValue}>{report.totalSales}</Text>
+      <Page size="A4" orientation="landscape" style={styles.page}>
+        <View style={styles.header}>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>{report.businessName}</Text>
+            <Text style={styles.meta}>Generated on {new Date().toLocaleDateString("en-KE")}</Text>
           </View>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Total revenue</Text>
-            <Text style={styles.summaryValue}>{report.totalRevenue}</Text>
+          <Text style={styles.subtitle}>Sales Report — {report.period}</Text>
+          <View style={styles.summaryGrid}>
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryLabel}>Total sales</Text>
+              <Text style={styles.summaryValue}>{report.totalSales}</Text>
+            </View>
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryLabel}>Total revenue</Text>
+              <Text style={styles.summaryValue}>{report.totalRevenue}</Text>
+            </View>
           </View>
         </View>
-        <View style={styles.tableHeader}>
-          <Text style={styles.c1}>Receipt</Text>
-          <Text style={styles.c2}>Shop</Text>
-          <Text style={styles.c3}>Date</Text>
-          <Text style={styles.c4}>Items</Text>
-          <Text style={styles.c5}>Payment / Total</Text>
-        </View>
-        {report.items.map((item, index) => (
-          <View key={`${item.receipt}-${index}`} style={styles.tableRow}>
-            <Text style={styles.c1}>{item.receipt}</Text>
-            <Text style={styles.c2}>{item.shop}</Text>
-            <Text style={styles.c3}>{item.date}</Text>
-            <Text style={styles.c4}>{item.items}</Text>
-            <Text style={styles.c5}>{item.payment} — {item.total}</Text>
+
+        <View style={styles.tableContainer}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableHeaderText, styles.receipt]}>Receipt</Text>
+            <Text style={[styles.tableHeaderText, styles.shop]}>Shop</Text>
+            <Text style={[styles.tableHeaderText, styles.date]}>Date</Text>
+            <Text style={[styles.tableHeaderText, styles.items]}>Items</Text>
+            <Text style={[styles.tableHeaderText, styles.payment]}>Payment / Total</Text>
           </View>
-        ))}
+          {report.items.map((item, index) => (
+            <View
+              key={`${item.receipt}-${index}`}
+              style={index % 2 === 1 ? [styles.tableRow, styles.tableRowAlt] : styles.tableRow}
+            >
+              <Text style={[styles.cell, styles.receipt]}>{item.receipt}</Text>
+              <Text style={[styles.cell, styles.shop]}>{item.shop}</Text>
+              <Text style={[styles.cell, styles.date]}>{item.date}</Text>
+              <Text style={[styles.cell, styles.items]}>{item.items}</Text>
+              <Text style={[styles.cell, styles.payment]}>{item.payment} · {item.total}</Text>
+            </View>
+          ))}
+        </View>
       </Page>
     </Document>
   );
