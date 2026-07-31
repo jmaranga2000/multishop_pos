@@ -6,6 +6,7 @@ import { PageHeading } from "@/components/ui/page-heading";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
 import { endOfMonth, endOfQuarter, endOfWeek, isSameDay } from "date-fns";
 
 export const dynamic = "force-dynamic";
@@ -38,13 +39,12 @@ export default async function SalesPage() {
   const showMonth = isSameDay(today, endOfMonth(today));
   const showQuarter = isSameDay(today, endOfQuarter(today));
 
-  const buttonClass = "inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-slate-700";
   const actionButtons = [
-    <Link key="today" href="/api/reports/sales/today/pdf" className={buttonClass} target="_blank" rel="noreferrer">Download today sales</Link>,
+    <Button key="today" as={Link} href="/api/reports/sales/today/pdf" target="_blank" rel="noreferrer">Download today sales</Button>,
   ];
-  if (showWeek) actionButtons.push(<Link key="week" href="/api/reports/sales/week/pdf" className={buttonClass} target="_blank" rel="noreferrer">Download weekly sales</Link>);
-  if (showMonth) actionButtons.push(<Link key="month" href="/api/reports/sales/month/pdf" className={buttonClass} target="_blank" rel="noreferrer">Download monthly sales</Link>);
-  if (showQuarter) actionButtons.push(<Link key="quarter" href="/api/reports/sales/quarter/pdf" className={buttonClass} target="_blank" rel="noreferrer">Download quarterly sales</Link>);
+  if (showWeek) actionButtons.push(<Button key="week" as={Link} href="/api/reports/sales/week/pdf" target="_blank" rel="noreferrer">Download weekly sales</Button>);
+  if (showMonth) actionButtons.push(<Button key="month" as={Link} href="/api/reports/sales/month/pdf" target="_blank" rel="noreferrer">Download monthly sales</Button>);
+  if (showQuarter) actionButtons.push(<Button key="quarter" as={Link} href="/api/reports/sales/quarter/pdf" target="_blank" rel="noreferrer">Download quarterly sales</Button>);
 
   const availableExports = [
     "Today",
