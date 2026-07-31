@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileSpreadsheet, Signal, Clock3 } from "lucide-react";
+import { Download, FileSpreadsheet, Signal, Clock3 } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
 import { formatMoney } from "@/lib/utils";
 import { getAdminReportsOverview } from "@/services/admin/report-service";
@@ -49,6 +49,16 @@ export default async function ReportsPage() {
                 </Button>
                 <Button as={Link} href="/admin/reports/inventory" size="sm" variant="ghost">
                   All inventory reports
+                </Button>
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <Button as={Link} href={`/api/reports/inventory/${data.latestReport.id}/excel`} target="_blank" rel="noreferrer" size="sm" variant="secondary">
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Excel
+                </Button>
+                <Button as={Link} href={`/api/reports/inventory/${data.latestReport.id}/pdf`} target="_blank" rel="noreferrer" size="sm" variant="ghost">
+                  <Download className="h-4 w-4" />
+                  PDF
                 </Button>
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-3">

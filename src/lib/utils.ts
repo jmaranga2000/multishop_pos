@@ -1,38 +1,39 @@
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+  return twMerge(clsx(inputs))
 }
 
-export function formatMoney(value: number | string, currency = "KES") {
-  return new Intl.NumberFormat("en-KE", {
+export function formatMoney(value: string | number, currency = "KES") {
+  const amount = typeof value === "string" ? Number(value) : value
+  const formatter = new Intl.NumberFormat("en-KE", {
     style: "currency",
     currency,
-    maximumFractionDigits: 2,
-  }).format(Number(value));
-}
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })
 
-export function toMinorUnits(value: number | string) {
-  return Math.round(Number(value) * 100);
-}
-
-export function fromMinorUnits(value: number) {
-  return value / 100;
+  return formatter.format(Number.isFinite(amount) ? amount : 0)
 }
 
 export function getStockStatus(quantity: number, reorderLevel: number, criticalLevel: number) {
-  if (quantity <= 0) return "OUT_OF_STOCK" as const;
-  if (quantity <= criticalLevel) return "CRITICAL" as const;
-  if (quantity <= reorderLevel) return "LOW_STOCK" as const;
-  return "IN_STOCK" as const;
+  if (quantity <= 0) return "OUT_OF_STOCK" as const
+  if (quantity <= criticalLevel) return "CRITICAL" as const
+  if (quantity <= reorderLevel) return "LOW_STOCK" as const
+  return "IN_STOCK" as const
 }
 
-export function safeJson<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
+export function absoluteUrl(path: string) {
+  return path.startsWith("http") ? path : `https://localhost${path}`
 }
 
-export function absoluteUrl(path = "") {
-  const base = process.env.APP_URL ?? "http://localhost:3000";
-  return `${base.replace(/\/$/, "")}${path.startsWith("/") ? path : `/${path}`}`;
+export function fromMinorUnits(value: number | string) {
+  const numeric = typeof value === "string" ? Number(value) : value
+  return Number.isFinite(numeric) ? numeric / 100 : 0
+}
+
+export function toMinorUnits(value: number | string) {
+  const numeric = typeof value === "string" ? Number(value) : value
+  return Number.isFinite(numeric) ? Math.round(numeric * 100) : 0
 }

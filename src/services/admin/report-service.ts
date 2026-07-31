@@ -12,8 +12,8 @@ type InventoryWithRelations = {
   sellingPrice: number | string;
   reorderLevel: number;
   criticalLevel: number;
-  shop?: { id: string; name: string };
-  product?: { name: string; sku: string };
+  shop?: { id: string; name: string } | null;
+  product?: { id: string; name: string; sku: string; categoryId?: string | null } | null;
 };
 
 type InventoryWithStatus = InventoryWithRelations & { stockStatus: "IN_STOCK" | "LOW_STOCK" | "CRITICAL" | "OUT_OF_STOCK" };
@@ -113,16 +113,51 @@ export async function getAdminReportsOverview(businessId: string) {
 }
 
 export async function getStockIntelligenceData(businessId: string) {
-  const [business, inventory, shops] = await Promise.all([
+  const [business, inventory, shops, categories, reports, reportItems, movements] = await Promise.all([
     db.business.findUniqueOrThrow({ where: { id: businessId } }),
     db.shopInventory.findMany({ where: { shop: { businessId } }, include: { shop: true, product: true } }),
     db.shop.findMany({ where: { businessId, isActive: true }, orderBy: { name: "asc" } }),
+    db.category.findMany({ where: { businessId, isActive: true }, orderBy: { name: "asc" } }),
+    db.inventoryReport.findMany({ where: { businessId }, orderBy: { periodEnd: "asc" }, take: 90 }),
+    db.inventoryReportItem.findMany({ where: { report: { businessId } }, orderBy: { reportId: "asc" } }),
+    db.stockMovement.findMany({ where: { shop: { businessId } }, orderBy: { createdAt: "asc" }, take: 180 }),
   ]);
 
   const inventoryStatuses = inventory.map((entry) => ({
     ...(entry as InventoryWithRelations),
     stockStatus: getStockStatus(entry.quantity, entry.reorderLevel, entry.criticalLevel),
   })) as InventoryWithStatus[];
+
+  const productCategoryMap = new Map<string, string | null>(
+    inventoryStatuses.map((entry) => [entry.productId, entry.product?.categoryId ?? null]),
+  );
+
+  const history = reports.map((report) => {
+    const rows = reportItems.filter((item) => item.reportId === report.id);
+    const low = rows.filter((item) => item.stockStatus === "LOW_STOCK").length;
+    const critical = rows.filter((item) => item.stockStatus === "CRITICAL").length;
+    const out = rows.filter((item) => item.stockStatus === "OUT_OF_STOCK").length;
+    return {
+      label: report.periodEnd.toLocaleDateString("en-KE"),
+      low,
+      critical,
+      out,
+    };
+  });
+
+  const movementTrend = movements.reduce<Record<string, { label: string; received: number; sold: number; transferred: number; adjusted: number }>>((accumulator, entry) => {
+    const createdAt = entry.createdAt ? new Date(entry.createdAt) : new Date();
+    const label = createdAt.toLocaleDateString("en-KE");
+    const existing = accumulator[label] ?? { label, received: 0, sold: 0, transferred: 0, adjusted: 0 };
+    const type = String(entry.type || "").toUpperCase();
+    const quantity = Math.abs(Number(entry.quantityChange || 0));
+    if (type === "SALE") existing.sold += quantity;
+    else if (type === "TRANSFER_OUT" || type === "TRANSFER_IN") existing.transferred += quantity;
+    else if (type === "PURCHASE_RECEIPT" || type === "OPENING_STOCK") existing.received += quantity;
+    else existing.adjusted += quantity;
+    accumulator[label] = existing;
+    return accumulator;
+  }, {});
 
   const shopSummaries = shops.map((shop) => {
     const shopInventory = inventoryStatuses.filter((entry) => entry.shopId === shop.id);
@@ -159,8 +194,13 @@ export async function getStockIntelligenceData(businessId: string) {
 
   return {
     business,
+    inventory: inventoryStatuses,
+    shops,
+    categories,
     shopSummaries,
     topRiskProducts,
+    history,
+    movementTrend,
     stockHealth: {
       totalRecords: inventoryStatuses.length,
       low: inventoryStatuses.filter((entry) => entry.stockStatus === "LOW_STOCK").length,

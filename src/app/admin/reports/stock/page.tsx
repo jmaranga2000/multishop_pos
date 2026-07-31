@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, BarChart3, Layers } from "lucide-react";
+import { AlertTriangle, BarChart3, Download, Layers } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
 import { formatMoney } from "@/lib/utils";
 import { getStockIntelligenceData } from "@/services/admin/report-service";
@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
+import { StockIntelligenceCharts } from "@/components/admin/stock-intelligence-charts";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,10 @@ export default async function StockIntelligencePage() {
           </Button>
           <Button as={Link} href="/admin/reports/daily" size="sm" variant="ghost">
             Today&apos;s snapshot
+          </Button>
+          <Button as={Link} href="/api/reports/stock/intelligence.csv" target="_blank" rel="noreferrer" size="sm" variant="secondary">
+            <Download className="h-4 w-4" />
+            Export CSV
           </Button>
         </div>
       </div>
@@ -97,6 +102,15 @@ export default async function StockIntelligencePage() {
           )}
         </Card>
       </div>
+
+      <StockIntelligenceCharts
+        inventory={data.inventory}
+        shops={data.shops}
+        categories={data.categories}
+        history={data.history}
+        movementTrend={data.movementTrend}
+        businessCurrency={data.business.currency}
+      />
 
       <Card className="mt-4 overflow-hidden">
         <div className="overflow-x-auto">
