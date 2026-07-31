@@ -145,6 +145,7 @@ export function StockIntelligenceCharts({
   }, [filteredInventory]);
 
   const healthyPercent = filteredInventory.length ? Math.round((filteredInventory.filter((entry) => entry.stockStatus === "IN_STOCK").length / filteredInventory.length) * 100) : 0;
+  const distributionChartData = distributionData.length ? distributionData : [{ name: "No data", value: 1, status: "IN_STOCK", fill: "#cbd5e1" }];
 
   const shopRiskSummary = useMemo(() => {
     const summary = shops.map((shop) => {
@@ -172,6 +173,7 @@ export function StockIntelligenceCharts({
       { name: "Severely Understocked", value: out, fill: STATUS_TONES.OUT_OF_STOCK.fill },
     ];
   }, [shopRiskSummary]);
+  const riskDistributionChartData = riskDistribution.some((entry) => entry.value > 0) ? riskDistribution : [{ name: "No data", value: 1, fill: "#cbd5e1" }];
 
   const shopHealthData = useMemo(() => {
     return shopRiskSummary.map((entry) => ({
@@ -184,6 +186,7 @@ export function StockIntelligenceCharts({
       risk: entry.problems,
     }));
   }, [shopRiskSummary]);
+  const shopHealthChartData = shopHealthData.length ? shopHealthData : [{ name: "No shops", shopId: "placeholder", healthy: 0, low: 0, critical: 0, out: 0, risk: 0 }];
 
   const urgentProducts = useMemo(() => {
     return filteredInventory
@@ -200,6 +203,7 @@ export function StockIntelligenceCharts({
         stock: entry.quantity,
       }));
   }, [filteredInventory]);
+  const urgentProductsChartData = urgentProducts.length ? urgentProducts : [{ name: "No urgent products", sku: "", status: "IN_STOCK", stock: 0 }];
 
   const runningLowShops = useMemo(() => {
     return shopRiskSummary
@@ -212,6 +216,7 @@ export function StockIntelligenceCharts({
       }))
       .sort((left, right) => right.affectedProducts - left.affectedProducts || right.criticalItems - left.criticalItems || right.outOfStockItems - left.outOfStockItems);
   }, [shopRiskSummary]);
+  const runningLowShopsChartData = runningLowShops.length ? runningLowShops : [{ name: "No shop alerts", shopId: "placeholder", affectedProducts: 0, criticalItems: 0, outOfStockItems: 0 }];
 
   const valueMetric = useMemo(() => {
     return shopRiskSummary.map((entry) => {
@@ -228,6 +233,7 @@ export function StockIntelligenceCharts({
       };
     });
   }, [filteredInventory, shopRiskSummary]);
+  const valueMetricChartData = valueMetric.length ? valueMetric : [{ name: "No value", shopId: "placeholder", costValue: 0, retailValue: 0, grossProfit: 0 }];
 
   const visibleTableRows = useMemo(() => {
     return filteredInventory.slice().sort((left, right) => {
@@ -235,6 +241,8 @@ export function StockIntelligenceCharts({
       return priority[left.stockStatus] - priority[right.stockStatus] || left.quantity - right.quantity;
     });
   }, [filteredInventory]);
+  const visibleHistoryChartData = visibleHistory.length ? visibleHistory : [{ label: "No data", low: 0, critical: 0, out: 0 }];
+  const visibleMovementChartData = visibleMovement.length ? visibleMovement : [{ label: "No data", received: 0, sold: 0, transferred: 0, adjusted: 0 }];
 
   const hasInventoryData = filteredInventory.length > 0;
   const hasRiskData = riskDistribution.some((entry) => entry.value > 0);
@@ -341,7 +349,7 @@ export function StockIntelligenceCharts({
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={distributionData}
+                  data={distributionChartData}
                   dataKey="value"
                   nameKey="name"
                   innerRadius={70}
@@ -373,7 +381,7 @@ export function StockIntelligenceCharts({
           "A radial overview of shops with healthy, low, critical and out-of-stock conditions.",
           <div className="relative h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <RadialBarChart data={riskDistribution} innerRadius="20%" outerRadius="100%" startAngle={180} endAngle={0}>
+              <RadialBarChart data={riskDistributionChartData} innerRadius="20%" outerRadius="100%" startAngle={180} endAngle={0}>
                 <RadialBar dataKey="value" background />
                 <Tooltip formatter={(value) => [`${value ?? 0} shops`, "Shops"]} />
                 <Legend />
@@ -397,7 +405,7 @@ export function StockIntelligenceCharts({
           "Each shop shows healthy, low, critical and out-of-stock counts with the highest-risk shops first.",
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={shopHealthData} layout="vertical" margin={{ top: 10, right: 16, left: 8, bottom: 4 }}>
+              <BarChart data={shopHealthChartData} layout="vertical" margin={{ top: 10, right: 16, left: 8, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis type="number" allowDecimals={false} />
                 <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
@@ -422,7 +430,7 @@ export function StockIntelligenceCharts({
           "Historical low, critical and out-of-stock totals from saved stock snapshots.",
           <div className="relative h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={visibleHistory}>
+              <LineChart data={visibleHistoryChartData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="label" />
                 <YAxis allowDecimals={false} />
@@ -446,7 +454,7 @@ export function StockIntelligenceCharts({
           "Top 10 products needing restocking, sorted by urgency.",
           <div className="relative h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={urgentProducts} layout="vertical" margin={{ top: 8, right: 16, left: 10, bottom: 4 }}>
+              <BarChart data={urgentProductsChartData} layout="vertical" margin={{ top: 8, right: 16, left: 10, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis type="number" allowDecimals={false} />
                 <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 12 }} />
@@ -468,7 +476,7 @@ export function StockIntelligenceCharts({
           "Ranked by affected products, critical items and out-of-stock items.",
           <div className="relative h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={runningLowShops} layout="vertical" margin={{ top: 8, right: 16, left: 12, bottom: 4 }}>
+              <BarChart data={runningLowShopsChartData} layout="vertical" margin={{ top: 8, right: 16, left: 12, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis type="number" allowDecimals={false} />
                 <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
@@ -501,7 +509,7 @@ export function StockIntelligenceCharts({
             <div className="relative h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={valueMetric.map((entry) => ({ name: entry.name, value: entry[valueMetricKey], fill: STATUS_TONES.IN_STOCK.fill }))} dataKey="value" innerRadius={60} outerRadius={100} paddingAngle={2}>
+                  <Pie data={valueMetricChartData.map((entry) => ({ name: entry.name, value: entry[valueMetricKey], fill: STATUS_TONES.IN_STOCK.fill }))} dataKey="value" innerRadius={60} outerRadius={100} paddingAngle={2}>
                     {valueMetric.map((entry) => <Cell key={entry.name} fill={STATUS_TONES.IN_STOCK.fill} />)}
                   </Pie>
                   <Tooltip formatter={(value) => [formatMoney(String(value ?? 0), businessCurrency), valueMetricKey === "costValue" ? "Cost value" : valueMetricKey === "retailValue" ? "Retail value" : "Gross profit"]} />
@@ -522,7 +530,7 @@ export function StockIntelligenceCharts({
           "Received, sold, transferred and adjusted quantities over time.",
           <div className="relative h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={visibleMovement}>
+              <LineChart data={visibleMovementChartData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="label" />
                 <YAxis allowDecimals={false} />
