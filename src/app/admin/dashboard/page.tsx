@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AlertTriangle, Building2, CircleDollarSign, TrendingUp, Wallet } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
 import { formatMoney } from "@/lib/utils";
@@ -8,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeading } from "@/components/ui/page-heading";
 import { SalesChartClient as SalesChart } from "@/components/admin/sales-chart-client";
+import { getStockStatusMeta } from "@/lib/stock-status";
 
 export const dynamic = "force-dynamic";
 
@@ -70,10 +72,21 @@ export default async function AdminDashboard() {
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex justify-between rounded-xl bg-amber-50 p-3"><span className="text-sm font-semibold text-amber-800">Low stock</span><strong>{inventoryHealth.low}</strong></div>
-            <div className="flex justify-between rounded-xl bg-red-50 p-3"><span className="text-sm font-semibold text-red-700">Critical stock</span><strong>{inventoryHealth.critical}</strong></div>
-            <div className="flex justify-between rounded-xl bg-slate-100 p-3"><span className="text-sm font-semibold text-slate-700">Out of stock</span><strong>{inventoryHealth.out}</strong></div>
-            <div className="flex justify-between rounded-xl bg-emerald-50 p-3"><span className="text-sm font-semibold text-emerald-700">Healthy stock records</span><strong>{inventoryHealth.healthy}</strong></div>
+            {([
+              { key: "LOW_STOCK" as const, count: inventoryHealth.low },
+              { key: "CRITICAL" as const, count: inventoryHealth.critical },
+              { key: "OUT_OF_STOCK" as const, count: inventoryHealth.out },
+              { key: "IN_STOCK" as const, count: inventoryHealth.healthy },
+            ]).map(({ key, count }) => {
+              const meta = getStockStatusMeta(key);
+              const toneClass = meta.tone === "amber" ? "bg-amber-50 text-amber-800" : meta.tone === "red" ? "bg-red-50 text-red-700" : meta.tone === "slate" ? "bg-slate-100 text-slate-700" : "bg-emerald-50 text-emerald-700";
+              return (
+                <Link key={key} href={`/admin/reports/stock/status/${meta.slug}`} className={`flex items-center justify-between rounded-xl p-3 transition hover:opacity-90 ${toneClass}`}>
+                  <span className="text-sm font-semibold">{meta.label}</span>
+                  <strong>{count}</strong>
+                </Link>
+              );
+            })}
           </CardContent>
         </Card>
       </div>

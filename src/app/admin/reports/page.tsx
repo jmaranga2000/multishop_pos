@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
+import { getStockStatusMeta } from "@/lib/stock-status";
 
 export const dynamic = "force-dynamic";
 
@@ -94,23 +95,25 @@ export default async function ReportsPage() {
             </div>
           </div>
           <div className="mt-6 space-y-3">
-            <div className="rounded-3xl bg-slate-50 p-4">
+            <Link href="/admin/reports/stock/status/healthy-stock" className="block rounded-3xl bg-slate-50 p-4 transition hover:opacity-90">
               <p className="text-sm text-slate-500">Healthy stock records</p>
               <p className="mt-2 text-2xl font-black">{data.stockHealth.healthy}</p>
-            </div>
+            </Link>
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-3xl bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">Low stock</p>
-                <p className="mt-2 text-xl font-black">{data.stockHealth.low}</p>
-              </div>
-              <div className="rounded-3xl bg-amber-50 p-4">
-                <p className="text-sm text-amber-700">Critical stock</p>
-                <p className="mt-2 text-xl font-black text-amber-900">{data.stockHealth.critical}</p>
-              </div>
-              <div className="rounded-3xl bg-red-50 p-4">
-                <p className="text-sm text-red-700">Out of stock</p>
-                <p className="mt-2 text-xl font-black text-red-900">{data.stockHealth.out}</p>
-              </div>
+              {([
+                { key: "LOW_STOCK" as const, count: data.stockHealth.low },
+                { key: "CRITICAL" as const, count: data.stockHealth.critical },
+                { key: "OUT_OF_STOCK" as const, count: data.stockHealth.out },
+              ]).map(({ key, count }) => {
+                const meta = getStockStatusMeta(key);
+                const toneClass = meta.tone === "amber" ? "bg-amber-50 text-amber-700" : meta.tone === "red" ? "bg-red-50 text-red-700" : "bg-slate-50 text-slate-700";
+                return (
+                  <Link key={key} href={`/admin/reports/stock/status/${meta.slug}`} className={`block rounded-3xl p-4 transition hover:opacity-90 ${toneClass}`}>
+                    <p className="text-sm font-semibold">{meta.label}</p>
+                    <p className="mt-2 text-xl font-black">{count}</p>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </Card>

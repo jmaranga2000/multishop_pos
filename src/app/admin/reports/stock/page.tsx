@@ -5,10 +5,10 @@ import { formatMoney } from "@/lib/utils";
 import { getStockIntelligenceData } from "@/services/admin/report-service";
 import { PageHeading } from "@/components/ui/page-heading";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { StockIntelligenceCharts } from "@/components/admin/stock-intelligence-charts";
+import { getStockStatusMeta } from "@/lib/stock-status";
 
 export const dynamic = "force-dynamic";
 
@@ -61,18 +61,20 @@ export default async function StockIntelligencePage() {
             </div>
           </div>
           <div className="mt-6 grid gap-3">
-            <div className="rounded-3xl bg-amber-50 p-4">
-              <p className="text-sm text-amber-800">Low stock</p>
-              <p className="mt-2 text-2xl font-black">{data.stockHealth.low}</p>
-            </div>
-            <div className="rounded-3xl bg-red-50 p-4">
-              <p className="text-sm text-red-800">Critical stock</p>
-              <p className="mt-2 text-2xl font-black">{data.stockHealth.critical}</p>
-            </div>
-            <div className="rounded-3xl bg-slate-100 p-4">
-              <p className="text-sm text-slate-500">Out of stock</p>
-              <p className="mt-2 text-2xl font-black">{data.stockHealth.out}</p>
-            </div>
+            {([
+              { key: "LOW_STOCK" as const, count: data.stockHealth.low },
+              { key: "CRITICAL" as const, count: data.stockHealth.critical },
+              { key: "OUT_OF_STOCK" as const, count: data.stockHealth.out },
+            ]).map(({ key, count }) => {
+              const meta = getStockStatusMeta(key);
+              const toneClass = meta.tone === "amber" ? "bg-amber-50 text-amber-800" : meta.tone === "red" ? "bg-red-50 text-red-700" : "bg-slate-100 text-slate-700";
+              return (
+                <Link key={key} href={`/admin/reports/stock/status/${meta.slug}`} className={`rounded-3xl p-4 transition hover:opacity-90 ${toneClass}`}>
+                  <p className="text-sm font-semibold">{meta.label}</p>
+                  <p className="mt-2 text-2xl font-black">{count}</p>
+                </Link>
+              );
+            })}
           </div>
         </Card>
 
