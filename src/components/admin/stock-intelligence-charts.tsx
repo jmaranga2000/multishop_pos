@@ -236,6 +236,15 @@ export function StockIntelligenceCharts({
     });
   }, [filteredInventory]);
 
+  const hasInventoryData = filteredInventory.length > 0;
+  const hasRiskData = riskDistribution.some((entry) => entry.value > 0);
+  const hasShopHealthData = shopHealthData.length > 0;
+  const hasHistoryData = visibleHistory.length > 0;
+  const hasUrgentProducts = urgentProducts.length > 0;
+  const hasLowShopData = runningLowShops.length > 0;
+  const hasValueData = valueMetric.length > 0;
+  const hasMovementData = visibleMovement.length > 0;
+
   const setFilter = (key: keyof FilterState, value: string) => {
     setFilters((current) => ({ ...current, [key]: value }));
   };
@@ -328,201 +337,209 @@ export function StockIntelligenceCharts({
         {chartCard(
           "Stock status distribution",
           "Healthy, low, critical and out-of-stock records across the filtered view.",
-          distributionData.length ? (
-            <div className="relative h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={distributionData}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius={70}
-                    outerRadius={110}
-                    paddingAngle={2}
-                    onClick={(entry: any) => setFilter("status", entry.status)}
-                  >
-                    {distributionData.map((entry) => <Cell key={entry.name} fill={entry.fill} />)}
-                  </Pie>
-                  <Tooltip formatter={(value) => [`${value ?? 0} records`, "Records"]} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <p className="text-3xl font-black">{filteredInventory.length}</p>
-                <p className="text-sm text-slate-500">total records</p>
-                <p className="mt-1 text-sm font-semibold text-emerald-700">{healthyPercent}% healthy</p>
-              </div>
+          <div className="relative h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={distributionData}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={70}
+                  outerRadius={110}
+                  paddingAngle={2}
+                  onClick={(entry: any) => setFilter("status", entry.status)}
+                >
+                  {distributionData.map((entry) => <Cell key={entry.name} fill={entry.fill} />)}
+                </Pie>
+                <Tooltip formatter={(value) => [`${value ?? 0} records`, "Records"]} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <p className="text-3xl font-black">{filteredInventory.length}</p>
+              <p className="text-sm text-slate-500">total records</p>
+              <p className="mt-1 text-sm font-semibold text-emerald-700">{healthyPercent}% healthy</p>
             </div>
-          ) : (
-            <EmptyState title="No matching stock records" description="Adjust the filters to surface a stock distribution view." />
-          ),
+            {!hasInventoryData ? (
+              <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/80">
+                <p className="text-sm font-medium text-slate-500">No matching stock records</p>
+              </div>
+            ) : null}
+          </div>,
         )}
 
         {chartCard(
           "Shops at risk",
           "A radial overview of shops with healthy, low, critical and out-of-stock conditions.",
-          riskDistribution.some((entry) => entry.value > 0) ? (
-            <div className="relative h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadialBarChart data={riskDistribution} innerRadius="20%" outerRadius="100%" startAngle={180} endAngle={0}>
-                  <RadialBar dataKey="value" background />
-                  <Tooltip formatter={(value) => [`${value ?? 0} shops`, "Shops"]} />
-                  <Legend />
-                </RadialBarChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <p className="text-3xl font-black">{riskDistribution.reduce((sum, entry) => sum + entry.value, 0)}</p>
-                <p className="text-sm text-slate-500">shops reviewed</p>
-                <p className="mt-1 text-sm font-semibold text-red-700">{Math.round((riskDistribution.filter((entry) => entry.name !== "Healthy").reduce((sum, entry) => sum + entry.value, 0) / Math.max(riskDistribution.reduce((sum, entry) => sum + entry.value, 0), 1)) * 100)}% at risk</p>
-              </div>
+          <div className="relative h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <RadialBarChart data={riskDistribution} innerRadius="20%" outerRadius="100%" startAngle={180} endAngle={0}>
+                <RadialBar dataKey="value" background />
+                <Tooltip formatter={(value) => [`${value ?? 0} shops`, "Shops"]} />
+                <Legend />
+              </RadialBarChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <p className="text-3xl font-black">{riskDistribution.reduce((sum, entry) => sum + entry.value, 0)}</p>
+              <p className="text-sm text-slate-500">shops reviewed</p>
+              <p className="mt-1 text-sm font-semibold text-red-700">{Math.round((riskDistribution.filter((entry) => entry.name !== "Healthy").reduce((sum, entry) => sum + entry.value, 0) / Math.max(riskDistribution.reduce((sum, entry) => sum + entry.value, 0), 1)) * 100)}% at risk</p>
             </div>
-          ) : (
-            <EmptyState title="No shops matched" description="Try broadening the filters to view risk distribution." />
-          ),
+            {!hasRiskData ? (
+              <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/80">
+                <p className="text-sm font-medium text-slate-500">No shop-level risk data</p>
+              </div>
+            ) : null}
+          </div>,
         )}
 
         {chartCard(
           "Stock health by shop",
           "Each shop shows healthy, low, critical and out-of-stock counts with the highest-risk shops first.",
-          shopHealthData.length ? (
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={shopHealthData} layout="vertical" margin={{ top: 10, right: 16, left: 8, bottom: 4 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis type="number" allowDecimals={false} />
-                  <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="healthy" stackId="a" fill={STATUS_TONES.IN_STOCK.fill} onClick={(entry: any) => { setFilter("shopId", entry.shopId); setFilter("status", "IN_STOCK"); }} />
-                  <Bar dataKey="low" stackId="a" fill={STATUS_TONES.LOW_STOCK.fill} onClick={(entry: any) => { setFilter("shopId", entry.shopId); setFilter("status", "LOW_STOCK"); }} />
-                  <Bar dataKey="critical" stackId="a" fill={STATUS_TONES.CRITICAL.fill} onClick={(entry: any) => { setFilter("shopId", entry.shopId); setFilter("status", "CRITICAL"); }} />
-                  <Bar dataKey="out" stackId="a" fill={STATUS_TONES.OUT_OF_STOCK.fill} onClick={(entry: any) => { setFilter("shopId", entry.shopId); setFilter("status", "OUT_OF_STOCK"); }} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <EmptyState title="No shop-level health data" description="The selected filters do not match any shop inventory." />
-          ),
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={shopHealthData} layout="vertical" margin={{ top: 10, right: 16, left: 8, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis type="number" allowDecimals={false} />
+                <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="healthy" stackId="a" fill={STATUS_TONES.IN_STOCK.fill} onClick={(entry: any) => { setFilter("shopId", entry.shopId); setFilter("status", "IN_STOCK"); }} />
+                <Bar dataKey="low" stackId="a" fill={STATUS_TONES.LOW_STOCK.fill} onClick={(entry: any) => { setFilter("shopId", entry.shopId); setFilter("status", "LOW_STOCK"); }} />
+                <Bar dataKey="critical" stackId="a" fill={STATUS_TONES.CRITICAL.fill} onClick={(entry: any) => { setFilter("shopId", entry.shopId); setFilter("status", "CRITICAL"); }} />
+                <Bar dataKey="out" stackId="a" fill={STATUS_TONES.OUT_OF_STOCK.fill} onClick={(entry: any) => { setFilter("shopId", entry.shopId); setFilter("status", "OUT_OF_STOCK"); }} />
+              </BarChart>
+            </ResponsiveContainer>
+            {!hasShopHealthData ? (
+              <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/80">
+                <p className="text-sm font-medium text-slate-500">No shop-level health data</p>
+              </div>
+            ) : null}
+          </div>,
         )}
 
         {chartCard(
           "Stock health trend",
           "Historical low, critical and out-of-stock totals from saved stock snapshots.",
-          visibleHistory.length ? (
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={visibleHistory}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="label" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="low" stroke={STATUS_TONES.LOW_STOCK.fill} strokeWidth={3} />
-                  <Line type="monotone" dataKey="critical" stroke={STATUS_TONES.CRITICAL.fill} strokeWidth={3} />
-                  <Line type="monotone" dataKey="out" stroke={STATUS_TONES.OUT_OF_STOCK.fill} strokeWidth={3} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <EmptyState title="No snapshot history" description="Saved stock snapshots will appear here once reports are available." />
-          ),
+          <div className="relative h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={visibleHistory}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="label" />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="low" stroke={STATUS_TONES.LOW_STOCK.fill} strokeWidth={3} />
+                <Line type="monotone" dataKey="critical" stroke={STATUS_TONES.CRITICAL.fill} strokeWidth={3} />
+                <Line type="monotone" dataKey="out" stroke={STATUS_TONES.OUT_OF_STOCK.fill} strokeWidth={3} />
+              </LineChart>
+            </ResponsiveContainer>
+            {!hasHistoryData ? (
+              <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/80">
+                <p className="text-sm font-medium text-slate-500">No snapshot history yet</p>
+              </div>
+            ) : null}
+          </div>,
         )}
 
         {chartCard(
           "Most urgent products",
           "Top 10 products needing restocking, sorted by urgency.",
-          urgentProducts.length ? (
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={urgentProducts} layout="vertical" margin={{ top: 8, right: 16, left: 10, bottom: 4 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis type="number" allowDecimals={false} />
-                  <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 12 }} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="stock" fill={STATUS_TONES.OUT_OF_STOCK.fill} radius={[0, 6, 6, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <EmptyState title="No urgent products" description="Everything in the filtered view is currently healthy." />
-          ),
+          <div className="relative h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={urgentProducts} layout="vertical" margin={{ top: 8, right: 16, left: 10, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis type="number" allowDecimals={false} />
+                <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="stock" fill={STATUS_TONES.OUT_OF_STOCK.fill} radius={[0, 6, 6, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+            {!hasUrgentProducts ? (
+              <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/80">
+                <p className="text-sm font-medium text-slate-500">No urgent products in this view</p>
+              </div>
+            ) : null}
+          </div>,
         )}
 
         {chartCard(
           "Shops running low",
           "Ranked by affected products, critical items and out-of-stock items.",
-          runningLowShops.length ? (
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={runningLowShops} layout="vertical" margin={{ top: 8, right: 16, left: 12, bottom: 4 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis type="number" allowDecimals={false} />
-                  <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="affectedProducts" fill={STATUS_TONES.LOW_STOCK.fill} radius={[0, 6, 6, 0]} />
-                  <Bar dataKey="criticalItems" fill={STATUS_TONES.CRITICAL.fill} radius={[0, 6, 6, 0]} />
-                  <Bar dataKey="outOfStockItems" fill={STATUS_TONES.OUT_OF_STOCK.fill} radius={[0, 6, 6, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <EmptyState title="No shop alerts" description="No shops are currently running low in this filtered view." />
-          ),
+          <div className="relative h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={runningLowShops} layout="vertical" margin={{ top: 8, right: 16, left: 12, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis type="number" allowDecimals={false} />
+                <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="affectedProducts" fill={STATUS_TONES.LOW_STOCK.fill} radius={[0, 6, 6, 0]} />
+                <Bar dataKey="criticalItems" fill={STATUS_TONES.CRITICAL.fill} radius={[0, 6, 6, 0]} />
+                <Bar dataKey="outOfStockItems" fill={STATUS_TONES.OUT_OF_STOCK.fill} radius={[0, 6, 6, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+            {!hasLowShopData ? (
+              <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/80">
+                <p className="text-sm font-medium text-slate-500">No low-stock shops in this view</p>
+              </div>
+            ) : null}
+          </div>,
         )}
 
         {chartCard(
           "Stock value by shop",
           "Compare cost value, retail value and potential gross profit by shop.",
-          valueMetric.length ? (
-            <div className="space-y-3">
-              <div className="flex flex-wrap gap-2">
-                {(["costValue", "retailValue", "grossProfit"] as const).map((metric) => (
-                  <Button key={metric} variant={valueMetricKey === metric ? "primary" : "secondary"} size="sm" className="capitalize" onClick={() => setValueMetricKey(metric)}>
-                    {metric === "costValue" ? "Cost value" : metric === "retailValue" ? "Retail value" : "Gross profit"}
-                  </Button>
-                ))}
-              </div>
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={valueMetric.map((entry) => ({ name: entry.name, value: entry[valueMetricKey], fill: STATUS_TONES.IN_STOCK.fill }))} dataKey="value" innerRadius={60} outerRadius={100} paddingAngle={2}>
-                      {valueMetric.map((entry) => <Cell key={entry.name} fill={STATUS_TONES.IN_STOCK.fill} />)}
-                    </Pie>
-                    <Tooltip formatter={(value) => [formatMoney(String(value ?? 0), businessCurrency), valueMetricKey === "costValue" ? "Cost value" : valueMetricKey === "retailValue" ? "Retail value" : "Gross profit"]} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {(["costValue", "retailValue", "grossProfit"] as const).map((metric) => (
+                <Button key={metric} variant={valueMetricKey === metric ? "primary" : "secondary"} size="sm" className="capitalize" onClick={() => setValueMetricKey(metric)}>
+                  {metric === "costValue" ? "Cost value" : metric === "retailValue" ? "Retail value" : "Gross profit"}
+                </Button>
+              ))}
             </div>
-          ) : (
-            <EmptyState title="No value data" description="Stock values will appear once inventory exists for the selected filter." />
-          ),
+            <div className="relative h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={valueMetric.map((entry) => ({ name: entry.name, value: entry[valueMetricKey], fill: STATUS_TONES.IN_STOCK.fill }))} dataKey="value" innerRadius={60} outerRadius={100} paddingAngle={2}>
+                    {valueMetric.map((entry) => <Cell key={entry.name} fill={STATUS_TONES.IN_STOCK.fill} />)}
+                  </Pie>
+                  <Tooltip formatter={(value) => [formatMoney(String(value ?? 0), businessCurrency), valueMetricKey === "costValue" ? "Cost value" : valueMetricKey === "retailValue" ? "Retail value" : "Gross profit"]} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+              {!hasValueData ? (
+                <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/80">
+                  <p className="text-sm font-medium text-slate-500">No value data for this selection</p>
+                </div>
+              ) : null}
+            </div>
+          </div>,
         )}
 
         {chartCard(
           "Stock movement trend",
           "Received, sold, transferred and adjusted quantities over time.",
-          visibleMovement.length ? (
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={visibleMovement}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="label" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="received" stroke={STATUS_TONES.IN_STOCK.fill} strokeWidth={3} />
-                  <Line type="monotone" dataKey="sold" stroke={STATUS_TONES.CRITICAL.fill} strokeWidth={3} />
-                  <Line type="monotone" dataKey="transferred" stroke={STATUS_TONES.LOW_STOCK.fill} strokeWidth={3} />
-                  <Line type="monotone" dataKey="adjusted" stroke={STATUS_TONES.OUT_OF_STOCK.fill} strokeWidth={3} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <EmptyState title="No movement history" description="Stock movement data from the business will appear here once transactions exist." />
-          ),
+          <div className="relative h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={visibleMovement}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="label" />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="received" stroke={STATUS_TONES.IN_STOCK.fill} strokeWidth={3} />
+                <Line type="monotone" dataKey="sold" stroke={STATUS_TONES.CRITICAL.fill} strokeWidth={3} />
+                <Line type="monotone" dataKey="transferred" stroke={STATUS_TONES.LOW_STOCK.fill} strokeWidth={3} />
+                <Line type="monotone" dataKey="adjusted" stroke={STATUS_TONES.OUT_OF_STOCK.fill} strokeWidth={3} />
+              </LineChart>
+            </ResponsiveContainer>
+            {!hasMovementData ? (
+              <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/80">
+                <p className="text-sm font-medium text-slate-500">No movement history yet</p>
+              </div>
+            ) : null}
+          </div>,
         )}
       </div>
 
