@@ -37,6 +37,7 @@ export default async function SalesPage() {
   const showWeek = isSameDay(today, endOfWeek(today));
   const showMonth = isSameDay(today, endOfMonth(today));
   const showQuarter = isSameDay(today, endOfQuarter(today));
+
   const buttonClass = "inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-slate-700";
   const actionButtons = [
     <Link key="today" href="/api/reports/sales/today/pdf" className={buttonClass} target="_blank" rel="noreferrer">Download today sales</Link>,
