@@ -1,5 +1,6 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/rbac";
 import { createSalesperson, setSalespersonActiveState, updateSalesperson } from "@/services/admin/salesperson-service";
@@ -10,6 +11,7 @@ export async function createSalespersonAction(formData: FormData) {
   const input = createSalespersonSchema.parse(Object.fromEntries(formData));
   await createSalesperson(admin, input);
   revalidatePath("/admin/salespeople");
+  redirect("/admin/salespeople");
 }
 
 export async function updateSalespersonAction(formData: FormData) {
@@ -18,6 +20,7 @@ export async function updateSalespersonAction(formData: FormData) {
   await updateSalesperson(admin, input);
   revalidatePath(`/admin/salespeople/${input.salespersonId}`);
   revalidatePath("/admin/salespeople");
+  redirect("/admin/salespeople");
 }
 
 export async function toggleSalespersonAction(formData: FormData) {
@@ -26,4 +29,5 @@ export async function toggleSalespersonAction(formData: FormData) {
   await setSalespersonActiveState(admin, input);
   revalidatePath(`/admin/salespeople/${input.salespersonId}`);
   revalidatePath("/admin/salespeople");
+  redirect("/admin/salespeople");
 }

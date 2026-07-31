@@ -1,5 +1,6 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/rbac";
 import { createShopWithAccount, resetShopPassword, setShopActiveState } from "@/services/admin/shop-service";
@@ -11,6 +12,7 @@ export async function createShopAction(formData: FormData) {
   const input = createShopSchema.parse(Object.fromEntries(formData));
   await createShopWithAccount(admin, input);
   revalidatePath("/admin/shops");
+  redirect("/admin/shops");
 }
 
 export async function resetShopPasswordAction(formData: FormData) {
@@ -18,6 +20,7 @@ export async function resetShopPasswordAction(formData: FormData) {
   const input = resetShopPasswordSchema.parse(Object.fromEntries(formData));
   await resetShopPassword(admin, input);
   revalidatePath("/admin/shops");
+  redirect("/admin/shops");
 }
 
 export async function toggleShopAction(formData: FormData) {
@@ -25,6 +28,7 @@ export async function toggleShopAction(formData: FormData) {
   const input = toggleShopSchema.parse(Object.fromEntries(formData));
   await setShopActiveState(admin, input);
   revalidatePath("/admin/shops");
+  redirect("/admin/shops");
 }
 
 export async function updateShopAction(formData: FormData) {
@@ -32,4 +36,5 @@ export async function updateShopAction(formData: FormData) {
   const input = updateShopSchema.parse(Object.fromEntries(formData));
   await updateShopAndAccount(admin, input);
   revalidatePath("/admin/shops");
+  redirect("/admin/shops");
 }

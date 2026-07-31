@@ -1,5 +1,6 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/rbac";
 import { z } from "zod";
@@ -23,6 +24,7 @@ export async function createProductAction(formData: FormData) {
   const input = createProductSchema.parse(Object.fromEntries(formData));
   await createProduct(admin, input);
   revalidatePath("/admin/products");
+  redirect("/admin/products");
 }
 
 export async function updateProductAction(formData: FormData) {
@@ -31,6 +33,7 @@ export async function updateProductAction(formData: FormData) {
   await updateProduct(admin, input);
   revalidatePath(`/admin/products/${input.productId}`);
   revalidatePath("/admin/products");
+  redirect("/admin/products");
 }
 
 export async function createProductCategoryAction(formData: FormData) {
@@ -39,6 +42,7 @@ export async function createProductCategoryAction(formData: FormData) {
   await createProductCategory(admin, input);
   revalidatePath("/admin/products/categories");
   revalidatePath("/admin/products/new");
+  redirect("/admin/products/categories");
 }
 
 export async function createProductBrandAction(formData: FormData) {
@@ -47,6 +51,7 @@ export async function createProductBrandAction(formData: FormData) {
   await createProductBrand(admin, input);
   revalidatePath("/admin/products/brands");
   revalidatePath("/admin/products/new");
+  redirect("/admin/products/brands");
 }
 
 export async function createProductUnitAction(formData: FormData) {
@@ -55,6 +60,7 @@ export async function createProductUnitAction(formData: FormData) {
   await createProductUnit(admin, input);
   revalidatePath("/admin/products/units");
   revalidatePath("/admin/products/new");
+  redirect("/admin/products/units");
 }
 
 export async function updateProductCategoryAction(formData: FormData) {
@@ -65,6 +71,7 @@ export async function updateProductCategoryAction(formData: FormData) {
   await updateProductCategory(admin, input as any);
   revalidatePath(`/admin/products/categories/${(input as any).id}`);
   revalidatePath("/admin/products/new");
+  redirect("/admin/products/categories");
 }
 
 export async function updateProductBrandAction(formData: FormData) {
@@ -74,6 +81,7 @@ export async function updateProductBrandAction(formData: FormData) {
   await updateProductBrand(admin, input as any);
   revalidatePath(`/admin/products/brands/${(input as any).id}`);
   revalidatePath("/admin/products/new");
+  redirect("/admin/products/brands");
 }
 
 export async function updateProductUnitAction(formData: FormData) {
@@ -83,6 +91,7 @@ export async function updateProductUnitAction(formData: FormData) {
   await updateProductUnit(admin, input as any);
   revalidatePath(`/admin/products/units/${(input as any).id}`);
   revalidatePath("/admin/products/new");
+  redirect("/admin/products/units");
 }
 
 export async function toggleProductCategoryAction(formData: FormData) {
@@ -92,6 +101,7 @@ export async function toggleProductCategoryAction(formData: FormData) {
   await toggleProductCategoryActive(admin, { id: input.id, isActive: (input.isActive === "true") });
   revalidatePath(`/admin/products/categories/${input.id}`);
   revalidatePath("/admin/products/categories");
+  redirect("/admin/products/categories");
 }
 
 export async function deleteProductCategoryAction(formData: FormData) {
@@ -100,6 +110,7 @@ export async function deleteProductCategoryAction(formData: FormData) {
   const { deleteProductCategory } = await import("@/services/admin/product-service");
   await deleteProductCategory(admin, { id: input.id });
   revalidatePath("/admin/products/categories");
+  redirect("/admin/products/categories");
 }
 
 export async function toggleProductBrandAction(formData: FormData) {
@@ -109,6 +120,7 @@ export async function toggleProductBrandAction(formData: FormData) {
   await toggleProductBrandActive(admin, { id: input.id, isActive: (input.isActive === "true") });
   revalidatePath(`/admin/products/brands/${input.id}`);
   revalidatePath("/admin/products/brands");
+  redirect("/admin/products/brands");
 }
 
 export async function deleteProductBrandAction(formData: FormData) {
@@ -117,6 +129,7 @@ export async function deleteProductBrandAction(formData: FormData) {
   const { deleteProductBrand } = await import("@/services/admin/product-service");
   await deleteProductBrand(admin, { id: input.id });
   revalidatePath("/admin/products/brands");
+  redirect("/admin/products/brands");
 }
 
 export async function deleteProductUnitAction(formData: FormData) {
@@ -125,4 +138,5 @@ export async function deleteProductUnitAction(formData: FormData) {
   const { deleteProductUnit } = await import("@/services/admin/product-service");
   await deleteProductUnit(admin, { id: input.id });
   revalidatePath("/admin/products/units");
+  redirect("/admin/products/units");
 }

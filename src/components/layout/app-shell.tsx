@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Bell, Store, Menu } from "lucide-react";
 import { useState } from "react";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
@@ -16,6 +17,7 @@ export function AppShell({ children, navItems, userName, userEmail, accountLabel
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
 
   const handleToggle = () => {
     if (typeof window !== "undefined" && window.innerWidth <= 900) {
@@ -32,16 +34,33 @@ export function AppShell({ children, navItems, userName, userEmail, accountLabel
       <div className="mt-8 border-t border-white/10 pt-4"><div className="rounded-xl bg-white/5 px-3 py-3"><p className="truncate text-sm font-bold text-white">{userName}</p><p className="truncate text-xs text-blue-200">{accountLabel}</p></div><SignOutButton /></div>
     </aside>
     <div className="app-main">
-      <header className="app-header flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button aria-label="Toggle menu" onClick={handleToggle} className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600"><Menu className="h-5 w-5" /></button>
+      <header className="app-header flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <button type="button" aria-label="Toggle menu" onClick={handleToggle} className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600"><Menu className="h-5 w-5" /></button>
           {headerExtra ? <div>{headerExtra}</div> : null}
         </div>
-        <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none text-center">
-          <p className="text-sm font-bold text-slate-900">{userName}</p>
-          {userEmail && <p className="text-xs text-slate-500">{userEmail}</p>}
+        <div className="hidden min-w-0 flex-1 items-center justify-center text-center md:flex">
+          <div>
+            <p className="text-sm font-bold text-slate-900">{userName}</p>
+            {userEmail && <p className="text-xs text-slate-500">{userEmail}</p>}
+          </div>
         </div>
-        <div className="flex items-center gap-3"><button className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600"><Bell className="h-5 w-5" />{notificationCount > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">{notificationCount > 99 ? "99+" : notificationCount}</span>}</button><div className="hidden text-right sm:block"><p className="text-sm font-bold text-slate-900">{userName}</p><p className="text-xs text-slate-500">{accountLabel}</p></div></div>
+        <div className="relative flex items-center gap-3">
+          <button type="button" aria-label="Notifications" aria-expanded={notificationOpen} onClick={() => setNotificationOpen((open) => !open)} className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600">
+            <Bell className="h-5 w-5" />
+            {notificationCount > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">{notificationCount > 99 ? "99+" : notificationCount}</span>}
+          </button>
+          {notificationOpen && (
+            <div className="absolute right-0 top-12 z-50 w-72 rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl shadow-slate-900/10">
+              <p className="text-sm font-bold text-slate-900">Notifications</p>
+              <p className="mt-1 text-xs text-slate-500">{notificationCount > 0 ? `${notificationCount} unread notifications` : "No unread notifications"}</p>
+              <Link href="/admin/notifications" className="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white" onClick={() => setNotificationOpen(false)}>
+                Open notifications
+              </Link>
+            </div>
+          )}
+          <div className="hidden text-right sm:block"><p className="text-sm font-bold text-slate-900">{userName}</p><p className="text-xs text-slate-500">{accountLabel}</p></div>
+        </div>
       </header>
       {mobileOpen && <div className="fixed inset-0 z-40">
         <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
