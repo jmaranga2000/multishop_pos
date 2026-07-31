@@ -2,12 +2,15 @@ import { Boxes, Gauge, ReceiptText, RefreshCw, RotateCcw, Settings, ShoppingCart
 import { AppShell } from "@/components/layout/app-shell";
 import { OfflineProvider } from "@/components/shop/offline-provider";
 import { ConnectivityStatus } from "@/components/shop/connectivity-status";
+import { ShopPortalLockGuard } from "@/components/shop/portal-lock-guard";
 import { requireShop } from "@/lib/rbac";
+import { getShopRegisterData } from "@/services/shop/register-service";
 
 export const dynamic = "force-dynamic";
 
 export default async function ShopLayout({children}:{children:React.ReactNode}){
  const user=await requireShop();
+ const { openSession } = await getShopRegisterData(user.shopId, user.businessId);
 const nav=[
 	{ href: "/shop/dashboard", label: "Dashboard", icon: "Gauge" },
 	{ href: "/shop/pos", label: "Point of sale", icon: "ShoppingCart" },
@@ -20,5 +23,5 @@ const nav=[
 	{ href: "/shop/synchronization", label: "Synchronization", icon: "RefreshCw" },
 	{ href: "/shop/profile", label: "Profile", icon: "Settings" },
 ];
- return <OfflineProvider shopId={user.shopId} shopName={user.shop.name}><AppShell navItems={nav} userName={user.shop.name} userEmail={user.email} accountLabel={`Shop account • ${user.shop.code}`} headerExtra={<ConnectivityStatus/>}>{children}</AppShell></OfflineProvider>;
+ return <OfflineProvider shopId={user.shopId} shopName={user.shop.name}><AppShell navItems={nav} userName={user.shop.name} userEmail={user.email} accountLabel={`Shop account • ${user.shop.code}`} headerExtra={<ConnectivityStatus/>}><ShopPortalLockGuard salespersonId={openSession?.salespersonId ?? null} salespersonName={openSession?.salesperson?.name ?? null} />{children}</AppShell></OfflineProvider>;
 }

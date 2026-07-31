@@ -57,6 +57,7 @@ export async function updateSalesperson(admin: { id: string; businessId: string 
     data: {
       name: input.name,
       code: input.code,
+      ...(input.pin ? { pinHash: await argon2.hash(input.pin) } : {}),
     },
   });
 

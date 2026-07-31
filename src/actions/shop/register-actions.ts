@@ -1,7 +1,10 @@
 "use server";
 
+import argon2 from "argon2";
 import { revalidatePath } from "next/cache";
 import { requireShop } from "@/lib/rbac";
+import { db } from "@/lib/db";
+import { AppError } from "@/lib/errors/app-error";
 import { closeRegisterSession, openRegisterSession } from "@/services/shop/register-service";
 import { closeRegisterSchema, openRegisterSchema } from "@/validators/shop/register-validator";
 
@@ -19,4 +22,30 @@ export async function closeRegisterAction(formData: FormData) {
   await closeRegisterSession(shopUser, input);
   revalidatePath("/shop/register");
   revalidatePath("/shop/dashboard");
+}
+
+export async function unlockShopPortalAction(formData: FormData) {
+  const shopUser = await requireShop();
+  const salespersonId = String(formData.get("salespersonId") ?? "").trim();
+  const pin = String(formData.get("pin") ?? "").trim();
+
+  if (!salespersonId || !pin) {
+    return { success: false, error: "A valid salesperson ID and PIN are required." };
+  }
+
+  const openSession = await db.registerSession.findFirst({
+    where: { shopId: shopUser.shopId, status: "OPEN", salespersonId },
+    include: { salesperson: true },
+  });
+
+  if (!openSession || !openSession.salesperson) {
+    return { success: false, error: "No active salesperson session is available to unlock." };
+  }
+
+  const validPin = await argon2.verify(openSession.salesperson.pinHash, pin);
+  if (!validPin) {
+    return { success: false, error: "The salesperson PIN is incorrect." };
+  }
+
+  return { success: true };
 }

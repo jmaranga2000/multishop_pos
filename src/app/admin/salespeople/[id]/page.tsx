@@ -33,6 +33,7 @@ export default async function SalespersonDetailsPage({ params }: { params: Promi
               <div>
                 <p className="font-bold text-lg">{salesperson.name} <Badge tone={salesperson.isActive ? "success" : "danger"} className="ml-2">{salesperson.isActive ? "Active" : "Inactive"}</Badge></p>
                 <p className="text-sm text-slate-500">{salesperson.shop.name} • {salesperson.code}</p>
+                <p className="text-sm">PIN profile: 4–6 digits, managed from the edit form below</p>
                 <p className="text-sm">Sales: {salesperson._count.sales}</p>
                 <p className="text-sm">Sessions: {salesperson._count.sessions}</p>
               </div>

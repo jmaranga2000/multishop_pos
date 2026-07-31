@@ -20,6 +20,7 @@ export function SalespersonEditForm({ salesperson }: SalespersonEditFormProps) {
   const [values, setValues] = useState({
     name: salesperson.name,
     code: salesperson.code,
+    pin: "",
   });
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -51,6 +52,16 @@ export function SalespersonEditForm({ salesperson }: SalespersonEditFormProps) {
       <input type="hidden" name="salespersonId" value={salesperson.id} />
       <Input name="name" value={values.name} onChange={(event) => updateField("name", event.target.value)} placeholder="Full name" required />
       <Input name="code" value={values.code} onChange={(event) => updateField("code", event.target.value)} placeholder="Short code" required />
+      <Input
+        name="pin"
+        type="password"
+        inputMode="numeric"
+        pattern="[0-9]{4,6}"
+        value={values.pin}
+        onChange={(event) => updateField("pin", event.target.value)}
+        placeholder="New 4–6 digit PIN"
+        maxLength={6}
+      />
       <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
         Shop: {salesperson.shopName ?? "Unknown shop"}
       </div>
