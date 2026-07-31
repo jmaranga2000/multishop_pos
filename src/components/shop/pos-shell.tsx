@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Banknote, CreditCard, Minus, PackageX, Plus, Search, ShoppingCart, Trash2, WifiOff } from "lucide-react";
 import { MdPhoneAndroid } from "react-icons/md";
@@ -44,6 +44,7 @@ export function PosShell() {
   const [unitModalOpen, setUnitModalOpen] = useState(false);
   const [unitModalEntry, setUnitModalEntry] = useState<((typeof products)[number]) | null>(null);
   const [unitModalSelected, setUnitModalSelected] = useState<string | null>(null);
+  const firstUnitRadioRef = useRef<HTMLInputElement | null>(null);
   const [processing, setProcessing] = useState(false);
   const [amountReceived, setAmountReceived] = useState("");
 
@@ -157,6 +158,20 @@ export function PosShell() {
     setUnitModalSelected(null);
   }
 
+  // Accessibility: focus first radio when modal opens, close on Escape
+  useEffect(() => {
+    if (unitModalOpen) {
+      setTimeout(() => {
+        firstUnitRadioRef.current?.focus();
+      }, 0);
+      function onKey(e: KeyboardEvent) {
+        if (e.key === "Escape") cancelUnitSelection();
+      }
+      window.addEventListener("keydown", onKey);
+      return () => window.removeEventListener("keydown", onKey);
+    }
+  }, [unitModalOpen]);
+
   function changeQuantity(productId: string, unitId: string | null | undefined, delta: number) {
     setCart((current) => current.flatMap((item) => {
       if (item.productId !== productId || item.unitId !== unitId) return [item];
@@ -251,15 +266,15 @@ export function PosShell() {
       </Card>
     </div>
     {unitModalOpen && unitModalEntry ? (
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="unit-modal-title" aria-describedby="unit-modal-description">
         <div className="absolute inset-0 bg-black opacity-40" onClick={cancelUnitSelection} />
-        <div className="relative z-10 w-full max-w-md rounded-xl bg-white p-6">
-          <h3 className="text-lg font-bold">Pick unit for {unitModalEntry.product!.name}</h3>
-          <p className="mt-1 text-sm text-slate-500">Select the unit to use for this sale line.</p>
+        <div className="relative z-10 w-full max-w-md rounded-xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <h3 id="unit-modal-title" className="text-lg font-bold">Pick unit for {unitModalEntry.product!.name}</h3>
+          <p id="unit-modal-description" className="mt-1 text-sm text-slate-500">Select the unit to use for this sale line.</p>
           <div className="mt-4 space-y-3">
-            {unitModalEntry.product!.pricingOptions?.map((opt) => (
-              <label key={opt.unitId ?? "default"} className="flex items-center gap-3 rounded-lg border p-3">
-                <input type="radio" name="unitPick" checked={unitModalSelected === (opt.unitId ?? null)} onChange={() => setUnitModalSelected(opt.unitId ?? null)} />
+            {unitModalEntry.product!.pricingOptions?.map((opt, i) => (
+              <label key={opt.unitId ?? "default"} className="flex items-center gap-3 rounded-lg border p-3 hover:border-slate-300 focus-within:border-blue-500">
+                <input ref={i === 0 ? firstUnitRadioRef : undefined} type="radio" name="unitPick" checked={unitModalSelected === (opt.unitId ?? null)} onChange={() => setUnitModalSelected(opt.unitId ?? null)} />
                 <div>
                   <div className="font-semibold">{opt.unitName ?? opt.unitSymbol ?? "Unit"}</div>
                   <div className="text-xs text-slate-500">{formatMoney(fromMinorUnits(opt.sellingPriceMinor))}{opt.unitSymbol ? ` / ${opt.unitSymbol}` : ''}</div>
@@ -268,8 +283,8 @@ export function PosShell() {
             ))}
           </div>
           <div className="mt-4 flex justify-end gap-2">
-            <Button variant="ghost" onClick={cancelUnitSelection}>Cancel</Button>
-            <Button onClick={() => confirmUnitSelection()}>Add with selected unit</Button>
+            <Button type="button" variant="ghost" onClick={cancelUnitSelection}>Cancel</Button>
+            <Button type="button" onClick={() => confirmUnitSelection()}>Add with selected unit</Button>
           </div>
         </div>
       </div>

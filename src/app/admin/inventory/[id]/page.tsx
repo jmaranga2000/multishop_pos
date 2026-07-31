@@ -3,6 +3,7 @@ import { SlidersHorizontal } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
 import { getInventoryManagementData } from "@/services/admin/inventory-service";
 import { adjustStockAction, updateInventoryAction } from "@/actions/admin/inventory-actions";
+import { InventoryDuplicateGuard as ClientInventoryDuplicateGuard } from "@/components/admin/inventory-duplicate-guard";
 import { PageHeading } from "@/components/ui/page-heading";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -52,18 +53,7 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
               </div>
               <form action={updateInventoryAction} className="grid gap-3 md:grid-cols-2">
                 <input type="hidden" name="inventoryId" value={item.id} />
-                <div className="rounded-xl bg-slate-50 p-4">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Product</p>
-                  <select name="productId" defaultValue={item.productId} className="mt-1 w-full rounded-md border px-2 py-2 text-sm">
-                    {products.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
-                  </select>
-                </div>
-                <div className="rounded-xl bg-slate-50 p-4">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Shop</p>
-                  <select name="shopId" defaultValue={item.shopId} className="mt-1 w-full rounded-md border px-2 py-2 text-sm">
-                    {shops.map((s) => (<option key={s.id} value={s.id}>{s.name}</option>))}
-                  </select>
-                </div>
+                <ClientInventoryDuplicateGuard shops={shops} products={products} item={item} inventory={inventory} />
                 <div className="rounded-xl bg-slate-50 p-4">
                   <p className="text-xs uppercase tracking-wide text-slate-500">Quantity</p>
                   <input name="quantity" type="number" defaultValue={item.quantity} className="mt-1 w-full rounded-md border px-2 py-2 text-sm" />
@@ -95,7 +85,7 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
                 </div>
                 <div className="md:col-span-2">
                   <div className="flex gap-2">
-                    <Button type="submit" className="w-full">Save changes</Button>
+                    <Button id="inventory-save-btn" type="submit" className="w-full">Save changes</Button>
                     <Link href="/admin/inventory" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm">Cancel</Link>
                   </div>
                 </div>

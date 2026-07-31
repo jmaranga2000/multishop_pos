@@ -12,3 +12,11 @@ export async function getAdminSalesPageData(businessId: string) {
   ]);
   return { business, sales };
 }
+
+export async function getBusinessSalesInRange(businessId: string, start: Date, end: Date) {
+  return db.sale.findMany({
+    where: { shop: { businessId }, occurredAt: { gte: start, lte: end } },
+    include: { shop: true, payments: true, _count: { select: { items: true } } },
+    orderBy: { occurredAt: "desc" },
+  });
+}
