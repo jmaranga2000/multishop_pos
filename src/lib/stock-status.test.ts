@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getStockStatusMeta } from "./stock-status";
+import { getStockStatusMeta, resolveStockStatusKey } from "./stock-status";
 
 test("maps stock statuses to detail page metadata", () => {
   assert.deepEqual(getStockStatusMeta("LOW_STOCK"), {
@@ -30,4 +30,12 @@ test("maps stock statuses to detail page metadata", () => {
     tone: "emerald",
     description: "Products that are within a healthy inventory range.",
   });
+});
+
+test("resolves stock status slugs from the report links", () => {
+  assert.equal(resolveStockStatusKey("low-stock"), "LOW_STOCK");
+  assert.equal(resolveStockStatusKey("critical-stock"), "CRITICAL");
+  assert.equal(resolveStockStatusKey("out-of-stock"), "OUT_OF_STOCK");
+  assert.equal(resolveStockStatusKey("healthy-stock"), "IN_STOCK");
+  assert.equal(resolveStockStatusKey("unknown"), null);
 });

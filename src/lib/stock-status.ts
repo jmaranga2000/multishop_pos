@@ -7,6 +7,23 @@ export type StockStatusMeta = {
   description: string;
 };
 
+export function resolveStockStatusKey(slug: string): StockStatusKey | null {
+  const normalizedSlug = slug?.toLowerCase();
+
+  switch (normalizedSlug) {
+    case "low-stock":
+      return "LOW_STOCK";
+    case "critical-stock":
+      return "CRITICAL";
+    case "out-of-stock":
+      return "OUT_OF_STOCK";
+    case "healthy-stock":
+      return "IN_STOCK";
+    default:
+      return null;
+  }
+}
+
 export function getStockStatusMeta(status: StockStatusKey): StockStatusMeta {
   switch (status) {
     case "LOW_STOCK":

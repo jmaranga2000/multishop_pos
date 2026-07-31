@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, Building2, Package2 } from "lucide-react";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/rbac";
-import { getStockStatusMeta, type StockStatusKey } from "@/lib/stock-status";
+import { getStockStatusMeta, resolveStockStatusKey, type StockStatusKey } from "@/lib/stock-status";
 import { getStockIntelligenceData } from "@/services/admin/report-service";
 import { PageHeading } from "@/components/ui/page-heading";
 import { Button } from "@/components/ui/button";
@@ -11,21 +11,18 @@ import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
-const STOCK_STATUSES: StockStatusKey[] = ["LOW_STOCK", "CRITICAL", "OUT_OF_STOCK", "IN_STOCK"];
-
 export default async function StockStatusPage({ params, searchParams }: { params: Promise<{ status: string }>; searchParams?: Promise<{ shopId?: string; categoryId?: string }> }) {
   const user = await requireAdmin();
   const { status } = await params;
   const resolvedSearchParams = (await searchParams) ?? {};
-  const normalizedStatus = status?.toUpperCase();
-  const isKnownStatus = STOCK_STATUSES.includes(normalizedStatus as StockStatusKey);
+  const resolvedStatus = resolveStockStatusKey(status);
 
-  if (!isKnownStatus) {
+  if (!resolvedStatus) {
     notFound();
   }
 
   const data = await getStockIntelligenceData(user.businessId);
-  const inventoryRows = data.inventory.filter((item) => item.stockStatus === normalizedStatus);
+  const inventoryRows = data.inventory.filter((item) => item.stockStatus === resolvedStatus);
   const selectedShopId = resolvedSearchParams.shopId ?? "";
   const selectedCategoryId = resolvedSearchParams.categoryId ?? "";
   const filteredRows = inventoryRows.filter((row) => {
@@ -33,7 +30,7 @@ export default async function StockStatusPage({ params, searchParams }: { params
     const matchesCategory = !selectedCategoryId || row.product?.categoryId === selectedCategoryId;
     return matchesShop && matchesCategory;
   });
-  const meta = getStockStatusMeta(normalizedStatus as StockStatusKey);
+  const meta = getStockStatusMeta(resolvedStatus);
 
   return (
     <>
