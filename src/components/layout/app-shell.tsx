@@ -35,7 +35,7 @@ export function AppShell({ children, navItems, userName, userEmail, accountLabel
       <header className="app-header flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button aria-label="Toggle menu" onClick={handleToggle} className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600"><Menu className="h-5 w-5" /></button>
-          <div>{headerExtra}</div>
+          {headerExtra ? <div>{headerExtra}</div> : null}
         </div>
         <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none text-center">
           <p className="text-sm font-bold text-slate-900">{userName}</p>
