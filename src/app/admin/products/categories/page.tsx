@@ -27,6 +27,9 @@ export default async function ProductCategoriesPage() {
         <Link href="/admin/products/units" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
           Units
         </Link>
+        <Link href="/admin/products/categories/new" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+          New category
+        </Link>
       </div>
 
       <div className="grid gap-5">
@@ -67,7 +70,12 @@ export default async function ProductCategoriesPage() {
                     <tr key={category.id}>
                       <td>{category.name}</td>
                       <td className="font-mono text-xs text-slate-500">{category.slug}</td>
-                      <td>{category.isActive ? "Active" : "Inactive"}</td>
+                          <td>{category.isActive ? "Active" : "Inactive"}</td>
+                          <td>
+                            <Link href={`/admin/products/categories/${category.id}`} className="inline-flex items-center rounded-lg border px-3 py-2 text-sm">
+                              View
+                            </Link>
+                          </td>
                     </tr>
                   ))}
                 </tbody>

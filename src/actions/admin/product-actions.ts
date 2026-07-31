@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/rbac";
+import { z } from "zod";
 import {
   createProduct,
   updateProduct,
@@ -54,4 +55,74 @@ export async function createProductUnitAction(formData: FormData) {
   await createProductUnit(admin, input);
   revalidatePath("/admin/products/units");
   revalidatePath("/admin/products/new");
+}
+
+export async function updateProductCategoryAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const input = createProductCategorySchema.extend({ id: z.string().min(1) }).parse(Object.fromEntries(formData));
+  // lazy import the service update to avoid circulars
+  const { updateProductCategory } = await import("@/services/admin/product-service");
+  await updateProductCategory(admin, input as any);
+  revalidatePath(`/admin/products/categories/${(input as any).id}`);
+  revalidatePath("/admin/products/new");
+}
+
+export async function updateProductBrandAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const input = createProductBrandSchema.extend({ id: z.string().min(1) }).parse(Object.fromEntries(formData));
+  const { updateProductBrand } = await import("@/services/admin/product-service");
+  await updateProductBrand(admin, input as any);
+  revalidatePath(`/admin/products/brands/${(input as any).id}`);
+  revalidatePath("/admin/products/new");
+}
+
+export async function updateProductUnitAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const input = createProductUnitSchema.extend({ id: z.string().min(1) }).parse(Object.fromEntries(formData));
+  const { updateProductUnit } = await import("@/services/admin/product-service");
+  await updateProductUnit(admin, input as any);
+  revalidatePath(`/admin/products/units/${(input as any).id}`);
+  revalidatePath("/admin/products/new");
+}
+
+export async function toggleProductCategoryAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const input = z.object({ id: z.string().min(1), isActive: z.string().optional() }).parse(Object.fromEntries(formData));
+  const { toggleProductCategoryActive } = await import("@/services/admin/product-service");
+  await toggleProductCategoryActive(admin, { id: input.id, isActive: (input.isActive === "true") });
+  revalidatePath(`/admin/products/categories/${input.id}`);
+  revalidatePath("/admin/products/categories");
+}
+
+export async function deleteProductCategoryAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const input = z.object({ id: z.string().min(1) }).parse(Object.fromEntries(formData));
+  const { deleteProductCategory } = await import("@/services/admin/product-service");
+  await deleteProductCategory(admin, { id: input.id });
+  revalidatePath("/admin/products/categories");
+}
+
+export async function toggleProductBrandAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const input = z.object({ id: z.string().min(1), isActive: z.string().optional() }).parse(Object.fromEntries(formData));
+  const { toggleProductBrandActive } = await import("@/services/admin/product-service");
+  await toggleProductBrandActive(admin, { id: input.id, isActive: (input.isActive === "true") });
+  revalidatePath(`/admin/products/brands/${input.id}`);
+  revalidatePath("/admin/products/brands");
+}
+
+export async function deleteProductBrandAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const input = z.object({ id: z.string().min(1) }).parse(Object.fromEntries(formData));
+  const { deleteProductBrand } = await import("@/services/admin/product-service");
+  await deleteProductBrand(admin, { id: input.id });
+  revalidatePath("/admin/products/brands");
+}
+
+export async function deleteProductUnitAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const input = z.object({ id: z.string().min(1) }).parse(Object.fromEntries(formData));
+  const { deleteProductUnit } = await import("@/services/admin/product-service");
+  await deleteProductUnit(admin, { id: input.id });
+  revalidatePath("/admin/products/units");
 }

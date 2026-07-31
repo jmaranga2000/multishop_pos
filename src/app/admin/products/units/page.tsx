@@ -27,6 +27,9 @@ export default async function ProductUnitsPage() {
         <Link href="/admin/products/brands" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
           Brands
         </Link>
+        <Link href="/admin/products/units/new" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+          New unit
+        </Link>
       </div>
 
       <div className="grid gap-5">
@@ -67,6 +70,11 @@ export default async function ProductUnitsPage() {
                     <tr key={unit.id}>
                       <td>{unit.name}</td>
                       <td>{unit.symbol}</td>
+                      <td>
+                        <Link href={`/admin/products/units/${unit.id}`} className="inline-flex items-center rounded-lg border px-3 py-2 text-sm">
+                          View
+                        </Link>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

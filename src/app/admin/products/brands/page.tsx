@@ -27,6 +27,9 @@ export default async function ProductBrandsPage() {
         <Link href="/admin/products/units" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
           Units
         </Link>
+        <Link href="/admin/products/brands/new" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+          New brand
+        </Link>
       </div>
 
       <div className="grid gap-5">
@@ -66,6 +69,11 @@ export default async function ProductBrandsPage() {
                     <tr key={brand.id}>
                       <td>{brand.name}</td>
                       <td>{brand.isActive ? "Active" : "Inactive"}</td>
+                      <td>
+                        <Link href={`/admin/products/brands/${brand.id}`} className="inline-flex items-center rounded-lg border px-3 py-2 text-sm">
+                          View
+                        </Link>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

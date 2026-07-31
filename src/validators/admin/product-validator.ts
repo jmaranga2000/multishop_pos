@@ -35,3 +35,7 @@ export const createProductUnitSchema = z.object({
   name: z.string().trim().min(1).max(80),
   symbol: z.string().trim().min(1).max(10),
 });
+
+export const updateProductCategorySchema = createProductCategorySchema.extend({ id: z.string().min(1) });
+export const updateProductBrandSchema = createProductBrandSchema.extend({ id: z.string().min(1) });
+export const updateProductUnitSchema = createProductUnitSchema.extend({ id: z.string().min(1) });

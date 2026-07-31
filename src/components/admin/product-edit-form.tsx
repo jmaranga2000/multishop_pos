@@ -67,24 +67,33 @@ export function ProductEditForm({ product, categories, brands, units }: ProductE
       <Input name="name" value={values.name} onChange={(event) => updateField("name", event.target.value)} placeholder="Product name" required />
       <Input name="sku" value={values.sku} onChange={(event) => updateField("sku", event.target.value)} placeholder="SKU" required />
       <Input name="barcode" value={values.barcode} onChange={(event) => updateField("barcode", event.target.value)} placeholder="Barcode (optional)" />
-      <select name="categoryId" value={values.categoryId} onChange={(event) => updateField("categoryId", event.target.value)} className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm">
+      <div className="flex items-center gap-2">
+        <select name="categoryId" value={values.categoryId} onChange={(event) => updateField("categoryId", event.target.value)} className="h-11 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm">
         <option value="">Select category</option>
         {categories.map((item) => (
           <option key={item.id} value={item.id}>{item.name}</option>
         ))}
-      </select>
-      <select name="brandId" value={values.brandId} onChange={(event) => updateField("brandId", event.target.value)} className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm">
+        </select>
+        <a href="/admin/products/categories/new" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm">New</a>
+      </div>
+      <div className="flex items-center gap-2">
+        <select name="brandId" value={values.brandId} onChange={(event) => updateField("brandId", event.target.value)} className="h-11 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm">
         <option value="">Select brand</option>
         {brands.map((item) => (
           <option key={item.id} value={item.id}>{item.name}</option>
         ))}
-      </select>
-      <select name="unitId" value={values.unitId} onChange={(event) => updateField("unitId", event.target.value)} className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm">
+        </select>
+        <a href="/admin/products/brands/new" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm">New</a>
+      </div>
+      <div className="flex items-center gap-2">
+        <select name="unitId" value={values.unitId} onChange={(event) => updateField("unitId", event.target.value)} className="h-11 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm">
         <option value="">Select unit</option>
         {units.map((item) => (
           <option key={item.id} value={item.id}>{item.name} ({item.symbol})</option>
         ))}
-      </select>
+        </select>
+        <a href="/admin/products/units/new" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm">New</a>
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <Input name="defaultCostPrice" value={values.defaultCostPrice} onChange={(event) => updateField("defaultCostPrice", event.target.value)} type="number" min="0" step="0.01" placeholder="Cost price" required />
         <Input name="defaultSellingPrice" value={values.defaultSellingPrice} onChange={(event) => updateField("defaultSellingPrice", event.target.value)} type="number" min="0.01" step="0.01" placeholder="Selling price" required />
