@@ -7,6 +7,9 @@ import { generateInventoryReportNow } from "@/services/admin/report-service";
 export async function generateInventoryReportAction() {
   const admin = await requireAdmin();
   await generateInventoryReportNow(admin.businessId);
+  revalidatePath("/admin/reports");
   revalidatePath("/admin/reports/inventory");
+  revalidatePath("/admin/reports/stock");
+  revalidatePath("/admin/reports/daily");
   revalidatePath("/admin/notifications");
 }
