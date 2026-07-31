@@ -17,7 +17,16 @@ export default async function ProductsPage() {
   return (
     <>
       <PageHeading title="Product catalogue" description="Products are created centrally and receive separate stock records in every shop." />
-      <div className="flex justify-end mb-4">
+      <div className="flex flex-wrap justify-end gap-2 mb-4">
+        <Link href="/admin/products/categories" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+          Categories
+        </Link>
+        <Link href="/admin/products/brands" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+          Brands
+        </Link>
+        <Link href="/admin/products/units" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+          Units
+        </Link>
         <Link href="/admin/products/new" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
           New product
         </Link>

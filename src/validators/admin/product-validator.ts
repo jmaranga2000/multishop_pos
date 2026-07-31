@@ -22,3 +22,16 @@ export const updateProductSchema = z.object({
   defaultCostPrice: z.coerce.number().nonnegative(),
   defaultSellingPrice: z.coerce.number().positive(),
 });
+
+export const createProductCategorySchema = z.object({
+  name: z.string().trim().min(2).max(160),
+});
+
+export const createProductBrandSchema = z.object({
+  name: z.string().trim().min(2).max(160),
+});
+
+export const createProductUnitSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  symbol: z.string().trim().min(1).max(10),
+});
