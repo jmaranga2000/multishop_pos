@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Plus, SlidersHorizontal } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
 import { addStockAction, adjustStockAction } from "@/actions/admin/inventory-actions";
@@ -19,6 +20,11 @@ export default async function InventoryPage() {
   return (
     <>
       <PageHeading title="Shop inventory" description="Every product and shop combination has an independent quantity, price and threshold." />
+      <div className="mb-4 flex justify-end">
+        <Link href="/admin/inventory/new" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+          New stock movement
+        </Link>
+      </div>
       <div className="grid gap-5 xl:grid-cols-[1fr_390px]">
         <Card className="overflow-hidden">
           <CardHeader><div><h2 className="font-extrabold">Current stock</h2><p className="text-sm text-slate-500">{inventory.length} inventory records across {shops.length} shops.</p></div></CardHeader>
@@ -38,12 +44,15 @@ export default async function InventoryPage() {
                         <td>{formatMoney(item.sellingPrice.toString(), business.currency)}</td>
                         <td><Badge tone={status === "IN_STOCK" ? "success" : status === "LOW_STOCK" ? "warning" : "danger"}>{status.replaceAll("_", " ")}</Badge></td>
                         <td>
-                          <form action={adjustStockAction} className="flex min-w-72 gap-2">
-                            <input type="hidden" name="inventoryId" value={item.id} />
-                            <Input name="quantity" type="number" min="0" defaultValue={item.quantity} className="w-24" required />
-                            <Input name="reason" placeholder="Adjustment reason" required />
-                            <Button size="sm" variant="secondary"><SlidersHorizontal className="h-4 w-4" />Save</Button>
-                          </form>
+                          <div className="flex flex-col gap-2">
+                            <Link href={`/admin/inventory/${item.id}`} className="inline-flex items-center rounded-lg border px-3 py-2 text-sm">View</Link>
+                            <form action={adjustStockAction} className="flex min-w-72 gap-2">
+                              <input type="hidden" name="inventoryId" value={item.id} />
+                              <Input name="quantity" type="number" min="0" defaultValue={item.quantity} className="w-24" required />
+                              <Input name="reason" placeholder="Adjustment reason" required />
+                              <Button size="sm" variant="secondary"><SlidersHorizontal className="h-4 w-4" />Save</Button>
+                            </form>
+                          </div>
                         </td>
                       </tr>
                     );
