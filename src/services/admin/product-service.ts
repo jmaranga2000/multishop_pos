@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { randomUUID } from "node:crypto";
 import { writeAuditLog } from "@/services/shared/audit-service";
 import type { z } from "zod";
 import type {
@@ -22,6 +23,37 @@ function normalizeSlug(value: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "")
     .slice(0, 240);
+}
+
+function generateSkuCandidate(name: string) {
+  const prefix = name.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  const suffix = randomUUID().slice(0, 4).toUpperCase();
+  const base = prefix.length ? `${prefix}-${suffix}` : `PRD-${suffix}`;
+  return base.slice(0, 60);
+}
+
+async function generateUniqueProductSku(name: string) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const candidate = generateSkuCandidate(name);
+    const existing = await db.product.findFirst({ where: { sku: candidate } });
+    if (!existing) return candidate;
+  }
+
+  return `${generateSkuCandidate(name)}-${randomUUID().slice(0, 4).toUpperCase()}`.slice(0, 60);
+}
+
+async function generateUniqueBarcode() {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const candidate = String(Math.floor(100000000000 + Math.random() * 900000000000));
+    const existing = await db.product.findFirst({ where: { barcode: candidate } });
+    if (!existing) return candidate;
+  }
+
+  let candidate = String(Math.floor(100000000000 + Math.random() * 900000000000));
+  while (await db.product.findFirst({ where: { barcode: candidate } })) {
+    candidate = String(Math.floor(100000000000 + Math.random() * 900000000000));
+  }
+  return candidate;
 }
 
 export async function listAdminProducts(businessId: string) {
@@ -72,12 +104,14 @@ export async function listAdminProductUnits(businessId: string) {
 
 export async function createProduct(admin: { id: string; businessId: string }, input: CreateProductInput) {
   const firstUnitPricing = input.unitPricing?.[0] ?? null;
+  const sku = input.sku?.trim() || await generateUniqueProductSku(input.name);
+  const barcode = input.barcode?.trim() || await generateUniqueBarcode();
   const product = await db.product.create({
     data: {
       businessId: admin.businessId,
       name: input.name,
-      sku: input.sku,
-      barcode: input.barcode || null,
+      sku,
+      barcode,
       categoryId: input.categoryId || null,
       brandId: input.brandId || null,
       unitId: firstUnitPricing?.unitId ?? input.unitId ?? null,

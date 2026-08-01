@@ -723,18 +723,24 @@ export function PosShell({
               </div>
             </div>
             <label className="mt-3 flex items-center gap-2 text-sm text-slate-600"><input className="h-4 w-4 rounded border-slate-300" type="checkbox" checked={splitPaymentEnabled} onChange={(e) => setSplitPaymentEnabled(e.target.checked)} />Allow split payment</label>
-            <div className="mt-3 flex flex-nowrap gap-2 overflow-x-auto pb-1 whitespace-nowrap">
-              <button onClick={() => setPaymentMode("CASH")} className={`shrink-0 rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CASH" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600"}`}><Banknote className="mx-auto mb-1 h-5 w-5"/>Cash</button>
-              <button onClick={() => setPaymentMode("MPESA")} disabled={!online || !mpesaEnabled} className={`shrink-0 rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "MPESA" ? "border-sky-200 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"} disabled:opacity-50`}><MdPhoneAndroid className="mx-auto mb-1 h-5 w-5"/>M-Pesa</button>
-              <button onClick={() => setPaymentMode("CARD")} disabled={!online} className={`shrink-0 rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CARD" ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-600"} disabled:opacity-50`}><CreditCard className="mx-auto mb-1 h-5 w-5"/>Card</button>
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <button onClick={() => setPaymentMode("CASH")} className={`w-full rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CASH" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600"}`}><Banknote className="mx-auto mb-1 h-5 w-5"/>Cash</button>
+              <button onClick={() => setPaymentMode("MPESA")} disabled={!online} className={`w-full rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "MPESA" ? "border-sky-200 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"} ${!online ? "opacity-50" : ""}`}><MdPhoneAndroid className="mx-auto mb-1 h-5 w-5"/>M-Pesa</button>
+              <button onClick={() => setPaymentMode("CARD")} disabled={!online} className={`w-full rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CARD" ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-600"} ${!online ? "opacity-50" : ""}`}><CreditCard className="mx-auto mb-1 h-5 w-5"/>Card</button>
             </div>
             {!online ? <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Offline mode only allows cash. M-Pesa and card payments remain unavailable until the connection is restored.</div> : null}
-            {paymentMode === "MPESA" && mpesaEnabled ? (
+            {paymentMode === "MPESA" ? (
               <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
-                <div className="flex flex-wrap gap-2">
-                  {mpesaStkEnabled ? <Button type="button" variant={mpesaFlow === "STK_PUSH" ? "primary" : "secondary"} onClick={() => setMpesaFlow("STK_PUSH")}>Send STK Push</Button> : null}
-                  {mpesaPayToTillEnabled ? <Button type="button" variant={mpesaFlow === "PAY_TO_TILL" ? "primary" : "secondary"} onClick={() => setMpesaFlow("PAY_TO_TILL")}>Customer Pays to Till</Button> : null}
-                </div>
+                {!mpesaEnabled ? (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                    M-Pesa is visible here but not configured yet. It will become functional once M-Pesa is enabled in settings.
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {mpesaStkEnabled ? <Button type="button" variant={mpesaFlow === "STK_PUSH" ? "primary" : "secondary"} onClick={() => setMpesaFlow("STK_PUSH")}>Send STK Push</Button> : null}
+                    {mpesaPayToTillEnabled ? <Button type="button" variant={mpesaFlow === "PAY_TO_TILL" ? "primary" : "secondary"} onClick={() => setMpesaFlow("PAY_TO_TILL")}>Customer Pays to Till</Button> : null}
+                  </div>
+                )}
                 {mpesaFlow === "STK_PUSH" ? (
                   <div className="mt-3 space-y-3">
                     <div className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-700">

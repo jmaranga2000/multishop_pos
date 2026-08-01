@@ -33,8 +33,8 @@ export default async function NewProductPage() {
         <CardContent>
           <form action={createProductAction} className="space-y-3">
             <Input name="name" placeholder="Product name" required />
-            <Input name="sku" placeholder="Unique SKU" required />
-            <Input name="barcode" placeholder="Barcode (optional)" />
+            <Input name="sku" placeholder="Unique SKU (auto-generated if blank)" />
+            <Input name="barcode" placeholder="Barcode (auto-generated if blank)" />
             <div className="flex items-center gap-2">
               <select name="categoryId" className="h-11 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm">
               <option value="">Select category</option>
