@@ -723,10 +723,10 @@ export function PosShell({
               </div>
             </div>
             <label className="mt-3 flex items-center gap-2 text-sm text-slate-600"><input className="h-4 w-4 rounded border-slate-300" type="checkbox" checked={splitPaymentEnabled} onChange={(e) => setSplitPaymentEnabled(e.target.checked)} />Allow split payment</label>
-            <div className="checkout-actions-grid mt-3">
-              <button onClick={() => setPaymentMode("CASH")} className={`rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CASH" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600"}`}><Banknote className="mx-auto mb-1 h-5 w-5"/>Cash</button>
-              <button onClick={() => setPaymentMode("MPESA")} disabled={!online || !mpesaEnabled} className={`rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "MPESA" ? "border-sky-200 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"} disabled:opacity-50`}><MdPhoneAndroid className="mx-auto mb-1 h-5 w-5"/>M-Pesa</button>
-              <button onClick={() => setPaymentMode("CARD")} disabled={!online} className={`rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CARD" ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-600"} disabled:opacity-50`}><CreditCard className="mx-auto mb-1 h-5 w-5"/>Card</button>
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+              <button onClick={() => setPaymentMode("CASH")} className={`shrink-0 rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CASH" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600"}`}><Banknote className="mx-auto mb-1 h-5 w-5"/>Cash</button>
+              <button onClick={() => setPaymentMode("MPESA")} disabled={!online || !mpesaEnabled} className={`shrink-0 rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "MPESA" ? "border-sky-200 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"} disabled:opacity-50`}><MdPhoneAndroid className="mx-auto mb-1 h-5 w-5"/>M-Pesa</button>
+              <button onClick={() => setPaymentMode("CARD")} disabled={!online} className={`shrink-0 rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CARD" ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-600"} disabled:opacity-50`}><CreditCard className="mx-auto mb-1 h-5 w-5"/>Card</button>
             </div>
             {!online ? <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Offline mode only allows cash. M-Pesa and card payments remain unavailable until the connection is restored.</div> : null}
             {paymentMode === "MPESA" && mpesaEnabled ? (

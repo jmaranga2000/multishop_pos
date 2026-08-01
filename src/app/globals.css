@@ -139,8 +139,9 @@ a { color: inherit; text-decoration: none; }
   .app-content { padding: 16px; }
   .chart-grid { grid-template-columns: 1fr; }
   .pos-layout { grid-template-columns: 1fr; }
-  .cart-panel { position: static; max-height: none; }
-  .checkout-actions-grid { grid-template-columns: 1fr; }
+  .cart-panel { position: static; max-height: none; overflow: visible; }
+  .cart-scroll { overflow: visible; -webkit-overflow-scrolling: touch; }
+  .checkout-actions-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .mobile-only { display: inline-flex; }
 }
 
