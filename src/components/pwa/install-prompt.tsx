@@ -11,20 +11,30 @@ export function InstallPrompt() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const dismissedAt = Number(localStorage.getItem("pwa-install-dismissed-at") ?? 0);
+    if (typeof window === "undefined") return;
+
+    const dismissedAt = Number(window.localStorage.getItem("pwa-install-dismissed-at") ?? 0);
     if (Date.now() - dismissedAt < 7 * 24 * 60 * 60 * 1000) return;
 
     const isStandalone = window.matchMedia("(display-mode: standalone)").matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
     if (isStandalone) return;
 
-    const handler = (e: Event) => { e.preventDefault(); setEvent(e as InstallEvent); setVisible(true); };
-    const appInstalled = () => setVisible(false);
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setEvent(e as InstallEvent);
+      setVisible(true);
+    };
+
+    const appInstalled = () => {
+      setVisible(false);
+      setEvent(null);
+    };
 
     window.addEventListener("beforeinstallprompt", handler);
     window.addEventListener("appinstalled", appInstalled);
 
     const fallbackTimer = window.setTimeout(() => {
-      if (!event) setVisible(true);
+      setVisible(true);
     }, 2000);
 
     return () => {
@@ -32,7 +42,7 @@ export function InstallPrompt() {
       window.removeEventListener("appinstalled", appInstalled);
       window.clearTimeout(fallbackTimer);
     };
-  }, [event]);
+  }, []);
 
   if (!visible) return null;
 
