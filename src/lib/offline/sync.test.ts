@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getSyncQueueStatuses, hasPriceMismatchBetweenMinorUnits } from "./sync";
+import { getSyncQueueStatuses } from "./sync";
+import { hasPriceMismatchBetweenMinorUnits } from "./price";
 
 test("retry-only mode targets failed and conflict queue rows", () => {
   const statuses = getSyncQueueStatuses({ retryFailedOnly: true });

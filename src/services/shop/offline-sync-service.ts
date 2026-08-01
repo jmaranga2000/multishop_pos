@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { hasPriceMismatchBetweenMinorUnits } from "@/lib/offline/sync";
+import { hasPriceMismatchBetweenMinorUnits } from "@/lib/offline/price";
 import { fromMinorUnits } from "@/lib/utils";
 import { reconcileStockAlert } from "@/lib/stock-alerts";
 import { AppError } from "@/lib/errors/app-error";

@@ -1,6 +1,7 @@
 "use client";
 
 import { offlineDb } from "@/lib/offline/db";
+import { hasPriceMismatchBetweenMinorUnits } from "@/lib/offline/price";
 import type { OfflineInventory, OfflineProduct, OfflineSale, OfflineSaleItem, SyncQueueItem } from "@/lib/offline/types";
 
 export type SyncPendingSalesOptions = {
@@ -10,10 +11,6 @@ export type SyncPendingSalesOptions = {
 export function getSyncQueueStatuses(options: SyncPendingSalesOptions = {}) {
   if (options.retryFailedOnly) return ["FAILED", "CONFLICT"] as const;
   return ["PENDING_SYNC", "FAILED"] as const;
-}
-
-export function hasPriceMismatchBetweenMinorUnits(serverPriceMinor: number, localPriceMinor: number) {
-  return Math.abs(serverPriceMinor - localPriceMinor) > 1;
 }
 
 export function getOrCreateDeviceId() {
