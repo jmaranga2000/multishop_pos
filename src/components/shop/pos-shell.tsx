@@ -680,13 +680,27 @@ export function PosShell({
         })}</div> : <Card className="flex min-h-72 flex-col items-center justify-center p-8 text-center"><PackageX className="h-10 w-10 text-slate-300"/><p className="mt-3 font-bold">No products found</p><p className="mt-1 text-sm text-slate-500">Synchronize online or adjust your search.</p></Card>}
       </section>
       <Card className="cart-panel overflow-hidden">
-        <div className="flex items-center justify-between border-b border-slate-200 p-5"><div className="flex items-center gap-2"><ShoppingCart className="h-5 w-5 text-blue-700"/><p className="font-black">Current sale</p></div><Badge>{cart.reduce((sum,item)=>sum+item.quantity,0)} items</Badge></div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">{cart.length ? <div className="space-y-3">{cart.map((item) => <div key={`${item.productId}-${item.unitId ?? "default"}`} className="rounded-xl border border-slate-200 p-3"><div className="flex justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-bold">{item.name}</p><p className="text-xs text-slate-500">{(item.unitName ?? item.unitSymbol) ? `${item.unitName ?? item.unitSymbol} • ` : ""}{formatMoney(fromMinorUnits(item.unitPriceMinor))} each</p></div><button onClick={() => setCart((current) => current.filter((line) => line.productId !== item.productId || line.unitId !== item.unitId))}><Trash2 className="h-4 w-4 text-red-500"/></button></div><div className="mt-3 flex items-center justify-between"><div className="flex items-center gap-2"><button className="rounded-lg border p-1" onClick={() => changeQuantity(item.productId, item.unitId, -1)}><Minus className="h-4 w-4"/></button><span className="w-7 text-center text-sm font-bold">{item.quantity}</span><button className="rounded-lg border p-1" onClick={() => changeQuantity(item.productId, item.unitId, 1)}><Plus className="h-4 w-4"/></button></div><p className="font-black">{formatMoney(fromMinorUnits(item.quantity * item.unitPriceMinor))}</p></div></div>)}</div> : <div className="flex h-full min-h-52 flex-col items-center justify-center text-center"><ShoppingCart className="h-10 w-10 text-slate-200"/><p className="mt-3 font-bold text-slate-700">Your cart is empty</p><p className="mt-1 text-sm text-slate-400">Select a product to begin.</p></div>}</div>
+        <div className="flex items-center justify-between border-b border-slate-200 p-5">
+          <div className="flex items-center gap-2">
+            <ShoppingCart className="h-5 w-5 text-blue-700" />
+            <p className="font-black">Current sale</p>
+          </div>
+          <Badge>{cart.reduce((sum, item) => sum + item.quantity, 0)} items</Badge>
+        </div>
+        <div className="cart-scroll p-4">{cart.length ? <div className="space-y-3">{cart.map((item) => <div key={`${item.productId}-${item.unitId ?? "default"}`} className="rounded-xl border border-slate-200 p-3"><div className="flex justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-bold">{item.name}</p><p className="text-xs text-slate-500">{(item.unitName ?? item.unitSymbol) ? `${item.unitName ?? item.unitSymbol} • ` : ""}{formatMoney(fromMinorUnits(item.unitPriceMinor))} each</p></div><button onClick={() => setCart((current) => current.filter((line) => line.productId !== item.productId || line.unitId !== item.unitId))}><Trash2 className="h-4 w-4 text-red-500"/></button></div><div className="mt-3 flex items-center justify-between"><div className="flex items-center gap-2"><button className="rounded-lg border p-1" onClick={() => changeQuantity(item.productId, item.unitId, -1)}><Minus className="h-4 w-4"/></button><span className="w-7 text-center text-sm font-bold">{item.quantity}</span><button className="rounded-lg border p-1" onClick={() => changeQuantity(item.productId, item.unitId, 1)}><Plus className="h-4 w-4"/></button></div><p className="font-black">{formatMoney(fromMinorUnits(item.quantity * item.unitPriceMinor))}</p></div></div>)}</div> : <div className="flex h-full min-h-52 flex-col items-center justify-center text-center"><ShoppingCart className="h-10 w-10 text-slate-200"/><p className="mt-3 font-bold text-slate-700">Your cart is empty</p><p className="mt-1 text-sm text-slate-400">Select a product to begin.</p></div>}</div>
         <div className="border-t border-slate-200 bg-slate-50 p-4">
-          <div className="mb-3 flex items-center justify-between"><span className="text-sm text-slate-500">Sale total</span><span className="text-2xl font-black">{formatMoney(fromMinorUnits(totalMinor))}</span></div>
-          <div className="mb-3 rounded-2xl border border-slate-200 bg-white p-3">
-            <div className="flex items-center justify-between text-sm"><span className="text-slate-500">Cash received</span><span className="font-black">{formatMoney(fromMinorUnits(receivedMinor))}</span></div>
-            <div className="mt-2 flex items-center justify-between text-sm"><span className="text-slate-500">Change due</span><span className={`font-black ${changeDueMinor >= 0 ? "text-emerald-700" : "text-red-600"}`}>{formatMoney(fromMinorUnits(changeDueMinor))}</span></div>
+          <div className="checkout-summary-grid">
+            <div className="checkout-summary-card">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sale total</div>
+              <div className="mt-1 text-2xl font-black text-slate-900">{formatMoney(fromMinorUnits(totalMinor))}</div>
+            </div>
+            <div className="checkout-summary-card">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Cash received</div>
+              <div className="mt-1 text-lg font-black text-slate-900">{formatMoney(fromMinorUnits(receivedMinor))}</div>
+            </div>
+          </div>
+          <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
+            <div className="flex items-center justify-between text-sm"><span className="text-slate-500">Change due</span><span className={`font-black ${changeDueMinor >= 0 ? "text-emerald-700" : "text-red-600"}`}>{formatMoney(fromMinorUnits(changeDueMinor))}</span></div>
           </div>
           <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
             <label className="mb-1 block text-xs font-bold text-slate-600">Customer</label>
@@ -696,17 +710,19 @@ export function PosShell({
             <label className="mt-3 mb-1 block text-xs font-bold text-slate-600">Notes</label>
             <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Add a note" />
           </div>
-          <label className="mb-1 block text-xs font-bold text-slate-600">Cash received</label>
-          <Input type="number" min="0" step="0.01" value={amountReceived} onChange={(e) => setAmountReceived(e.target.value)} placeholder="0.00" />
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived(String(totalMinor / 100))}>Exact</Button>
-            <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived("500")}>KES 500</Button>
-            <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived("1000")}>KES 1,000</Button>
-            <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived("2000")}>KES 2,000</Button>
-            <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived("")}>Custom</Button>
+          <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
+            <label className="mb-1 block text-xs font-bold text-slate-600">Cash received</label>
+            <Input type="number" min="0" step="0.01" value={amountReceived} onChange={(e) => setAmountReceived(e.target.value)} placeholder="0.00" />
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived(String(totalMinor / 100))}>Exact</Button>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived("500")}>KES 500</Button>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived("1000")}>KES 1,000</Button>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived("2000")}>KES 2,000</Button>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived("")}>Custom</Button>
+            </div>
           </div>
           <label className="mt-3 flex items-center gap-2 text-sm text-slate-600"><input className="h-4 w-4 rounded border-slate-300" type="checkbox" checked={splitPaymentEnabled} onChange={(e) => setSplitPaymentEnabled(e.target.checked)} />Allow split payment</label>
-          <div className="mt-3 grid grid-cols-3 gap-2">
+          <div className="checkout-actions-grid mt-3">
             <button onClick={() => setPaymentMode("CASH")} className={`rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CASH" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600"}`}><Banknote className="mx-auto mb-1 h-5 w-5"/>Cash</button>
             <button onClick={() => setPaymentMode("MPESA")} disabled={!online || !mpesaEnabled} className={`rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "MPESA" ? "border-sky-200 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"} disabled:opacity-50`}><MdPhoneAndroid className="mx-auto mb-1 h-5 w-5"/>M-Pesa</button>
             <button onClick={() => setPaymentMode("CARD")} disabled={!online} className={`rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CARD" ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-600"} disabled:opacity-50`}><CreditCard className="mx-auto mb-1 h-5 w-5"/>Card</button>
