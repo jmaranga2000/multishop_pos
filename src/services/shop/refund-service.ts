@@ -1,6 +1,7 @@
 import { endOfDay, startOfDay } from "date-fns";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
+import { queueNotification } from "@/lib/notifications/service";
 import { writeAuditLog } from "@/services/shared/audit-service";
 import type { z } from "zod";
 import type { createRefundRequestSchema } from "@/validators/shop/refund-validator";
@@ -105,6 +106,19 @@ export async function createShopRefundRequest(shopUser: ShopContext, input: Crea
           message: `Refund requested for receipt ${sale.receiptNumber} via ${input.requestType}.`,
           actionUrl: "/admin/refunds",
         },
+      });
+      await queueNotification({
+        tx,
+        businessId: shopUser.businessId,
+        userId: admin.id,
+        shopId: shopUser.shopId,
+        type: "REFUND_REQUEST",
+        priority: "URGENT",
+        title: `Refund requested for ${sale.receiptNumber}`,
+        message: `A shop requested a refund for receipt ${sale.receiptNumber}. Tap to review.`,
+        actionUrl: "/admin/refunds",
+        push: true,
+        inApp: false,
       });
     }
     await writeAuditLog(tx, {
