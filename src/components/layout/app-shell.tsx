@@ -65,7 +65,7 @@ export function AppShell({ children, navItems, userName, userEmail, accountLabel
       </header>
       {mobileOpen && <div className="fixed inset-0 z-40">
         <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
-        <aside className="absolute left-0 top-0 h-full w-64 bg-[#0b1739] p-6">
+        <aside className="absolute left-0 top-0 h-full w-64 overflow-y-auto bg-[#0b1739] p-6">
           <div className="flex items-center gap-3 mb-4"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-500 text-white"><Store className="h-6 w-6" /></div><div><p className="font-extrabold text-white">MultiShop POS</p><p className="text-xs text-blue-200">{accountLabel}</p></div></div>
           <SidebarNav items={navItems} />
           <div className="mt-6"><SignOutButton /></div>
