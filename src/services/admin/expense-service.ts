@@ -27,6 +27,7 @@ export async function getExpenseCategoryById(businessId: string, categoryId: str
   return db.expenseCategory.findFirst({
     where: { id: categoryId, businessId },
     include: {
+      business: { select: { currency: true } },
       expenses: {
         orderBy: { occurredAt: "desc" },
         take: 20,

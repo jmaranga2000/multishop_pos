@@ -3,7 +3,7 @@ import { ArrowLeft, ReceiptText } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
 import { updateExpenseCategoryAction } from "@/actions/admin/expense-actions";
 import { getExpenseCategoryById } from "@/services/admin/expense-service";
-import { formatMoney } from "@/lib/utils";
+import { formatDate, formatMoney } from "@/lib/utils";
 import { PageHeading } from "@/components/ui/page-heading";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -84,7 +84,7 @@ export default async function ExpenseTypeDetailsPage({ params }: { params: Promi
                         {expense.description}
                       </div>
                     </td>
-                    <td>{formatMoney(expense.amount.toString(), user.businessId)}</td>
+                    <td>{formatMoney(expense.amount.toString(), category.business?.currency ?? "KES")}</td>
                     <td>{expense.occurredAt.toLocaleDateString("en-KE")}</td>
                   </tr>
                 ))}

@@ -29,6 +29,7 @@ export async function reviewRefundRequest(admin: AdminContext, input: ReviewRefu
     include: { shop: true, sale: { include: { items: { include: { product: true } }, refunds: true } } },
   });
   if (!request) throw new AppError("Refund request was not found.", "REFUND_NOT_FOUND", 404);
+  if (!request.sale) throw new AppError("The associated sale record was not found.", "SALE_NOT_FOUND", 404);
   if (request.status !== "PENDING") throw new AppError("This refund request has already been reviewed.");
 
   if (input.decision === "REJECTED") {

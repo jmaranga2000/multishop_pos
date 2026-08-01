@@ -38,11 +38,11 @@ export default async function RefundsPage() {
                 <td>
                   <div className="flex items-center gap-2">
                     <RotateCcw className="h-4 w-4 text-slate-400" />
-                    <span className="font-bold">{request.sale.receiptNumber}</span>
+                    <span className="font-bold">{request.sale?.receiptNumber ?? "Unknown receipt"}</span>
                   </div>
                 </td>
                 <td>{request.shop.name}</td>
-                <td>{formatMoney(request.sale.total.toString(), business.currency)}</td>
+                <td>{formatMoney(request.sale?.total?.toString() ?? "0", business.currency)}</td>
                 <td className="max-w-sm">
                   <div className="space-y-1 text-sm text-slate-600">
                     <p><span className="font-semibold">Type:</span> {request.requestType}</p>
@@ -62,7 +62,11 @@ export default async function RefundsPage() {
                       <form action={reviewRefundAction} className="flex min-w-80 gap-2">
                         <input type="hidden" name="refundRequestId" value={request.id} />
                         <input type="hidden" name="decision" value="APPROVED" />
-                        <Input name="reviewNote" placeholder="Optional review note" />
+                        <Input
+                          name="reviewNote"
+                          placeholder={request.requestManagerApproval ? "Review note required for manager approval" : "Optional review note"}
+                          required={request.requestManagerApproval}
+                        />
                         <Button size="sm" variant="success"><Check className="h-4 w-4" />Approve</Button>
                       </form>
                       <form action={reviewRefundAction}>

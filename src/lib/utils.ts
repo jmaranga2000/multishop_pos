@@ -17,6 +17,11 @@ export function formatMoney(value: string | number, currency = "KES") {
   return formatter.format(Number.isFinite(amount) ? amount : 0)
 }
 
+export function formatDate(value: string | Date, locale = "en-KE") {
+  const date = typeof value === "string" ? new Date(value) : value
+  return Number.isFinite(date.getTime()) ? date.toLocaleDateString(locale) : ""
+}
+
 export function getStockStatus(quantity: number, reorderLevel: number, criticalLevel: number) {
   if (quantity <= 0) return "OUT_OF_STOCK" as const
   if (quantity <= criticalLevel) return "CRITICAL" as const
