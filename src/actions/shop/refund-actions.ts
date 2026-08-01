@@ -37,6 +37,7 @@ export async function createRefundRequestAction(formData: FormData) {
     revalidatePath("/shop/refund-request");
     redirect("/shop/refund-request?success=Refund+request+submitted");
   } catch (error) {
+    if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
     const message = error instanceof Error ? encodeURIComponent(error.message) : "Unable+to+submit+refund+request";
     redirect(`/shop/refund-request?error=${message}`);
   }
