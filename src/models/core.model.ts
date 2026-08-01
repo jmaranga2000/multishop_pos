@@ -17,6 +17,7 @@ export const BusinessModel = defineModel<BusinessDocument>({
     syncIntervalMinutes: 5,
     weeklyReportDay: 1,
     weeklyReportHour: 8,
+    posBarcodeScanningEnabled: true,
   },
   indexes: [index({ code: 1 }, { unique: true })],
 });
@@ -24,7 +25,12 @@ export const BusinessModel = defineModel<BusinessDocument>({
 export const ShopModel = defineModel<ShopDocument>({
   collection: "shops",
   required: ["businessId", "name", "code"],
-  defaults: { isActive: true },
+  defaults: {
+    isActive: true,
+    mpesaEnabled: false,
+    mpesaStkEnabled: false,
+    mpesaPayToTillEnabled: false,
+  },
   indexes: [
     index({ code: 1 }, { unique: true }),
     index({ businessId: 1, isActive: 1 }),

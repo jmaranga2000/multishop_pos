@@ -3,12 +3,16 @@ import { AppError } from "@/lib/errors/app-error";
 import { writeAuditLog } from "@/services/shared/audit-service";
 import type { z } from "zod";
 import type { reviewExpenseSchema } from "@/validators/admin/review-validator";
+import type { createExpenseCategorySchema, updateExpenseCategorySchema } from "@/validators/admin/expense-validator";
 
 type ReviewExpenseInput = z.infer<typeof reviewExpenseSchema>;
+type CreateExpenseCategoryInput = z.infer<typeof createExpenseCategorySchema>;
+type UpdateExpenseCategoryInput = z.infer<typeof updateExpenseCategorySchema>;
 
 export async function getAdminExpensePageData(businessId: string) {
-  const [business, expenses] = await Promise.all([
+  const [business, categories, expenses] = await Promise.all([
     db.business.findUniqueOrThrow({ where: { id: businessId } }),
+    db.expenseCategory.findMany({ where: { businessId }, orderBy: { name: "asc" } }),
     db.expense.findMany({
       where: { shop: { businessId } },
       include: { shop: true, category: true },
@@ -16,7 +20,20 @@ export async function getAdminExpensePageData(businessId: string) {
       take: 200,
     }),
   ]);
-  return { business, expenses };
+  return { business, categories, expenses };
+}
+
+export async function getExpenseCategoryById(businessId: string, categoryId: string) {
+  return db.expenseCategory.findFirst({
+    where: { id: categoryId, businessId },
+    include: {
+      expenses: {
+        orderBy: { occurredAt: "desc" },
+        take: 20,
+        include: { shop: true },
+      },
+    },
+  });
 }
 
 export async function reviewExpense(admin: { id: string; businessId: string }, input: ReviewExpenseInput) {
@@ -33,4 +50,34 @@ export async function reviewExpense(admin: { id: string; businessId: string }, i
     description: `${input.decision === "APPROVED" ? "Approved" : "Rejected"} expense from ${expense.shop.name}.`,
   });
   return updated;
+}
+
+export async function createExpenseCategory(admin: { businessId: string }, input: CreateExpenseCategoryInput) {
+  const existing = await db.expenseCategory.findFirst({ where: { businessId: admin.businessId, name: input.name, isActive: true } });
+  if (existing) throw new AppError("An active expense category with this name already exists.");
+
+  return db.expenseCategory.create({
+    data: {
+      businessId: admin.businessId,
+      name: input.name,
+      isActive: true,
+    },
+  });
+}
+
+export async function updateExpenseCategory(admin: { businessId: string }, input: UpdateExpenseCategoryInput) {
+  const category = await db.expenseCategory.findFirst({ where: { id: input.id, businessId: admin.businessId } });
+  if (!category) throw new AppError("Expense category was not found.", "EXPENSE_CATEGORY_NOT_FOUND", 404);
+
+  return db.expenseCategory.update({
+    where: { id: input.id },
+    data: { name: input.name },
+  });
+}
+
+export async function toggleExpenseCategoryActive(admin: { businessId: string }, input: { id: string; isActive: boolean }) {
+  const category = await db.expenseCategory.findFirst({ where: { id: input.id, businessId: admin.businessId } });
+  if (!category) throw new AppError("Expense category was not found.", "EXPENSE_CATEGORY_NOT_FOUND", 404);
+
+  return db.expenseCategory.update({ where: { id: input.id }, data: { isActive: input.isActive } });
 }

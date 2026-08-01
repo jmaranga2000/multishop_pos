@@ -39,6 +39,7 @@ export default async function SettingsPage() {
               <div><label className="mb-1 block text-xs font-bold text-slate-600">Default critical level</label><Input name="defaultCriticalLevel" type="number" min="0" defaultValue={business.defaultCriticalLevel} required /></div>
               <div><label className="mb-1 block text-xs font-bold text-slate-600">Weekly report day (0–6)</label><Input name="weeklyReportDay" type="number" min="0" max="6" defaultValue={business.weeklyReportDay} required /></div>
               <div><label className="mb-1 block text-xs font-bold text-slate-600">Weekly report hour (0–23)</label><Input name="weeklyReportHour" type="number" min="0" max="23" defaultValue={business.weeklyReportHour} required /></div>
+              <div className="md:col-span-2"><label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-700"><input className={checkboxClass} type="checkbox" name="posBarcodeScanningEnabled" defaultChecked={Boolean(business.posBarcodeScanningEnabled)} />Enable barcode scanning on the shop POS</label></div>
               <div className="md:col-span-2"><label className="mb-1 block text-xs font-bold text-slate-600">Receipt footer</label><textarea name="receiptFooter" defaultValue={business.receiptFooter ?? ""} className="min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm" /></div>
               <div className="md:col-span-2"><Button><Save className="h-4 w-4" />Save business settings</Button></div>
             </form>

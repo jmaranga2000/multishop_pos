@@ -44,13 +44,13 @@ export const SaleModel = defineModel<SaleDocument>({
   collection: "sales",
   required: ["shopId", "receiptNumber", "subtotal", "total", "amountPaid", "occurredAt"],
   defaults: {
-    status: "COMPLETED",
+    status: "PENDING",
     discountTotal: 0,
     taxTotal: 0,
     changeDue: 0,
     isOffline: false,
   },
-  enums: { status: ["COMPLETED", "VOIDED", "REFUNDED"] },
+  enums: { status: ["PENDING", "COMPLETED", "VOIDED", "REFUNDED"] },
   indexes: [
     index({ receiptNumber: 1 }, { unique: true }),
     index(

@@ -25,6 +25,7 @@ export async function updateBusinessSettings(
     syncIntervalMinutes: number;
     weeklyReportDay: number;
     weeklyReportHour: number;
+    posBarcodeScanningEnabled: boolean;
   },
 ) {
   return db.$transaction(async (tx) => {
@@ -45,6 +46,7 @@ export async function updateBusinessSettings(
         syncIntervalMinutes: input.syncIntervalMinutes,
         weeklyReportDay: input.weeklyReportDay,
         weeklyReportHour: input.weeklyReportHour,
+        posBarcodeScanningEnabled: input.posBarcodeScanningEnabled,
       },
     });
     await writeAuditLog(tx, {

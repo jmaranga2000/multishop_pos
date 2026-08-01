@@ -10,7 +10,7 @@ export type UserRole = "ADMIN" | "SHOP";
 export type AccountStatus = "ACTIVE" | "SUSPENDED";
 export type ProductStatus = "ACTIVE" | "INACTIVE";
 export type RegisterSessionStatus = "OPEN" | "CLOSED";
-export type SaleStatus = "COMPLETED" | "VOIDED" | "REFUNDED";
+export type SaleStatus = "PENDING" | "COMPLETED" | "VOIDED" | "REFUNDED";
 export type PaymentMethod = "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER" | "MIXED";
 export type PaymentStatus = "PENDING" | "VERIFIED" | "FAILED";
 export type TransferStatus = "DRAFT" | "DISPATCHED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CANCELLED";
@@ -51,6 +51,7 @@ export interface BusinessDocument extends BaseDocument {
   syncIntervalMinutes: number;
   weeklyReportDay: number;
   weeklyReportHour: number;
+  posBarcodeScanningEnabled: boolean;
 }
 
 export interface ShopDocument extends BaseDocument {
@@ -61,6 +62,21 @@ export interface ShopDocument extends BaseDocument {
   phone?: string | null;
   address?: string | null;
   isActive: boolean;
+  mpesaEnabled?: boolean;
+  mpesaStkEnabled?: boolean;
+  mpesaPayToTillEnabled?: boolean;
+  mpesaTillNumber?: string | null;
+  mpesaEnvironment?: string | null;
+  mpesaBusinessShortcode?: string | null;
+  mpesaPartyB?: string | null;
+  mpesaConsumerKeyRef?: string | null;
+  mpesaConsumerSecretRef?: string | null;
+  mpesaPasskeyRef?: string | null;
+  mpesaStkCallbackUrl?: string | null;
+  mpesaC2bConfirmationUrl?: string | null;
+  mpesaC2bValidationUrl?: string | null;
+  mpesaStatusResultUrl?: string | null;
+  mpesaStatusTimeoutUrl?: string | null;
 }
 
 export interface UserDocument extends BaseDocument {
@@ -218,6 +234,62 @@ export interface PaymentDocument extends BaseDocument {
   status: PaymentStatus;
   amount: number;
   reference?: string | null;
+}
+
+export type MpesaPaymentMode = "STK_PUSH" | "PAY_TO_TILL";
+export type MpesaPaymentStatus = "PENDING" | "WAITING_FOR_CUSTOMER" | "SENDING_REQUEST" | "REQUEST_SENT" | "RECEIVED" | "MATCHING" | "MATCHED" | "SUCCESSFUL" | "FAILED" | "CANCELLED" | "TIMED_OUT" | "UNDERPAID" | "OVERPAID" | "AMBIGUOUS" | "UNMATCHED" | "REVERSED" | "CONFIRMATION_DELAYED" | "CHECKING_PAYMENT_STATUS" | "READY";
+export type MpesaMatchStatus = "PENDING" | "MATCHED" | "AMBIGUOUS" | "UNMATCHED" | "REVERSED";
+
+export interface MpesaPaymentDocument extends BaseDocument {
+  shopId: string;
+  saleId: string;
+  cashierId?: string | null;
+  shiftId?: string | null;
+  customerId?: string | null;
+  mode: MpesaPaymentMode;
+  status: MpesaPaymentStatus;
+  matchStatus: MpesaMatchStatus;
+  expectedAmountMinor: number;
+  receivedAmountMinor: number;
+  customerPhone?: string | null;
+  tillNumber?: string | null;
+  shortcode?: string | null;
+  internalReference: string;
+  clientReference?: string | null;
+  idempotencyKey: string;
+  merchantRequestId?: string | null;
+  checkoutRequestId?: string | null;
+  transactionId?: string | null;
+  receiptNumber?: string | null;
+  resultCode?: string | null;
+  resultDescription?: string | null;
+  callbackPayload?: Record<string, unknown> | null;
+  expiryAt: Date;
+  receivedAt?: Date | null;
+  completedAt?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface MpesaCallbackEventDocument extends BaseDocument {
+  shopId: string;
+  transactionId: string;
+  transactionType?: string | null;
+  transactionTime?: string | null;
+  transactionAmount?: string | null;
+  businessShortCode?: string | null;
+  tillNumber?: string | null;
+  customerPhone?: string | null;
+  customerName?: string | null;
+  billReference?: string | null;
+  invoiceNumber?: string | null;
+  organizationBalance?: string | null;
+  callbackPayload?: Record<string, unknown> | null;
+  processingStatus: "PENDING" | "PROCESSED" | "DUPLICATE" | "FAILED";
+  matchedPaymentId?: string | null;
+  matchedSaleId?: string | null;
+  createdAt: Date;
+  processedAt?: Date | null;
 }
 
 export interface StockMovementDocument extends BaseDocument {

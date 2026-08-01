@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const optionalText = z.string().trim().optional().default("");
+const checkbox = z.preprocess((value) => value === "on" || value === "true" || value === true, z.boolean());
 
 export const businessSettingsSchema = z.object({
   name: z.string().trim().min(2).max(120),
@@ -17,12 +18,11 @@ export const businessSettingsSchema = z.object({
   syncIntervalMinutes: z.coerce.number().int().min(1).max(1440),
   weeklyReportDay: z.coerce.number().int().min(0).max(6),
   weeklyReportHour: z.coerce.number().int().min(0).max(23),
+  posBarcodeScanningEnabled: checkbox,
 }).refine((data) => data.defaultCriticalLevel <= data.defaultReorderLevel, {
   message: "Critical level must not exceed the reorder level.",
   path: ["defaultCriticalLevel"],
 });
-
-const checkbox = z.preprocess((value) => value === "on" || value === "true" || value === true, z.boolean());
 
 export const notificationPreferencesSchema = z.object({
   lowStockInApp: checkbox,

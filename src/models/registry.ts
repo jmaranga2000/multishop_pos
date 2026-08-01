@@ -9,6 +9,7 @@ import type {
   DefaultValue,
   MongoModelDefinition,
 } from "./model.types";
+import { mpesaModels } from "./mpesa.model";
 import { notificationModels } from "./notification.model";
 import { offlineModels } from "./offline.model";
 import { reportingModels } from "./reporting.model";
@@ -21,6 +22,7 @@ export const modelDefinitions = {
   ...inventoryModels,
   ...salesModels,
   ...expenseModels,
+  ...mpesaModels,
   ...notificationModels,
   ...offlineModels,
   ...reportingModels,
