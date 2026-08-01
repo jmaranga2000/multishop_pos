@@ -1,7 +1,7 @@
 import { endOfDay, startOfDay, subDays } from "date-fns";
 import { db } from "@/lib/db";
+import { buildSnapshotHtml, queueNotification } from "@/lib/notifications/service";
 import { getStockStatus } from "@/lib/utils";
-import { queueNotification } from "@/lib/notifications/service";
 
 export function previousWeekRange(reference = new Date()) {
   const day = reference.getDay() || 7;
@@ -25,7 +25,7 @@ export async function generateInventoryReport(businessId: string, periodStart: D
     movementMap.set(key, [...(movementMap.get(key) ?? []), movement]);
   }
 
-  const rows = inventory.map((entry) => {
+  const inventoryRows = inventory.map((entry) => {
     const list = movementMap.get(`${entry.shopId}:${entry.productId}`) ?? [];
     const netChange = list.reduce((sum, movement) => sum + movement.quantityChange, 0);
     const sold = Math.abs(list.filter((movement) => movement.type === "SALE" || movement.type === "OFFLINE_RECONCILIATION").reduce((sum, movement) => sum + Math.min(0, movement.quantityChange), 0));
@@ -52,20 +52,33 @@ export async function generateInventoryReport(businessId: string, periodStart: D
     };
   });
 
-  const lowStockCount = rows.filter((row) => row.stockStatus === "LOW_STOCK").length;
-  const criticalStockCount = rows.filter((row) => row.stockStatus === "CRITICAL").length;
-  const outOfStockCount = rows.filter((row) => row.stockStatus === "OUT_OF_STOCK").length;
+  const lowStockCount = inventoryRows.filter((row) => row.stockStatus === "LOW_STOCK").length;
+  const criticalStockCount = inventoryRows.filter((row) => row.stockStatus === "CRITICAL").length;
+  const outOfStockCount = inventoryRows.filter((row) => row.stockStatus === "OUT_OF_STOCK").length;
   const report = await db.$transaction(async (tx) => {
     const existing = await tx.inventoryReport.findUnique({ where: { businessId_periodStart_periodEnd: { businessId, periodStart, periodEnd } } });
     if (existing) await tx.inventoryReportItem.deleteMany({ where: { reportId: existing.id } });
     const saved = await tx.inventoryReport.upsert({
       where: { businessId_periodStart_periodEnd: { businessId, periodStart, periodEnd } },
-      update: { status: "COMPLETED", totalStockQuantity: rows.reduce((sum, row) => sum + row.entry.quantity, 0), totalCostValue: rows.reduce((sum, row) => sum + row.costValue, 0), totalSellingValue: rows.reduce((sum, row) => sum + row.sellingValue, 0), lowStockCount, criticalStockCount, outOfStockCount, generatedAt: new Date(), errorMessage: null },
-      create: { businessId, periodStart, periodEnd, status: "COMPLETED", totalStockQuantity: rows.reduce((sum, row) => sum + row.entry.quantity, 0), totalCostValue: rows.reduce((sum, row) => sum + row.costValue, 0), totalSellingValue: rows.reduce((sum, row) => sum + row.sellingValue, 0), lowStockCount, criticalStockCount, outOfStockCount, generatedAt: new Date() },
+      update: { status: "COMPLETED", totalStockQuantity: inventoryRows.reduce((sum, row) => sum + row.entry.quantity, 0), totalCostValue: inventoryRows.reduce((sum, row) => sum + row.costValue, 0), totalSellingValue: inventoryRows.reduce((sum, row) => sum + row.sellingValue, 0), lowStockCount, criticalStockCount, outOfStockCount, generatedAt: new Date(), errorMessage: null },
+      create: { businessId, periodStart, periodEnd, status: "COMPLETED", totalStockQuantity: inventoryRows.reduce((sum, row) => sum + row.entry.quantity, 0), totalCostValue: inventoryRows.reduce((sum, row) => sum + row.costValue, 0), totalSellingValue: inventoryRows.reduce((sum, row) => sum + row.sellingValue, 0), lowStockCount, criticalStockCount, outOfStockCount, generatedAt: new Date() },
     });
-    if (rows.length) await tx.inventoryReportItem.createMany({ data: rows.map((row) => ({ reportId: saved.id, shopId: row.entry.shopId, productId: row.entry.productId, openingQuantity: row.openingQuantity, quantityAdded: row.quantityAdded, quantitySold: row.quantitySold, quantityTransferredIn: row.quantityTransferredIn, quantityTransferredOut: row.quantityTransferredOut, quantityDamaged: row.quantityDamaged, closingQuantity: row.entry.quantity, reorderLevel: row.entry.reorderLevel, criticalLevel: row.entry.criticalLevel, stockStatus: row.stockStatus, averageDailySales: row.averageDailySales, estimatedDaysRemaining: row.estimatedDaysRemaining, costValue: row.costValue, sellingValue: row.sellingValue })) });
+    if (inventoryRows.length) await tx.inventoryReportItem.createMany({ data: inventoryRows.map((row) => ({ reportId: saved.id, shopId: row.entry.shopId, productId: row.entry.productId, openingQuantity: row.openingQuantity, quantityAdded: row.quantityAdded, quantitySold: row.quantitySold, quantityTransferredIn: row.quantityTransferredIn, quantityTransferredOut: row.quantityTransferredOut, quantityDamaged: row.quantityDamaged, closingQuantity: row.entry.quantity, reorderLevel: row.entry.reorderLevel, criticalLevel: row.entry.criticalLevel, stockStatus: row.stockStatus, averageDailySales: row.averageDailySales, estimatedDaysRemaining: row.estimatedDaysRemaining, costValue: row.costValue, sellingValue: row.sellingValue })) });
     return saved;
   });
+
+  const preferences = await db.notificationPreference.findUnique({ where: { businessId } });
+  const inAppEnabled = preferences?.weeklyReportInApp ?? true;
+  const pushEnabled = preferences?.weeklyReportPush ?? true;
+  const emailEnabled = preferences?.weeklyReportEmail ?? true;
+  const summaryRows = [
+    { label: "Low stock", value: String(lowStockCount), description: "Products near threshold", tone: "amber" as const },
+    { label: "Critical", value: String(criticalStockCount), description: "Reorder immediately", tone: "red" as const },
+    { label: "Out of stock", value: String(outOfStockCount), description: "No inventory left", tone: "red" as const },
+  ];
+  const html = buildSnapshotHtml(`${business.name} weekly inventory summary`, summaryRows, `${periodStart.toLocaleDateString("en-KE")} to ${periodEnd.toLocaleDateString("en-KE")}`);
+
+  if (!inAppEnabled && !pushEnabled && !emailEnabled) return report;
 
   await queueNotification({
     businessId,
@@ -74,8 +87,9 @@ export async function generateInventoryReport(businessId: string, periodStart: D
     title: "Weekly inventory report is ready",
     message: `${business.name}: ${lowStockCount} low, ${criticalStockCount} critical and ${outOfStockCount} out-of-stock product records require review.`,
     actionUrl: `/admin/reports/inventory/${report.id}`,
-    push: true,
-    email: { to: process.env.ADMIN_EMAIL ?? admin.email },
+    inApp: inAppEnabled,
+    push: pushEnabled,
+    email: emailEnabled && (process.env.ADMIN_EMAIL ?? admin.email) ? { to: process.env.ADMIN_EMAIL ?? admin.email, subject: "Weekly inventory snapshot", html } : undefined,
   });
   return report;
 }
