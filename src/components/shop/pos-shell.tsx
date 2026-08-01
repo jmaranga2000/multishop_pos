@@ -687,103 +687,105 @@ export function PosShell({
           </div>
           <Badge>{cart.reduce((sum, item) => sum + item.quantity, 0)} items</Badge>
         </div>
-        <div className="cart-scroll p-4">{cart.length ? <div className="space-y-3">{cart.map((item) => <div key={`${item.productId}-${item.unitId ?? "default"}`} className="rounded-xl border border-slate-200 p-3"><div className="flex justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-bold">{item.name}</p><p className="text-xs text-slate-500">{(item.unitName ?? item.unitSymbol) ? `${item.unitName ?? item.unitSymbol} • ` : ""}{formatMoney(fromMinorUnits(item.unitPriceMinor))} each</p></div><button onClick={() => setCart((current) => current.filter((line) => line.productId !== item.productId || line.unitId !== item.unitId))}><Trash2 className="h-4 w-4 text-red-500"/></button></div><div className="mt-3 flex items-center justify-between"><div className="flex items-center gap-2"><button className="rounded-lg border p-1" onClick={() => changeQuantity(item.productId, item.unitId, -1)}><Minus className="h-4 w-4"/></button><span className="w-7 text-center text-sm font-bold">{item.quantity}</span><button className="rounded-lg border p-1" onClick={() => changeQuantity(item.productId, item.unitId, 1)}><Plus className="h-4 w-4"/></button></div><p className="font-black">{formatMoney(fromMinorUnits(item.quantity * item.unitPriceMinor))}</p></div></div>)}</div> : <div className="flex h-full min-h-52 flex-col items-center justify-center text-center"><ShoppingCart className="h-10 w-10 text-slate-200"/><p className="mt-3 font-bold text-slate-700">Your cart is empty</p><p className="mt-1 text-sm text-slate-400">Select a product to begin.</p></div>}</div>
-        <div className="border-t border-slate-200 bg-slate-50 p-4">
-          <div className="checkout-summary-grid">
-            <div className="checkout-summary-card">
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sale total</div>
-              <div className="mt-1 text-2xl font-black text-slate-900">{formatMoney(fromMinorUnits(totalMinor))}</div>
-            </div>
-            <div className="checkout-summary-card">
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Cash received</div>
-              <div className="mt-1 text-lg font-black text-slate-900">{formatMoney(fromMinorUnits(receivedMinor))}</div>
-            </div>
-          </div>
-          <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
-            <div className="flex items-center justify-between text-sm"><span className="text-slate-500">Change due</span><span className={`font-black ${changeDueMinor >= 0 ? "text-emerald-700" : "text-red-600"}`}>{formatMoney(fromMinorUnits(changeDueMinor))}</span></div>
-          </div>
-          <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
-            <label className="mb-1 block text-xs font-bold text-slate-600">Customer</label>
-            <Input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Walk-in customer" />
-            <label className="mt-3 mb-1 block text-xs font-bold text-slate-600">Discount</label>
-            <Input type="number" min="0" step="0.01" value={discountMinor / 100} onChange={(e) => setDiscountMinor(Math.round(Number(e.target.value || 0) * 100))} placeholder="0.00" />
-            <label className="mt-3 mb-1 block text-xs font-bold text-slate-600">Notes</label>
-            <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Add a note" />
-          </div>
-          <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
-            <label className="mb-1 block text-xs font-bold text-slate-600">Cash received</label>
-            <Input type="number" min="0" step="0.01" value={amountReceived} onChange={(e) => setAmountReceived(e.target.value)} placeholder="0.00" />
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived(String(totalMinor / 100))}>Exact</Button>
-              <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived("500")}>KES 500</Button>
-              <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived("1000")}>KES 1,000</Button>
-              <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived("2000")}>KES 2,000</Button>
-              <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived("")}>Custom</Button>
-            </div>
-          </div>
-          <label className="mt-3 flex items-center gap-2 text-sm text-slate-600"><input className="h-4 w-4 rounded border-slate-300" type="checkbox" checked={splitPaymentEnabled} onChange={(e) => setSplitPaymentEnabled(e.target.checked)} />Allow split payment</label>
-          <div className="checkout-actions-grid mt-3">
-            <button onClick={() => setPaymentMode("CASH")} className={`rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CASH" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600"}`}><Banknote className="mx-auto mb-1 h-5 w-5"/>Cash</button>
-            <button onClick={() => setPaymentMode("MPESA")} disabled={!online || !mpesaEnabled} className={`rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "MPESA" ? "border-sky-200 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"} disabled:opacity-50`}><MdPhoneAndroid className="mx-auto mb-1 h-5 w-5"/>M-Pesa</button>
-            <button onClick={() => setPaymentMode("CARD")} disabled={!online} className={`rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CARD" ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-600"} disabled:opacity-50`}><CreditCard className="mx-auto mb-1 h-5 w-5"/>Card</button>
-          </div>
-          {!online ? <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Offline mode only allows cash. M-Pesa and card payments remain unavailable until the connection is restored.</div> : null}
-          {paymentMode === "MPESA" && mpesaEnabled ? (
-            <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
-              <div className="flex flex-wrap gap-2">
-                {mpesaStkEnabled ? <Button type="button" variant={mpesaFlow === "STK_PUSH" ? "primary" : "secondary"} onClick={() => setMpesaFlow("STK_PUSH")}>Send STK Push</Button> : null}
-                {mpesaPayToTillEnabled ? <Button type="button" variant={mpesaFlow === "PAY_TO_TILL" ? "primary" : "secondary"} onClick={() => setMpesaFlow("PAY_TO_TILL")}>Customer Pays to Till</Button> : null}
+        <div className="cart-scroll flex flex-col p-4">
+          {cart.length ? <div className="space-y-3">{cart.map((item) => <div key={`${item.productId}-${item.unitId ?? "default"}`} className="rounded-xl border border-slate-200 p-3"><div className="flex justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-bold">{item.name}</p><p className="text-xs text-slate-500">{(item.unitName ?? item.unitSymbol) ? `${item.unitName ?? item.unitSymbol} • ` : ""}{formatMoney(fromMinorUnits(item.unitPriceMinor))} each</p></div><button onClick={() => setCart((current) => current.filter((line) => line.productId !== item.productId || line.unitId !== item.unitId))}><Trash2 className="h-4 w-4 text-red-500"/></button></div><div className="mt-3 flex items-center justify-between"><div className="flex items-center gap-2"><button className="rounded-lg border p-1" onClick={() => changeQuantity(item.productId, item.unitId, -1)}><Minus className="h-4 w-4"/></button><span className="w-7 text-center text-sm font-bold">{item.quantity}</span><button className="rounded-lg border p-1" onClick={() => changeQuantity(item.productId, item.unitId, 1)}><Plus className="h-4 w-4"/></button></div><p className="font-black">{formatMoney(fromMinorUnits(item.quantity * item.unitPriceMinor))}</p></div></div>)}</div> : <div className="flex min-h-52 flex-col items-center justify-center text-center"><ShoppingCart className="h-10 w-10 text-slate-200"/><p className="mt-3 font-bold text-slate-700">Your cart is empty</p><p className="mt-1 text-sm text-slate-400">Select a product to begin.</p></div>}
+          <div className="mt-4 border-t border-slate-200 bg-slate-50 p-4 -mx-4">
+            <div className="checkout-summary-grid">
+              <div className="checkout-summary-card">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sale total</div>
+                <div className="mt-1 text-2xl font-black text-slate-900">{formatMoney(fromMinorUnits(totalMinor))}</div>
               </div>
-              {mpesaFlow === "STK_PUSH" ? (
-                <div className="mt-3 space-y-3">
-                  <div className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-700">
-                    <div className="font-semibold">M-Pesa STK Push</div>
-                    <div className="mt-1">Amount: {formatMoney(fromMinorUnits(totalMinor))}</div>
-                    <div className="mt-1">Payment status: {mpesaStatus}</div>
-                    {mpesaReference ? <div className="mt-1">Internal reference: {mpesaReference}</div> : null}
-                  </div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Customer phone number</label>
-                  <Input value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="0712 345 678" />
-                  <Button type="button" onClick={() => void startMpesaPayment("STK_PUSH")} disabled={mpesaInFlight || !cart.length}>{mpesaInFlight ? "Sending request..." : "Send payment request"}</Button>
-                  {mpesaError ? <p className="text-sm text-red-600">{mpesaError}</p> : null}
-                  <div className="flex flex-wrap gap-2">
-                    <Button type="button" variant="secondary" onClick={() => setMpesaStatus("Ready")}>Retry</Button>
-                    <Button type="button" variant="ghost" onClick={() => setMpesaFlow(null)}>Cancel waiting</Button>
-                  </div>
-                </div>
-              ) : null}
-              {mpesaFlow === "PAY_TO_TILL" ? (
-                <div className="mt-3 space-y-3">
-                  <div className="rounded-2xl border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
-                    <div className="font-semibold">Pay using M-Pesa</div>
-                    <ol className="mt-2 list-decimal space-y-1 pl-5">
-                      <li>Open M-Pesa</li>
-                      <li>Select Lipa na M-Pesa</li>
-                      <li>Select Buy Goods and Services</li>
-                      <li>Enter Till Number: {mpesaTillNumber || "Not configured"}</li>
-                      <li>Enter the exact amount: {formatMoney(fromMinorUnits(totalMinor))}</li>
-                      <li>Enter your M-Pesa PIN</li>
-                    </ol>
-                  </div>
-                  <div className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-700">
-                    <div>Shop: {shopName || "Current shop"}</div>
-                    <div>Till number: {mpesaTillNumber || "Not configured"}</div>
-                    <div>Amount: {formatMoney(fromMinorUnits(totalMinor))}</div>
-                    <div>Status: {mpesaStatus}</div>
-                    {mpesaReference ? <div>Internal reference: {mpesaReference}</div> : null}
-                  </div>
-                  <Input value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="Optional customer phone number" />
-                  <div className="flex flex-wrap gap-2">
-                    <Button type="button" onClick={() => void startMpesaPayment("PAY_TO_TILL")} disabled={mpesaInFlight || !cart.length}>{mpesaInFlight ? "Preparing payment..." : "Start waiting"}</Button>
-                    <Button type="button" variant="secondary" onClick={() => setMpesaStatus("Checking payment status")}>Check payment</Button>
-                    <Button type="button" variant="ghost" onClick={() => setMpesaFlow(null)}>Cancel waiting</Button>
-                  </div>
-                  {mpesaError ? <p className="text-sm text-red-600">{mpesaError}</p> : null}
-                </div>
-              ) : null}
+              <div className="checkout-summary-card">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Cash received</div>
+                <div className="mt-1 text-lg font-black text-slate-900">{formatMoney(fromMinorUnits(receivedMinor))}</div>
+              </div>
             </div>
-          ) : null}
-          {paymentMode === "CASH" ? <Button onClick={() => void checkout()} disabled={!cart.length || processing} className="mt-3 w-full" size="lg"><Banknote className="h-5 w-5"/>{processing ? "Completing sale..." : `Complete cash sale${pendingCount ? ` • ${pendingCount} pending` : ""}`}</Button> : null}
+            <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
+              <div className="flex items-center justify-between text-sm"><span className="text-slate-500">Change due</span><span className={`font-black ${changeDueMinor >= 0 ? "text-emerald-700" : "text-red-600"}`}>{formatMoney(fromMinorUnits(changeDueMinor))}</span></div>
+            </div>
+            <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
+              <label className="mb-1 block text-xs font-bold text-slate-600">Customer</label>
+              <Input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Walk-in customer" />
+              <label className="mt-3 mb-1 block text-xs font-bold text-slate-600">Discount</label>
+              <Input type="number" min="0" step="0.01" value={discountMinor / 100} onChange={(e) => setDiscountMinor(Math.round(Number(e.target.value || 0) * 100))} placeholder="0.00" />
+              <label className="mt-3 mb-1 block text-xs font-bold text-slate-600">Notes</label>
+              <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Add a note" />
+            </div>
+            <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
+              <label className="mb-1 block text-xs font-bold text-slate-600">Cash received</label>
+              <Input type="number" min="0" step="0.01" value={amountReceived} onChange={(e) => setAmountReceived(e.target.value)} placeholder="0.00" />
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived(String(totalMinor / 100))}>Exact</Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived("500")}>KES 500</Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived("1000")}>KES 1,000</Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived("2000")}>KES 2,000</Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived("")}>Custom</Button>
+              </div>
+            </div>
+            <label className="mt-3 flex items-center gap-2 text-sm text-slate-600"><input className="h-4 w-4 rounded border-slate-300" type="checkbox" checked={splitPaymentEnabled} onChange={(e) => setSplitPaymentEnabled(e.target.checked)} />Allow split payment</label>
+            <div className="checkout-actions-grid mt-3">
+              <button onClick={() => setPaymentMode("CASH")} className={`rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CASH" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600"}`}><Banknote className="mx-auto mb-1 h-5 w-5"/>Cash</button>
+              <button onClick={() => setPaymentMode("MPESA")} disabled={!online || !mpesaEnabled} className={`rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "MPESA" ? "border-sky-200 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"} disabled:opacity-50`}><MdPhoneAndroid className="mx-auto mb-1 h-5 w-5"/>M-Pesa</button>
+              <button onClick={() => setPaymentMode("CARD")} disabled={!online} className={`rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CARD" ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-600"} disabled:opacity-50`}><CreditCard className="mx-auto mb-1 h-5 w-5"/>Card</button>
+            </div>
+            {!online ? <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Offline mode only allows cash. M-Pesa and card payments remain unavailable until the connection is restored.</div> : null}
+            {paymentMode === "MPESA" && mpesaEnabled ? (
+              <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
+                <div className="flex flex-wrap gap-2">
+                  {mpesaStkEnabled ? <Button type="button" variant={mpesaFlow === "STK_PUSH" ? "primary" : "secondary"} onClick={() => setMpesaFlow("STK_PUSH")}>Send STK Push</Button> : null}
+                  {mpesaPayToTillEnabled ? <Button type="button" variant={mpesaFlow === "PAY_TO_TILL" ? "primary" : "secondary"} onClick={() => setMpesaFlow("PAY_TO_TILL")}>Customer Pays to Till</Button> : null}
+                </div>
+                {mpesaFlow === "STK_PUSH" ? (
+                  <div className="mt-3 space-y-3">
+                    <div className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-700">
+                      <div className="font-semibold">M-Pesa STK Push</div>
+                      <div className="mt-1">Amount: {formatMoney(fromMinorUnits(totalMinor))}</div>
+                      <div className="mt-1">Payment status: {mpesaStatus}</div>
+                      {mpesaReference ? <div className="mt-1">Internal reference: {mpesaReference}</div> : null}
+                    </div>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Customer phone number</label>
+                    <Input value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="0712 345 678" />
+                    <Button type="button" onClick={() => void startMpesaPayment("STK_PUSH")} disabled={mpesaInFlight || !cart.length}>{mpesaInFlight ? "Sending request..." : "Send payment request"}</Button>
+                    {mpesaError ? <p className="text-sm text-red-600">{mpesaError}</p> : null}
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" variant="secondary" onClick={() => setMpesaStatus("Ready")}>Retry</Button>
+                      <Button type="button" variant="ghost" onClick={() => setMpesaFlow(null)}>Cancel waiting</Button>
+                    </div>
+                  </div>
+                ) : null}
+                {mpesaFlow === "PAY_TO_TILL" ? (
+                  <div className="mt-3 space-y-3">
+                    <div className="rounded-2xl border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
+                      <div className="font-semibold">Pay using M-Pesa</div>
+                      <ol className="mt-2 list-decimal space-y-1 pl-5">
+                        <li>Open M-Pesa</li>
+                        <li>Select Lipa na M-Pesa</li>
+                        <li>Select Buy Goods and Services</li>
+                        <li>Enter Till Number: {mpesaTillNumber || "Not configured"}</li>
+                        <li>Enter the exact amount: {formatMoney(fromMinorUnits(totalMinor))}</li>
+                        <li>Enter your M-Pesa PIN</li>
+                      </ol>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-700">
+                      <div>Shop: {shopName || "Current shop"}</div>
+                      <div>Till number: {mpesaTillNumber || "Not configured"}</div>
+                      <div>Amount: {formatMoney(fromMinorUnits(totalMinor))}</div>
+                      <div>Status: {mpesaStatus}</div>
+                      {mpesaReference ? <div>Internal reference: {mpesaReference}</div> : null}
+                    </div>
+                    <Input value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="Optional customer phone number" />
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" onClick={() => void startMpesaPayment("PAY_TO_TILL")} disabled={mpesaInFlight || !cart.length}>{mpesaInFlight ? "Preparing payment..." : "Start waiting"}</Button>
+                      <Button type="button" variant="secondary" onClick={() => setMpesaStatus("Checking payment status")}>Check payment</Button>
+                      <Button type="button" variant="ghost" onClick={() => setMpesaFlow(null)}>Cancel waiting</Button>
+                    </div>
+                    {mpesaError ? <p className="text-sm text-red-600">{mpesaError}</p> : null}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            {paymentMode === "CASH" ? <Button onClick={() => void checkout()} disabled={!cart.length || processing} className="mt-3 w-full" size="lg"><Banknote className="h-5 w-5"/>{processing ? "Completing sale..." : `Complete cash sale${pendingCount ? ` • ${pendingCount} pending` : ""}`}</Button> : null}
+          </div>
         </div>
       </Card>
     </div>
