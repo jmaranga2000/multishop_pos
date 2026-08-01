@@ -2,10 +2,12 @@ import Link from "next/link";
 import { Package } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
 import { getAdminProductById, getProductManagementData } from "@/services/admin/product-service";
+import { deleteProductAction } from "@/actions/admin/product-actions";
 import { PageHeading } from "@/components/ui/page-heading";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ProductEditForm } from "@/components/admin/product-edit-form";
+import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -23,10 +25,16 @@ export default async function ProductDetailsPage({ params }: { params: Promise<{
   return (
     <>
       <PageHeading title={product.name} description={`SKU: ${product.sku}`} />
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <Link href="/admin/products" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
           Back to list
         </Link>
+        <form action={deleteProductAction} className="inline">
+          <input type="hidden" name="productId" value={product.id} />
+          <Button type="submit" variant="danger" size="sm">
+            Delete product
+          </Button>
+        </form>
       </div>
       <div className="grid gap-5">
         <Card>

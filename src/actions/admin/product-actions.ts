@@ -10,6 +10,7 @@ import {
   createProductCategory,
   createProductBrand,
   createProductUnit,
+  deleteProduct,
 } from "@/services/admin/product-service";
 import {
   createProductSchema,
@@ -32,6 +33,14 @@ export async function updateProductAction(formData: FormData) {
   const input = updateProductSchema.parse(Object.fromEntries(formData));
   await updateProduct(admin, input);
   revalidatePath(`/admin/products/${input.productId}`);
+  revalidatePath("/admin/products");
+  redirect("/admin/products");
+}
+
+export async function deleteProductAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const input = z.object({ productId: z.string().min(1) }).parse(Object.fromEntries(formData));
+  await deleteProduct(admin, { id: input.productId });
   revalidatePath("/admin/products");
   redirect("/admin/products");
 }

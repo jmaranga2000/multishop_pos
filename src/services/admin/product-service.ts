@@ -148,6 +148,20 @@ export async function updateProduct(admin: { id: string; businessId: string }, i
   return updatedProduct;
 }
 
+export async function deleteProduct(admin: { id: string; businessId: string }, input: { id: string }) {
+  const product = await db.product.findFirst({ where: { id: input.id, businessId: admin.businessId } });
+  if (!product) throw new Error("Product not found.");
+
+  await db.product.deleteMany({ where: { id: input.id } });
+  await writeAuditLog(db, {
+    userId: admin.id,
+    action: "PRODUCT_DELETED",
+    entityType: "PRODUCT",
+    entityId: input.id,
+    description: `Deleted product ${product.name}.`,
+  });
+}
+
 export async function createProductCategory(admin: { id: string; businessId: string }, input: CreateProductCategoryInput) {
   const slug = normalizeSlug(input.name);
   const category = await db.category.create({
