@@ -98,6 +98,7 @@ export async function synchronizeOfflineSales(user: ShopSyncContext, payload: Of
             salespersonId: entry.sale.salespersonId,
             receiptNumber: receipt,
             clientReference: entry.sale.localId,
+            status: "COMPLETED",
             subtotal: fromMinorUnits(entry.sale.subtotalMinor),
             discountTotal: fromMinorUnits(entry.sale.discountMinor),
             taxTotal: fromMinorUnits(entry.sale.taxMinor),
