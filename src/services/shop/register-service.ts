@@ -1,6 +1,7 @@
 import argon2 from "argon2";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
+import { fromMinorUnits } from "@/lib/utils";
 import { writeAuditLog } from "@/services/shared/audit-service";
 import type { z } from "zod";
 import type { openRegisterSchema, closeRegisterSchema } from "@/validators/shop/register-validator";
@@ -10,9 +11,52 @@ type CloseRegisterInput = z.infer<typeof closeRegisterSchema>;
 
 type ShopContext = { id: string; shopId: string; businessId: string };
 
+type PaymentChannel = "CASH" | "MPESA_STK_PUSH" | "MPESA_PAY_TO_TILL" | "CARD" | "BANK_TRANSFER";
+
+export function buildEnabledPaymentChannels(
+  shop: { mpesaEnabled?: boolean | null; mpesaStkEnabled?: boolean | null; mpesaPayToTillEnabled?: boolean | null },
+  configuredChannels: string[] = [],
+) {
+  const enabled = new Set<PaymentChannel>([(configuredChannels.includes("CASH") ? "CASH" : "CASH") as PaymentChannel]);
+  if (configuredChannels.includes("MPESA_STK_PUSH") || shop.mpesaEnabled && shop.mpesaStkEnabled) {
+    enabled.add("MPESA_STK_PUSH");
+  }
+  if (configuredChannels.includes("MPESA_PAY_TO_TILL") || (shop.mpesaEnabled && shop.mpesaPayToTillEnabled)) {
+    enabled.add("MPESA_PAY_TO_TILL");
+  }
+  if (configuredChannels.includes("CARD")) enabled.add("CARD");
+  if (configuredChannels.includes("BANK_TRANSFER")) enabled.add("BANK_TRANSFER");
+  return Array.from(enabled);
+}
+
+export function getPaymentChannelWarnings(shop: { mpesaEnabled?: boolean | null; mpesaStkEnabled?: boolean | null; mpesaPayToTillEnabled?: boolean | null; mpesaTillNumber?: string | null }) {
+  const warnings: string[] = [];
+  if (shop.mpesaEnabled) {
+    if (!shop.mpesaStkEnabled && !shop.mpesaPayToTillEnabled) {
+      warnings.push("M-Pesa is enabled but no services are currently active.");
+    }
+    if (!shop.mpesaStkEnabled) {
+      warnings.push("STK Push is disabled.");
+    }
+    if (!shop.mpesaPayToTillEnabled) {
+      warnings.push("Pay to Till is disabled.");
+    }
+    if (!shop.mpesaTillNumber) {
+      warnings.push("Till number is not configured for this shop.");
+    }
+  }
+  return warnings;
+}
+
+function toNumber(value: number | string | null | undefined) {
+  const numeric = typeof value === "string" ? Number(value) : value;
+  return Number.isFinite(numeric) ? Number(numeric) : 0;
+}
+
 export async function getShopRegisterData(shopId: string, businessId: string) {
-  const [business, registers, salespeople, openSession, recentSessions] = await Promise.all([
+  const [business, shop, registers, salespeople, openSession, recentSessions] = await Promise.all([
     db.business.findUniqueOrThrow({ where: { id: businessId } }),
+    db.shop.findUniqueOrThrow({ where: { id: shopId } }),
     db.register.findMany({ where: { shopId, isActive: true }, orderBy: { name: "asc" } }),
     db.salespersonProfile.findMany({ where: { shopId, isActive: true }, orderBy: { name: "asc" } }),
     db.registerSession.findFirst({
@@ -22,12 +66,222 @@ export async function getShopRegisterData(shopId: string, businessId: string) {
     }),
     db.registerSession.findMany({
       where: { shopId },
-      include: { register: true, salesperson: true, _count: { select: { sales: true } } },
+      include: { register: true, salesperson: true },
       orderBy: { openedAt: "desc" },
       take: 20,
     }),
   ]);
-  return { business, registers, salespeople, openSession, recentSessions };
+
+  const openSessionDetails = openSession ? await buildSessionViewModel(openSession, shopId) : null;
+  const recentSessionDetails = await Promise.all(recentSessions.map((session) => buildSessionViewModel(session, shopId)));
+
+  return {
+    business,
+    shop,
+    registers,
+    salespeople,
+    openSession: openSessionDetails,
+    recentSessions: recentSessionDetails,
+    paymentChannels: buildEnabledPaymentChannels(shop),
+    paymentWarnings: getPaymentChannelWarnings(shop),
+  };
+}
+
+async function buildSessionViewModel(session: any, shopId: string) {
+  const [sales, payments, registerTransactions, mpesaPayments] = await Promise.all([
+    db.sale.findMany({ where: { shopId, registerSessionId: session.id, status: { in: ["COMPLETED", "REFUNDED"] } } }),
+    db.payment.findMany({ where: { sale: { registerSessionId: session.id } } }),
+    db.registerTransaction.findMany({ where: { registerSessionId: session.id } }),
+    db.mpesaPayment.findMany({ where: { shopId, shiftId: session.id } }),
+  ]);
+
+  const cashSales = payments.filter((payment: any) => payment.method === "CASH" && payment.status === "VERIFIED");
+  const cashSalesTotal = cashSales.reduce((sum: number, payment: any) => sum + toNumber(payment.amount), 0);
+  const cashExpenseTotal = registerTransactions.filter((entry: any) => entry.type === "EXPENSE").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
+  const cashInTotal = registerTransactions.filter((entry: any) => entry.type === "CASH_IN" || entry.type === "SAFE_TRANSFER_IN" || entry.type === "REGISTER_TRANSFER_IN").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
+  const cashOutTotal = registerTransactions.filter((entry: any) => entry.type === "CASH_OUT" || entry.type === "SAFE_TRANSFER_OUT" || entry.type === "REGISTER_TRANSFER_OUT" || entry.type === "VARIANCE_ADJUSTMENT").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
+  const expectedCash = Number(session.openingCash ?? 0) + cashSalesTotal + cashInTotal - cashExpenseTotal - cashOutTotal;
+
+  const confirmedMpesaPayments = mpesaPayments.filter((payment: any) => ["SUCCESSFUL", "MATCHED", "RECEIVED"].includes(payment.status));
+  const mpesaSalesTotal = confirmedMpesaPayments.reduce((sum: number, payment: any) => sum + fromMinorUnits(toNumber(payment.receivedAmountMinor || payment.expectedAmountMinor)), 0);
+  const expectedMpesa = Number(session.openingMpesaBalance ?? 0) + mpesaSalesTotal;
+
+  const unmatchedPayments = mpesaPayments.filter((payment: any) => ["PENDING", "WAITING_FOR_CUSTOMER", "MATCHING", "UNMATCHED", "AMBIGUOUS", "UNDERPAID", "OVERPAID"].includes(payment.status));
+
+  return {
+    ...session,
+    cashSalesTotal,
+    expectedCash,
+    actualCash: session.actualCash ?? null,
+    variance: session.variance ?? null,
+    expectedMpesa,
+    mpesaSalesTotal,
+    unresolvedPayments: unmatchedPayments.length,
+    cashLedgerEntries: buildCashLedgerEntries(session, sales, payments, registerTransactions),
+    mpesaLedgerEntries: buildMpesaLedgerEntries(session, mpesaPayments),
+    paymentWarnings: [] as string[],
+  };
+}
+
+export function buildCashLedgerEntries(
+  session: any,
+  sales: any[] = [],
+  payments: any[] = [],
+  transactions: any[] = [],
+) {
+  const entries = [] as any[];
+  const openingBalance = Number(session.openingCash ?? 0);
+  entries.push({
+    id: `${session.id}-opening`,
+    time: session.openedAt,
+    entryType: "Opening float",
+    description: "Opening cash float",
+    reference: session.localReference ?? session.id,
+    moneyIn: openingBalance,
+    moneyOut: 0,
+    runningBalance: openingBalance,
+    user: session.salesperson?.name ?? "Operator",
+    status: "Confirmed",
+    notes: session.openingNote ?? "",
+  });
+
+  const cashSales = payments.filter((payment: any) => payment.method === "CASH" && payment.status === "VERIFIED");
+  cashSales.forEach((payment: any) => {
+    const sale = sales.find((entry: any) => entry.id === payment.saleId);
+    entries.push({
+      id: `sale-${payment.saleId}`,
+      time: sale?.occurredAt ?? new Date(),
+      entryType: "Cash sale",
+      description: sale ? `Sale ${sale.receiptNumber}` : "Cash sale",
+      reference: sale?.receiptNumber ?? payment.reference ?? payment.id,
+      moneyIn: toNumber(payment.amount),
+      moneyOut: 0,
+      runningBalance: 0,
+      user: sale?.salespersonId ? "Salesperson" : "Operator",
+      status: "Confirmed",
+      notes: "",
+    });
+  });
+
+  transactions.filter((entry: any) => ["EXPENSE", "CASH_IN", "CASH_OUT", "SAFE_TRANSFER_IN", "SAFE_TRANSFER_OUT", "REGISTER_TRANSFER_IN", "REGISTER_TRANSFER_OUT", "VARIANCE_ADJUSTMENT"].includes(entry.type)).forEach((entry: any) => {
+    entries.push({
+      id: entry.id,
+      time: entry.createdAt ?? session.openedAt,
+      entryType: entry.type,
+      description: entry.note ?? entry.type,
+      reference: entry.id,
+      moneyIn: ["CASH_IN", "SAFE_TRANSFER_IN", "REGISTER_TRANSFER_IN"].includes(entry.type) ? toNumber(entry.amount) : 0,
+      moneyOut: ["EXPENSE", "CASH_OUT", "SAFE_TRANSFER_OUT", "REGISTER_TRANSFER_OUT", "VARIANCE_ADJUSTMENT"].includes(entry.type) ? toNumber(entry.amount) : 0,
+      runningBalance: 0,
+      user: "Operator",
+      status: "Confirmed",
+      notes: entry.note ?? "",
+    });
+  });
+
+  if (session.status === "CLOSED") {
+    entries.push({
+      id: `${session.id}-closing`,
+      time: session.closedAt ?? new Date(),
+      entryType: "Closing count",
+      description: "Session close reconciliation",
+      reference: session.localReference ?? session.id,
+      moneyIn: 0,
+      moneyOut: 0,
+      runningBalance: toNumber(session.actualCash ?? session.expectedCash ?? 0),
+      user: session.salesperson?.name ?? "Operator",
+      status: session.actualCash === session.expectedCash ? "Balanced" : "Variance",
+      notes: session.closingNote ?? "",
+    });
+  }
+
+  let runningBalance = openingBalance;
+  return entries.map((entry) => {
+    runningBalance += Number(entry.moneyIn ?? 0) - Number(entry.moneyOut ?? 0);
+    return { ...entry, runningBalance };
+  });
+}
+
+export function buildMpesaLedgerEntries(session: any, mpesaPayments: any[] = []) {
+  const entries = [] as any[];
+  const openingBalance = Number(session.openingMpesaBalance ?? 0);
+  if (openingBalance > 0) {
+    entries.push({
+      id: `${session.id}-opening-mpesa`,
+      time: session.openedAt,
+      paymentType: "Opening balance",
+      saleReference: "",
+      internalReference: session.localReference ?? session.id,
+      receiptNumber: "",
+      merchantRequestId: "",
+      checkoutRequestId: "",
+      customerPhone: "",
+      tillNumber: session.openingMpesaReference ?? "",
+      moneyIn: openingBalance,
+      moneyOut: 0,
+      runningBalance: openingBalance,
+      paymentStatus: "Confirmed",
+      matchStatus: "Matched",
+      cashier: session.salesperson?.name ?? "Operator",
+      shop: session.shopId,
+      notes: session.openingNote ?? "",
+    });
+  }
+
+  mpesaPayments.forEach((payment: any) => {
+    const amount = fromMinorUnits(toNumber(payment.receivedAmountMinor || payment.expectedAmountMinor));
+    const paymentStatus = payment.status;
+    const matchStatus = payment.matchStatus ?? "Pending";
+    entries.push({
+      id: payment.id,
+      time: payment.createdAt ?? new Date(),
+      paymentType: payment.mode === "STK_PUSH" ? "STK Push" : "Pay to Till",
+      saleReference: payment.clientReference ?? payment.internalReference,
+      internalReference: payment.internalReference,
+      receiptNumber: payment.receiptNumber ?? "",
+      merchantRequestId: payment.merchantRequestId ?? "",
+      checkoutRequestId: payment.checkoutRequestId ?? "",
+      customerPhone: payment.customerPhone ?? "",
+      tillNumber: payment.tillNumber ?? "",
+      moneyIn: ["SUCCESSFUL", "MATCHED", "RECEIVED"].includes(paymentStatus) ? amount : 0,
+      moneyOut: ["REVERSED", "REFUNDED"].includes(paymentStatus) ? amount : 0,
+      runningBalance: 0,
+      paymentStatus,
+      matchStatus,
+      cashier: payment.cashierId ? "Operator" : "Operator",
+      shop: payment.shopId,
+      notes: payment.resultDescription ?? "",
+    });
+  });
+
+  if (session.status === "CLOSED") {
+    entries.push({
+      id: `${session.id}-closing-mpesa`,
+      time: session.closedAt ?? new Date(),
+      paymentType: "Closing balance",
+      saleReference: "",
+      internalReference: session.localReference ?? session.id,
+      receiptNumber: "",
+      merchantRequestId: "",
+      checkoutRequestId: "",
+      customerPhone: "",
+      tillNumber: session.closingMpesaReference ?? "",
+      moneyIn: 0,
+      moneyOut: 0,
+      runningBalance: toNumber(session.actualClosingMpesaBalance ?? session.expectedClosingMpesaBalance ?? 0),
+      paymentStatus: session.mpesaVarianceStatus ?? "Closed",
+      matchStatus: "Matched",
+      cashier: session.salesperson?.name ?? "Operator",
+      shop: session.shopId,
+      notes: session.closingNote ?? "",
+    });
+  }
+
+  let runningBalance = openingBalance;
+  return entries.map((entry) => {
+    runningBalance += Number(entry.moneyIn ?? 0) - Number(entry.moneyOut ?? 0);
+    return { ...entry, runningBalance };
+  });
 }
 
 export async function openRegisterSession(shopUser: ShopContext, input: OpenRegisterInput) {
@@ -36,6 +290,10 @@ export async function openRegisterSession(shopUser: ShopContext, input: OpenRegi
 
   const register = await db.register.findFirst({ where: { id: input.registerId, shopId: shopUser.shopId, isActive: true } });
   if (!register) throw new AppError("Register was not found.");
+
+  const idempotencyKey = input.idempotencyKey || `register-open-${register.id}-${Date.now()}`;
+  const duplicate = await db.registerSession.findFirst({ where: { shopId: shopUser.shopId, idempotencyKey } });
+  if (duplicate) throw new AppError("This opening request has already been processed.");
 
   let salespersonId: string | null = null;
   if (input.salespersonId) {
@@ -47,24 +305,77 @@ export async function openRegisterSession(shopUser: ShopContext, input: OpenRegi
     salespersonId = salesperson.id;
   }
 
+  const denominationTotal = [
+    input.cashDenomination1000 ?? 0,
+    input.cashDenomination500 ?? 0,
+    input.cashDenomination200 ?? 0,
+    input.cashDenomination100 ?? 0,
+    input.cashDenomination50 ?? 0,
+    input.cashDenomination20 ?? 0,
+    input.cashDenomination10 ?? 0,
+    input.cashDenomination5 ?? 0,
+    input.cashDenomination1 ?? 0,
+  ].reduce((sum, value) => sum + Number(value), 0);
+
+  const declaredOpeningCash = Number(input.openingCash ?? 0);
+  if (denominationTotal > 0 && declaredOpeningCash > 0 && denominationTotal !== declaredOpeningCash) {
+    throw new AppError("The declared opening cash does not match the denomination count. Resolve the mismatch before opening.", "REGISTER_CASH_MISMATCH", 400);
+  }
+
+  const openingCash = declarationTotalOrInput(declaredOpeningCash, denominationTotal);
+
   const session = await db.registerSession.create({
     data: {
       shopId: shopUser.shopId,
       registerId: register.id,
       salespersonId,
-      openingCash: input.openingCash,
+      openingCash,
       openingNote: input.openingNote || null,
+      openingCashSource: input.openingCashSource || null,
+      openingMpesaBalance: input.openingMpesaBalance ?? 0,
+      openingMpesaBalanceMethod: input.openingMpesaBalanceMethod || null,
+      openingMpesaVerifiedBy: input.openingMpesaVerifiedBy || null,
+      openingMpesaVerifiedAt: input.openingMpesaBalanceMethod ? new Date() : null,
+      openingMpesaReference: input.openingMpesaReference || null,
+      enabledPaymentChannels: parseEnabledPaymentChannels(input.enabledPaymentChannels),
+      idempotencyKey,
+      openedAt: new Date(),
+      status: "OPEN",
     },
   });
+
+  await Promise.all([
+    db.registerTransaction.create({ data: { registerSessionId: session.id, type: "OPENING_FLOAT", amount: openingCash, note: input.openingNote || null } }),
+    input.openingMpesaBalance && Number(input.openingMpesaBalance) > 0
+      ? db.registerTransaction.create({ data: { registerSessionId: session.id, type: "OPENING_BALANCE", amount: Number(input.openingMpesaBalance), note: input.openingMpesaReference || null } })
+      : Promise.resolve(null),
+  ]);
+
   await writeAuditLog(db, {
     userId: shopUser.id,
     shopId: shopUser.shopId,
     action: "REGISTER_OPENED",
     entityType: "REGISTER_SESSION",
     entityId: session.id,
-    description: `Opened ${register.name} with opening cash ${input.openingCash}.`,
+    description: `Opened ${register.name} with opening cash ${openingCash} and M-Pesa balance ${input.openingMpesaBalance ?? 0}.`,
+    metadata: {
+      registerId: register.id,
+      openingCash,
+      openingMpesaBalance: input.openingMpesaBalance ?? 0,
+      salespersonId,
+    },
   });
   return session;
+}
+
+function declarationTotalOrInput(declaredOpeningCash: number, denominationTotal: number) {
+  if (denominationTotal > 0) return denominationTotal;
+  return declaredOpeningCash;
+}
+
+function parseEnabledPaymentChannels(value?: string | null) {
+  if (!value) return ["CASH"];
+  return value.split(",").map((entry) => entry.trim()).filter(Boolean);
 }
 
 export async function closeRegisterSession(shopUser: ShopContext, input: CloseRegisterInput) {
@@ -74,20 +385,32 @@ export async function closeRegisterSession(shopUser: ShopContext, input: CloseRe
   });
   if (!session) throw new AppError("Open register session was not found.");
 
-  const [cashPayments, cashMovements] = await Promise.all([
-    db.payment.aggregate({
-      where: { sale: { registerSessionId: session.id, status: "COMPLETED" }, method: "CASH", status: "VERIFIED" },
-      _sum: { amount: true },
-    }),
+  const idempotencyKey = input.idempotencyKey || `register-close-${session.id}-${Date.now()}`;
+  const duplicate = await db.registerSession.findFirst({ where: { shopId: shopUser.shopId, idempotencyKey } });
+  if (duplicate) throw new AppError("This closure request has already been processed.");
+
+  const [sales, payments, registerTransactions, mpesaPayments] = await Promise.all([
+    db.sale.findMany({ where: { shopId: shopUser.shopId, registerSessionId: session.id, status: { in: ["COMPLETED", "REFUNDED"] } } }),
+    db.payment.findMany({ where: { sale: { registerSessionId: session.id } } }),
     db.registerTransaction.findMany({ where: { registerSessionId: session.id } }),
+    db.mpesaPayment.findMany({ where: { shopId: shopUser.shopId, shiftId: session.id } }),
   ]);
-  const cashSales = Number(cashPayments._sum.amount ?? 0);
-  const movementTotal = cashMovements.reduce((sum, movement) => {
-    const amount = Number(movement.amount);
-    return movement.type === "CASH_OUT" ? sum - amount : movement.type === "CASH_IN" ? sum + amount : sum;
-  }, 0);
-  const expectedCash = Number(session.openingCash) + cashSales + movementTotal;
-  const variance = input.actualCash - expectedCash;
+
+  const cashSales = payments.filter((payment: any) => payment.method === "CASH" && payment.status === "VERIFIED");
+  const cashSalesTotal = cashSales.reduce((sum: number, payment: any) => sum + toNumber(payment.amount), 0);
+  const cashExpenseTotal = registerTransactions.filter((entry: any) => entry.type === "EXPENSE").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
+  const cashInTotal = registerTransactions.filter((entry: any) => entry.type === "CASH_IN" || entry.type === "SAFE_TRANSFER_IN" || entry.type === "REGISTER_TRANSFER_IN").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
+  const cashOutTotal = registerTransactions.filter((entry: any) => entry.type === "CASH_OUT" || entry.type === "SAFE_TRANSFER_OUT" || entry.type === "REGISTER_TRANSFER_OUT" || entry.type === "VARIANCE_ADJUSTMENT").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
+  const expectedCash = Number(session.openingCash ?? 0) + cashSalesTotal + cashInTotal - cashExpenseTotal - cashOutTotal;
+
+  const confirmedMpesaPayments = mpesaPayments.filter((payment: any) => ["SUCCESSFUL", "MATCHED", "RECEIVED"].includes(payment.status));
+  const mpesaSalesTotal = confirmedMpesaPayments.reduce((sum: number, payment: any) => sum + fromMinorUnits(toNumber(payment.receivedAmountMinor || payment.expectedAmountMinor)), 0);
+  const expectedMpesa = Number(session.openingMpesaBalance ?? 0) + mpesaSalesTotal;
+  const actualMpesaBalance = Number(input.actualMpesaBalance ?? 0);
+  const mpesaVariance = actualMpesaBalance - expectedMpesa;
+  const unresolvedPayments = mpesaPayments.filter((payment: any) => ["PENDING", "WAITING_FOR_CUSTOMER", "MATCHING", "UNMATCHED", "AMBIGUOUS", "UNDERPAID", "OVERPAID"].includes(payment.status)).length;
+  const closedWithUnresolvedPayments = unresolvedPayments > 0;
+  const variance = Number(input.actualCash ?? 0) - expectedCash;
 
   const closed = await db.$transaction(async (tx) => {
     const updated = await tx.registerSession.update({
@@ -97,11 +420,27 @@ export async function closeRegisterSession(shopUser: ShopContext, input: CloseRe
         expectedCash,
         actualCash: input.actualCash,
         variance,
+        expectedClosingMpesaBalance: expectedMpesa,
+        actualClosingMpesaBalance: actualMpesaBalance,
+        mpesaVariance,
+        mpesaVarianceStatus: mpesaVariance === 0 ? "Balanced" : mpesaVariance > 0 ? "Over" : "Short",
+        mpesaVarianceReason: input.varianceReason || null,
         closingNote: input.closingNote || null,
+        closingMpesaBalanceMethod: input.closingMpesaBalanceMethod || null,
+        closingMpesaVerifiedBy: input.closingMpesaVerifiedBy || null,
+        closingMpesaReference: input.closingMpesaReference || null,
+        unresolvedPaymentCount: unresolvedPayments,
+        closedWithUnresolvedPayments,
+        unresolvedClosureReason: input.unresolvedClosureReason || null,
+        approvedBy: input.approvedBy || null,
+        idempotencyKey,
         closedAt: new Date(),
       },
     });
+
+    await tx.registerTransaction.create({ data: { registerSessionId: session.id, type: "CLOSING_COUNT", amount: input.actualCash, note: input.closingNote || null } });
     if (variance !== 0) {
+      await tx.registerTransaction.create({ data: { registerSessionId: session.id, type: "VARIANCE_ADJUSTMENT", amount: variance, note: input.varianceReason || null } });
       const admin = await tx.user.findFirst({ where: { businessId: shopUser.businessId, role: "ADMIN", status: "ACTIVE" } });
       if (admin) {
         await tx.notification.create({
@@ -117,14 +456,15 @@ export async function closeRegisterSession(shopUser: ShopContext, input: CloseRe
         });
       }
     }
+
     await writeAuditLog(tx, {
       userId: shopUser.id,
       shopId: shopUser.shopId,
-      action: "REGISTER_CLOSED",
+      action: closedWithUnresolvedPayments ? "REGISTER_CLOSED_WITH_UNRESOLVED_PAYMENTS" : "REGISTER_CLOSED",
       entityType: "REGISTER_SESSION",
       entityId: session.id,
-      description: `Closed ${session.register.name} with variance ${variance.toFixed(2)}.`,
-      metadata: { expectedCash, actualCash: input.actualCash, variance },
+      description: `Closed ${session.register.name} with cash variance ${variance.toFixed(2)} and M-Pesa variance ${mpesaVariance.toFixed(2)}.`,
+      metadata: { expectedCash, actualCash: input.actualCash, variance, expectedMpesa, actualMpesaBalance, mpesaVariance, unresolvedPayments },
     });
     return updated;
   });

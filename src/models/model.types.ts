@@ -183,6 +183,27 @@ export interface RegisterSessionDocument extends BaseDocument {
   openedAt: Date;
   closedAt?: Date | null;
   localReference?: string | null;
+  idempotencyKey?: string | null;
+  enabledPaymentChannels?: string[] | null;
+  openingCashSource?: string | null;
+  openingMpesaBalance?: number | null;
+  openingMpesaBalanceMethod?: string | null;
+  openingMpesaVerifiedBy?: string | null;
+  openingMpesaVerifiedAt?: Date | null;
+  openingMpesaReference?: string | null;
+  expectedClosingMpesaBalance?: number | null;
+  actualClosingMpesaBalance?: number | null;
+  closingMpesaBalanceMethod?: string | null;
+  closingMpesaVerifiedBy?: string | null;
+  closingMpesaVerifiedAt?: Date | null;
+  closingMpesaReference?: string | null;
+  mpesaVariance?: number | null;
+  mpesaVarianceStatus?: string | null;
+  mpesaVarianceReason?: string | null;
+  unresolvedPaymentCount?: number | null;
+  closedWithUnresolvedPayments?: boolean | null;
+  unresolvedClosureReason?: string | null;
+  approvedBy?: string | null;
 }
 
 export interface RegisterTransactionDocument extends BaseDocument {
