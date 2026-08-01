@@ -22,7 +22,7 @@ export default async function AdminDashboard() {
   return (
     <>
       <PageHeading
-        title={`Good day, ${user.name.split(" ")[0]}`}
+        title={`Good day, ${business.name}`}
         description={`Live performance across ${data.activeShopCount} active shop${data.activeShopCount === 1 ? "" : "s"}.`}
       />
       <div className="kpi-grid">

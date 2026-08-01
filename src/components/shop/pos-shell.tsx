@@ -206,9 +206,7 @@ export function PosShell({
         },
       ];
     });
-    if (options?.fromBarcode) {
-      toast.success(`${product.name} added to cart`);
-    }
+    toast.success(`${product.name} added to cart`);
   }
 
   function confirmUnitSelection() {
@@ -243,6 +241,7 @@ export function PosShell({
         },
       ];
     });
+    toast.success(`${product.name} added to cart`);
     setUnitModalOpen(false);
     setUnitModalEntry(null);
   }
