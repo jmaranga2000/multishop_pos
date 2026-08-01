@@ -5,6 +5,7 @@ import { Bell, Store, Menu } from "lucide-react";
 import { useState } from "react";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { SignOutButton } from "@/components/layout/sign-out-button";
+import { Button } from "@/components/ui/button";
 
 export function AppShell({ children, navItems, userName, userEmail, accountLabel, notificationCount = 0, headerExtra }: {
   children: React.ReactNode;
@@ -46,10 +47,10 @@ export function AppShell({ children, navItems, userName, userEmail, accountLabel
           </div>
         </div>
         <div className="relative flex items-center gap-3">
-          <button type="button" aria-label="Notifications" aria-expanded={notificationOpen} onClick={() => setNotificationOpen((open) => !open)} className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600">
+          <Button type="button" variant="secondary" size="icon" aria-label="Notifications" aria-expanded={notificationOpen} onClick={() => setNotificationOpen((open) => !open)} className="relative overflow-visible">
             <Bell className="h-5 w-5" />
             {notificationCount > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">{notificationCount > 99 ? "99+" : notificationCount}</span>}
-          </button>
+          </Button>
           {notificationOpen && (
             <div className="absolute right-0 top-12 z-50 w-72 rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl shadow-slate-900/10">
               <p className="text-sm font-bold text-slate-900">Notifications</p>

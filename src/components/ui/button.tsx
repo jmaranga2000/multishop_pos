@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 type ButtonVariants = "primary" | "secondary" | "ghost" | "danger" | "success";
-type ButtonSizes = "sm" | "md" | "lg";
+type ButtonSizes = "sm" | "md" | "lg" | "icon";
 
 type ButtonOwnProps<T extends React.ElementType> = {
   as?: T;
@@ -32,6 +32,7 @@ export function Button<T extends React.ElementType = "button">({
     sm: "h-9 px-3 text-sm",
     md: "h-11 px-4 text-sm",
     lg: "h-13 px-5 text-base",
+    icon: "h-10 w-10 p-0 text-sm",
   };
 
   return React.createElement(Component, {
