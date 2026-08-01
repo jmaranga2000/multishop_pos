@@ -55,9 +55,9 @@ export function AppShell({ children, navItems, userName, userEmail, accountLabel
             <div className="absolute right-0 top-12 z-50 w-72 rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl shadow-slate-900/10">
               <p className="text-sm font-bold text-slate-900">Notifications</p>
               <p className="mt-1 text-xs text-slate-500">{notificationCount > 0 ? `${notificationCount} unread notifications` : "No unread notifications"}</p>
-              <Link href="/admin/notifications" className="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white" onClick={() => setNotificationOpen(false)}>
+              <Button as={Link} href="/admin/notifications" variant="primary" size="sm" className="mt-3 w-full" onClick={() => setNotificationOpen(false)}>
                 Open notifications
-              </Link>
+              </Button>
             </div>
           )}
           <div className="hidden text-right sm:block"><p className="text-sm font-bold text-slate-900">{userName}</p><p className="text-xs text-slate-500">{accountLabel}</p></div>
