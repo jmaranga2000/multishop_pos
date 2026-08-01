@@ -19,9 +19,11 @@ export async function createRefundRequestAction(formData: FormData) {
   const shopUser = await requireShop();
 
   try {
+    const saleIdRaw = formData.get("saleId")?.toString();
+    const receiptNumberRaw = formData.get("receiptNumber")?.toString();
     const input = createRefundRequestSchema.parse({
-      saleId: formData.get("saleId")?.toString() ?? undefined,
-      receiptNumber: formData.get("receiptNumber")?.toString() ?? undefined,
+      saleId: saleIdRaw?.trim() ? saleIdRaw.trim() : undefined,
+      receiptNumber: receiptNumberRaw?.trim() ? receiptNumberRaw.trim() : undefined,
       requestType: formData.get("requestType")?.toString() ?? "FULL_SALE",
       refundMethod: formData.get("refundMethod")?.toString() ?? "CASH",
       selectedItemIds: formData.getAll("selectedItemIds").map((entry) => entry.toString()),
