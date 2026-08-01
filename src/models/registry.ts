@@ -139,6 +139,8 @@ export async function ensureMongoModels(database: mongoose.mongo.Db) {
         } catch (error: unknown) {
           if (!(error instanceof mongoose.mongo.MongoServerError) || error.code !== 48) throw error;
         }
+      } else {
+        await database.command({ collMod: definition.collection, validator });
       }
 
       await database.collection(definition.collection).createIndexes([
