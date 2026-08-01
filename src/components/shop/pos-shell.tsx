@@ -723,7 +723,7 @@ export function PosShell({
               </div>
             </div>
             <label className="mt-3 flex items-center gap-2 text-sm text-slate-600"><input className="h-4 w-4 rounded border-slate-300" type="checkbox" checked={splitPaymentEnabled} onChange={(e) => setSplitPaymentEnabled(e.target.checked)} />Allow split payment</label>
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div className="mt-3 grid grid-cols-3 gap-2">
               <button onClick={() => setPaymentMode("CASH")} className={`w-full rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CASH" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600"}`}><Banknote className="mx-auto mb-1 h-5 w-5"/>Cash</button>
               <button onClick={() => setPaymentMode("MPESA")} disabled={!online} className={`w-full rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "MPESA" ? "border-sky-200 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"} ${!online ? "opacity-50" : ""}`}><MdPhoneAndroid className="mx-auto mb-1 h-5 w-5"/>M-Pesa</button>
               <button onClick={() => setPaymentMode("CARD")} disabled={!online} className={`w-full rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CARD" ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-600"} ${!online ? "opacity-50" : ""}`}><CreditCard className="mx-auto mb-1 h-5 w-5"/>Card</button>
