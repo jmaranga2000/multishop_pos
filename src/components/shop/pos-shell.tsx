@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { buildThermalReceiptHtml, downloadReceiptPdf, type ThermalReceiptData } from "@/components/shop/thermal-receipt";
+import { describeSaleLifecycleMessage, type SaleLifecycleStatus } from "@/lib/offline/sale-status";
 import { formatMoney, fromMinorUnits, getStockStatus } from "@/lib/utils";
 
 type PricingOption = {
@@ -81,6 +82,7 @@ export function PosShell({
   canReprintReceipts?: boolean;
 }) {
   const { shopId, online, pendingCount } = useOffline();
+  const offlineActive = !online;
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -105,8 +107,10 @@ export function PosShell({
   const [mpesaInFlight, setMpesaInFlight] = useState(false);
   const [mpesaError, setMpesaError] = useState<string | null>(null);
   const [completedSale, setCompletedSale] = useState<ThermalReceiptData | null>(null);
+  const [completedSaleLocalId, setCompletedSaleLocalId] = useState<string | null>(null);
   const [receiptSettings, setReceiptSettings] = useState<ReceiptSettings | null>(null);
   const [reprintInFlight, setReprintInFlight] = useState(false);
+  const [saleLifecycleStatus, setSaleLifecycleStatus] = useState<SaleLifecycleStatus>("LOCAL_ONLY");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -114,8 +118,11 @@ export function PosShell({
   const productQuery = useLiveQuery(() => listLocalInventoryWithProducts(shopId), [shopId], []);
   const products = useMemo(() => productQuery ?? [], [productQuery]);
   const saleItemsQuery = useLiveQuery(() => offlineDb.offlineSaleItems.toArray(), [], []);
+  const completedSaleRecord = useLiveQuery(() => completedSaleLocalId ? offlineDb.offlineSales.get(completedSaleLocalId) : undefined, [completedSaleLocalId], undefined);
 
   const categories = useMemo(() => ["All", ...Array.from(new Set(products.map((item) => item.product?.categoryName).filter(Boolean) as string[]))], [products]);
+  const activeCompletedSale = useMemo(() => completedSale ? { ...completedSale, receiptNumber: completedSaleRecord?.receiptNumber ?? completedSale.receiptNumber } : completedSale, [completedSale, completedSaleRecord]);
+  const activeSaleLifecycleStatus = useMemo(() => completedSaleRecord ? (completedSaleRecord.status as SaleLifecycleStatus) : saleLifecycleStatus, [completedSaleRecord, saleLifecycleStatus]);
   const filtered = useMemo(() => products.filter((entry) => {
     const product = entry.product!;
     const matches = `${product.name} ${product.sku} ${product.barcode ?? ""}`.toLowerCase().includes(query.toLowerCase());
@@ -307,7 +314,7 @@ export function PosShell({
 
   async function startCameraScan() {
     if (!barcodeScanningEnabled) return;
-    const detectorCtor = (window as Window & { BarcodeDetector?: any }).BarcodeDetector;
+    const detectorCtor = (window as Window & { BarcodeDetector?: new (options?: { formats?: string[] }) => { detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue?: string }>> } }).BarcodeDetector;
     if (!detectorCtor) {
       toast.error("Camera scanning is not supported in this browser");
       return;
@@ -373,6 +380,8 @@ export function PosShell({
     setMpesaReference(null);
     setMpesaError(null);
     setCompletedSale(null);
+    setCompletedSaleLocalId(null);
+    setSaleLifecycleStatus("LOCAL_ONLY");
     setTimeout(() => {
       searchInputRef.current?.focus();
     }, 0);
@@ -438,6 +447,8 @@ export function PosShell({
         thankYouMessage: receiptSettings?.thankYouMessage ?? "Thank you for shopping with us.",
       };
       setCompletedSale(receiptData);
+      setCompletedSaleLocalId(sale.localId);
+      setSaleLifecycleStatus(online ? "PENDING_SYNC" : "LOCAL_ONLY");
       setCart([]);
       setAmountReceived("");
       setSplitPaymentEnabled(false);
@@ -458,8 +469,8 @@ export function PosShell({
   }
 
   function handlePrintReceipt() {
-    if (!completedSale) return;
-    const html = buildThermalReceiptHtml(completedSale);
+    if (!activeCompletedSale) return;
+    const html = buildThermalReceiptHtml(activeCompletedSale);
     const printWindow = window.open("", "_blank", "width=420,height=760");
     if (!printWindow) return;
     printWindow.document.write(html);
@@ -469,37 +480,37 @@ export function PosShell({
   }
 
   async function handleDownloadReceiptPdf() {
-    if (!completedSale) return;
-    await downloadReceiptPdf(completedSale);
+    if (!activeCompletedSale) return;
+    await downloadReceiptPdf(activeCompletedSale);
   }
 
   function handleShareWhatsapp() {
-    if (!completedSale) return;
-    const message = encodeURIComponent(buildReceiptSummary(completedSale));
+    if (!activeCompletedSale) return;
+    const message = encodeURIComponent(buildReceiptSummary(activeCompletedSale));
     window.open(`https://wa.me/?text=${message}`, "_blank", "noopener,noreferrer");
   }
 
   function handleSendEmail() {
-    if (!completedSale) return;
-    const subject = encodeURIComponent(`Receipt ${completedSale.receiptNumber}`);
-    const body = encodeURIComponent(buildReceiptSummary(completedSale));
+    if (!activeCompletedSale) return;
+    const subject = encodeURIComponent(`Receipt ${activeCompletedSale.receiptNumber}`);
+    const body = encodeURIComponent(buildReceiptSummary(activeCompletedSale));
     window.location.assign(`mailto:?subject=${subject}&body=${body}`);
   }
 
   function handleSendSms() {
-    if (!completedSale) return;
-    const body = encodeURIComponent(buildReceiptSummary(completedSale));
+    if (!activeCompletedSale) return;
+    const body = encodeURIComponent(buildReceiptSummary(activeCompletedSale));
     window.location.assign(`sms:?body=${body}`);
   }
 
   async function handleReprintReceipt() {
-    if (!completedSale || !canReprintReceipts) return;
+    if (!activeCompletedSale || !canReprintReceipts) return;
     setReprintInFlight(true);
     try {
       const response = await fetch("/api/shop/receipts/reprint", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ receiptNumber: completedSale.receiptNumber, saleId: null }),
+        body: JSON.stringify({ receiptNumber: activeCompletedSale.receiptNumber, saleId: null }),
       });
       if (!response.ok) throw new Error("Unable to log the receipt reprint");
       handlePrintReceipt();
@@ -554,15 +565,17 @@ export function PosShell({
   }
 
   return <div>
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-black">Point of sale</h1><p className="text-sm text-slate-500">{online ? "Connected to the central system" : "Using the latest synchronized shop snapshot"}</p></div>{!online && <Badge tone="warning"><WifiOff className="mr-1 h-3.5 w-3.5" />Offline cash sales only</Badge>}</div>
-    {completedSale ? (
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-black">Point of sale</h1><p className="text-sm text-slate-500">{online ? "Connected to the central system" : "Using the latest synchronized shop snapshot"}</p></div>{!online && <Badge tone="warning"><WifiOff className="mr-1 h-3.5 w-3.5" />Offline</Badge>}</div>
+    {offlineActive ? <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Offline mode is active. Cash sales are stored locally and synced once the connection returns. Online-only payments such as M-Pesa and card are unavailable until you reconnect.</div> : null}
+    {activeCompletedSale ? (
       <Card className="mb-4 border-emerald-200 bg-emerald-50 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="text-lg font-black text-emerald-800">Payment successful</div>
-            <div className="mt-1 text-sm text-emerald-700">Receipt #{completedSale.receiptNumber}</div>
-            <div className="mt-1 text-sm text-emerald-700">Total paid: {formatMoney(fromMinorUnits(completedSale.grandTotalMinor))}</div>
-            <div className="mt-1 text-sm text-emerald-700">Payment method: {completedSale.paymentMethod}</div>
+            <div className="mt-1 text-sm text-emerald-700">Receipt #{activeCompletedSale.receiptNumber}</div>
+            <div className="mt-1 text-sm text-emerald-700">Total paid: {formatMoney(fromMinorUnits(activeCompletedSale.grandTotalMinor))}</div>
+            <div className="mt-1 text-sm text-emerald-700">Payment method: {activeCompletedSale.paymentMethod}</div>
+            <div className="mt-1 text-sm font-semibold text-emerald-700">{describeSaleLifecycleMessage(activeSaleLifecycleStatus, online)}</div>
           </div>
           <Button type="button" variant="secondary" onClick={resetSaleState}>Start new sale</Button>
         </div>
@@ -699,6 +712,7 @@ export function PosShell({
             <button onClick={() => setPaymentMode("MPESA")} disabled={!online || !mpesaEnabled} className={`rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "MPESA" ? "border-sky-200 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"} disabled:opacity-50`}><MdPhoneAndroid className="mx-auto mb-1 h-5 w-5"/>M-Pesa</button>
             <button onClick={() => setPaymentMode("CARD")} disabled={!online} className={`rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CARD" ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-600"} disabled:opacity-50`}><CreditCard className="mx-auto mb-1 h-5 w-5"/>Card</button>
           </div>
+          {!online ? <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Offline mode only allows cash. M-Pesa and card payments remain unavailable until the connection is restored.</div> : null}
           {paymentMode === "MPESA" && mpesaEnabled ? (
             <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
               <div className="flex flex-wrap gap-2">

@@ -48,40 +48,59 @@ export async function reviewRefundRequest(admin: AdminContext, input: ReviewRefu
   }
 
   if (request.sale.refunds.length > 0) throw new AppError("This sale already has a completed refund.");
+  if (request.requestManagerApproval && input.decision === "APPROVED" && (!input.reviewNote || input.reviewNote.trim().length < 5)) {
+    throw new AppError("Manager approval requires a clear review note before approving this request.");
+  }
+
+  const refundableItems = request.requestType === "SELECTED_PRODUCTS"
+    ? request.sale.items.filter((item: SaleItemDocument) => request.selectedItemIds?.includes(item.id))
+    : request.sale.items;
+
+  if (refundableItems.length === 0) throw new AppError("The selected refund request has no items to process.");
 
   return db.$transaction(async (tx) => {
+    const refundAmount = request.requestType === "EXCHANGE"
+      ? 0
+      : refundableItems.reduce((sum: number, item: SaleItemDocument) => sum + item.lineTotal, 0);
+
     const refund = await tx.refund.create({
       data: {
         saleId: request.saleId,
         refundNumber: createDocumentNumber("RFN", request.shop.code),
-        total: request.sale.total,
+        total: refundAmount,
         reason: request.reason,
         items: {
-          create: request.sale.items.map((item: SaleItemDocument) => ({
+          create: refundableItems.map((item: SaleItemDocument) => ({
             productId: item.productId,
             quantity: item.quantity,
             amount: item.lineTotal,
-            restock: true,
+            restock: request.restockReturnedProducts && !request.markItemsAsDamaged,
           })),
         },
       },
     });
 
-    for (const item of request.sale.items) {
+    for (const item of refundableItems) {
       const inventory = await tx.shopInventory.findUnique({
         where: { shopId_productId: { shopId: request.shopId, productId: item.productId } },
       });
       if (!inventory) continue;
+
+      const isDamaged = request.markItemsAsDamaged;
+      const shouldRestock = request.restockReturnedProducts && !isDamaged && request.requestType !== "EXCHANGE";
+      const nextQuantity = isDamaged ? inventory.quantity - item.quantity : shouldRestock ? inventory.quantity + item.quantity : inventory.quantity;
+      const quantityChange = isDamaged ? -item.quantity : shouldRestock ? item.quantity : 0;
+
       const updated = await tx.shopInventory.update({
         where: { id: inventory.id },
-        data: { quantity: { increment: item.quantity }, isAvailable: true, version: { increment: 1 } },
+        data: { quantity: nextQuantity, isAvailable: true, version: { increment: 1 } },
       });
       await tx.stockMovement.create({
         data: {
           shopId: request.shopId,
           productId: item.productId,
-          type: "CUSTOMER_RETURN",
-          quantityChange: item.quantity,
+          type: isDamaged ? "DAMAGE" : "CUSTOMER_RETURN",
+          quantityChange,
           quantityBefore: inventory.quantity,
           quantityAfter: updated.quantity,
           referenceType: "REFUND",
@@ -103,7 +122,6 @@ export async function reviewRefundRequest(admin: AdminContext, input: ReviewRefu
       });
     }
 
-    await tx.sale.update({ where: { id: request.saleId }, data: { status: "REFUNDED" } });
     const completed = await tx.refundRequest.update({
       where: { id: request.id },
       data: { status: "COMPLETED", reviewedAt: new Date(), reviewNote: input.reviewNote || null },

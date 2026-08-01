@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { countPendingSynchronizationRecords, countSynchronizationConflicts, getLastSynchronizationTime } from "@/services/offline/query-service";
 import { bootstrapOfflineData, syncPendingSales } from "@/services/offline/synchronization-service";
 
+type SyncOptions = { retryFailedOnly?: boolean };
+
 type OfflineContextValue = {
   shopId: string;
   shopName: string;
@@ -14,7 +16,7 @@ type OfflineContextValue = {
   pendingCount: number;
   conflictCount: number;
   lastSyncAt: string | null;
-  syncNow: () => Promise<void>;
+  syncNow: (options?: SyncOptions) => Promise<void>;
 };
 
 const OfflineContext = createContext<OfflineContextValue | null>(null);
@@ -26,14 +28,15 @@ export function OfflineProvider({ children, shopId, shopName }: { children: Reac
   const pendingCount = useLiveQuery(() => countPendingSynchronizationRecords(), [], 0) ?? 0;
   const conflictCount = useLiveQuery(() => countSynchronizationConflicts(), [], 0) ?? 0;
 
-  const syncNow = useCallback(async () => {
+  const syncNow = useCallback(async (options: SyncOptions = {}) => {
     if (!navigator.onLine || syncing) return;
     setSyncing(true);
     try {
-      const result = await syncPendingSales();
+      const result = await syncPendingSales(options);
       await bootstrapOfflineData();
       if (result.synced > 0) toast.success(`${result.synced} sale${result.synced === 1 ? "" : "s"} synchronized`);
       if (result.conflicts > 0) toast.warning(`${result.conflicts} sale${result.conflicts === 1 ? "" : "s"} need administrator review`);
+      if (result.failed > 0) toast.error(`${result.failed} queued sale${result.failed === 1 ? "" : "s"} could not be synced`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Synchronization failed");
     } finally { setSyncing(false); }

@@ -87,8 +87,17 @@ export const PaymentModel = defineModel<PaymentDocument>({
 
 export const RefundRequestModel = defineModel<RefundRequestDocument>({
   collection: "refundRequests",
-  required: ["saleId", "shopId", "reason"],
-  defaults: { status: "PENDING", requestedAt: now },
+  required: ["saleId", "shopId", "reason", "requestType", "refundMethod", "restockReturnedProducts", "markItemsAsDamaged", "requestManagerApproval"],
+  defaults: {
+    status: "PENDING",
+    requestType: "FULL_SALE",
+    refundMethod: "CASH",
+    selectedItemIds: [],
+    restockReturnedProducts: true,
+    markItemsAsDamaged: false,
+    requestManagerApproval: false,
+    requestedAt: now,
+  },
   enums: { status: ["PENDING", "APPROVED", "REJECTED", "COMPLETED"] },
   indexes: [index({ shopId: 1, status: 1 })],
   timestamps: false,

@@ -1,7 +1,16 @@
 "use client";
 
 import { offlineDb } from "@/lib/offline/db";
-import type { OfflineInventory, OfflineProduct, OfflineSale, OfflineSaleItem } from "@/lib/offline/types";
+import type { OfflineInventory, OfflineProduct, OfflineSale, OfflineSaleItem, SyncQueueItem } from "@/lib/offline/types";
+
+export type SyncPendingSalesOptions = {
+  retryFailedOnly?: boolean;
+};
+
+export function getSyncQueueStatuses(options: SyncPendingSalesOptions = {}) {
+  if (options.retryFailedOnly) return ["FAILED", "CONFLICT"] as const;
+  return ["PENDING_SYNC", "FAILED"] as const;
+}
 
 export function getOrCreateDeviceId() {
   const key = "pos-device-id";
@@ -105,32 +114,46 @@ export async function createLocalSale(input: {
   return sale;
 }
 
-export async function syncPendingSales() {
-  if (!navigator.onLine) return { synced: 0, conflicts: 0 };
-  const pending = await offlineDb.syncQueue.where("status").anyOf(["PENDING_SYNC", "FAILED"]).toArray();
-  if (!pending.length) return { synced: 0, conflicts: 0 };
+export async function syncPendingSales(options: SyncPendingSalesOptions = {}) {
+  if (!navigator.onLine) return { synced: 0, conflicts: 0, failed: 0, skipped: 0 };
+  const statuses = getSyncQueueStatuses(options);
+  const pending = await offlineDb.syncQueue.where("status").anyOf(statuses).toArray();
+  if (!pending.length) return { synced: 0, conflicts: 0, failed: 0, skipped: 0 };
 
-  const payload = [];
+  const payload: Array<{ queueId: string; sale: OfflineSale; items: OfflineSaleItem[] }> = [];
   for (const queue of pending) {
     const sale = await offlineDb.offlineSales.get(queue.entityId);
     const items = await offlineDb.offlineSaleItems.where("saleLocalId").equals(queue.entityId).toArray();
     if (sale) payload.push({ queueId: queue.id, sale, items });
   }
+
+  if (!payload.length) return { synced: 0, conflicts: 0, failed: pending.length, skipped: pending.length };
+
   await offlineDb.syncQueue.bulkUpdate(pending.map((item) => ({ key: item.id, changes: { status: "SYNCING" as const, attempts: item.attempts + 1 } })));
 
   try {
     const response = await fetch("/api/shop/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ deviceId: getOrCreateDeviceId(), sales: payload }) });
     if (!response.ok) throw new Error(await response.text());
     const result = await response.json() as { results: Array<{ queueId: string; localId: string; serverId: string; receiptNumber: string; status: "SYNCED" | "CONFLICT"; conflicts: string[] }> };
-    await offlineDb.transaction("rw", [offlineDb.offlineSales, offlineDb.syncQueue], async () => {
-      for (const item of result.results) {
+    const resultMap = new Map(result.results.map((item) => [item.queueId, item]));
+    await offlineDb.transaction("rw", [offlineDb.offlineSales, offlineDb.syncQueue, offlineDb.syncMetadata], async () => {
+      for (const queue of pending) {
+        const item = resultMap.get(queue.id);
+        if (!item) {
+          await offlineDb.syncQueue.update(queue.id, { status: "FAILED", lastError: "No response received from the server.", nextAttemptAt: new Date(Date.now() + 60_000).toISOString() });
+          continue;
+        }
         await offlineDb.offlineSales.update(item.localId, { status: item.status, serverId: item.serverId, receiptNumber: item.receiptNumber });
-        if (item.status === "SYNCED") await offlineDb.syncQueue.delete(item.queueId);
-        else await offlineDb.syncQueue.update(item.queueId, { status: "CONFLICT", lastError: item.conflicts.join(", ") });
+        if (item.status === "SYNCED") {
+          await offlineDb.syncQueue.delete(queue.id);
+        } else {
+          await offlineDb.syncQueue.update(queue.id, { status: "CONFLICT", lastError: item.conflicts.join(", "), nextAttemptAt: new Date(Date.now() + 60_000).toISOString() });
+        }
       }
+      await offlineDb.syncMetadata.put({ key: "lastSyncAt", value: new Date().toISOString() });
     });
     await bootstrapOfflineData();
-    return { synced: result.results.filter((item) => item.status === "SYNCED").length, conflicts: result.results.filter((item) => item.status === "CONFLICT").length };
+    return { synced: result.results.filter((item) => item.status === "SYNCED").length, conflicts: result.results.filter((item) => item.status === "CONFLICT").length, failed: 0, skipped: 0 };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Synchronization failed";
     await offlineDb.syncQueue.bulkUpdate(pending.map((item) => ({ key: item.id, changes: { status: "FAILED" as const, lastError: message, nextAttemptAt: new Date(Date.now() + 60_000).toISOString() } })));

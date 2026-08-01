@@ -375,6 +375,12 @@ export interface RefundRequestDocument extends BaseDocument {
   saleId: string;
   shopId: string;
   reason: string;
+  requestType: "FULL_SALE" | "SELECTED_PRODUCTS" | "EXCHANGE";
+  refundMethod: "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER" | "MIXED";
+  selectedItemIds?: string[];
+  restockReturnedProducts: boolean;
+  markItemsAsDamaged: boolean;
+  requestManagerApproval: boolean;
   status: RefundStatus;
   requestedAt: Date;
   reviewedAt?: Date | null;

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const optionalText = z.string().trim().optional().default("");
-const checkbox = z.preprocess((value) => value === "on" || value === "true" || value === true, z.boolean());
+const checkboxSchema = z.preprocess((value) => value === "on" || value === "true" || value === true, z.boolean());
 
 export const businessSettingsSchema = z.object({
   name: z.string().trim().min(2).max(120),
@@ -18,23 +18,23 @@ export const businessSettingsSchema = z.object({
   syncIntervalMinutes: z.coerce.number().int().min(1).max(1440),
   weeklyReportDay: z.coerce.number().int().min(0).max(6),
   weeklyReportHour: z.coerce.number().int().min(0).max(23),
-  posBarcodeScanningEnabled: checkbox,
+  posBarcodeScanningEnabled: checkboxSchema,
 }).refine((data) => data.defaultCriticalLevel <= data.defaultReorderLevel, {
   message: "Critical level must not exceed the reorder level.",
   path: ["defaultCriticalLevel"],
 });
 
 export const notificationPreferencesSchema = z.object({
-  lowStockInApp: checkbox,
-  lowStockPush: checkbox,
-  lowStockEmail: checkbox,
-  criticalInApp: checkbox,
-  criticalPush: checkbox,
-  criticalEmail: checkbox,
-  outOfStockInApp: checkbox,
-  outOfStockPush: checkbox,
-  outOfStockEmail: checkbox,
-  weeklyReportInApp: checkbox,
-  weeklyReportPush: checkbox,
-  weeklyReportEmail: checkbox,
+  lowStockInApp: checkboxSchema,
+  lowStockPush: checkboxSchema,
+  lowStockEmail: checkboxSchema,
+  criticalInApp: checkboxSchema,
+  criticalPush: checkboxSchema,
+  criticalEmail: checkboxSchema,
+  outOfStockInApp: checkboxSchema,
+  outOfStockPush: checkboxSchema,
+  outOfStockEmail: checkboxSchema,
+  weeklyReportInApp: checkboxSchema,
+  weeklyReportPush: checkboxSchema,
+  weeklyReportEmail: checkboxSchema,
 });
