@@ -1,5 +1,6 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireShop } from "@/lib/rbac";
 import { createShopRefundRequest } from "@/services/shop/refund-service";
@@ -16,17 +17,25 @@ function parseBooleanEntry(value: FormDataEntryValue | null) {
 
 export async function createRefundRequestAction(formData: FormData) {
   const shopUser = await requireShop();
-  const input = createRefundRequestSchema.parse({
-    saleId: formData.get("saleId")?.toString() ?? undefined,
-    receiptNumber: formData.get("receiptNumber")?.toString() ?? undefined,
-    requestType: formData.get("requestType")?.toString() ?? "FULL_SALE",
-    refundMethod: formData.get("refundMethod")?.toString() ?? "CASH",
-    selectedItemIds: formData.getAll("selectedItemIds").map((entry) => entry.toString()),
-    restockReturnedProducts: parseBooleanEntry(formData.get("restockReturnedProducts")),
-    markItemsAsDamaged: parseBooleanEntry(formData.get("markItemsAsDamaged")),
-    requestManagerApproval: parseBooleanEntry(formData.get("requestManagerApproval")),
-    reason: formData.get("reason")?.toString() ?? "",
-  });
-  await createShopRefundRequest(shopUser, input);
-  revalidatePath("/shop/refund-request");
+
+  try {
+    const input = createRefundRequestSchema.parse({
+      saleId: formData.get("saleId")?.toString() ?? undefined,
+      receiptNumber: formData.get("receiptNumber")?.toString() ?? undefined,
+      requestType: formData.get("requestType")?.toString() ?? "FULL_SALE",
+      refundMethod: formData.get("refundMethod")?.toString() ?? "CASH",
+      selectedItemIds: formData.getAll("selectedItemIds").map((entry) => entry.toString()),
+      restockReturnedProducts: parseBooleanEntry(formData.get("restockReturnedProducts")),
+      markItemsAsDamaged: parseBooleanEntry(formData.get("markItemsAsDamaged")),
+      requestManagerApproval: parseBooleanEntry(formData.get("requestManagerApproval")),
+      reason: formData.get("reason")?.toString() ?? "",
+    });
+
+    await createShopRefundRequest(shopUser, input);
+    revalidatePath("/shop/refund-request");
+    redirect("/shop/refund-request?success=Refund+request+submitted");
+  } catch (error) {
+    const message = error instanceof Error ? encodeURIComponent(error.message) : "Unable+to+submit+refund+request";
+    redirect(`/shop/refund-request?error=${message}`);
+  }
 }

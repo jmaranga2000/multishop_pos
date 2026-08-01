@@ -12,6 +12,10 @@ export function getSyncQueueStatuses(options: SyncPendingSalesOptions = {}) {
   return ["PENDING_SYNC", "FAILED"] as const;
 }
 
+export function hasPriceMismatchBetweenMinorUnits(serverPriceMinor: number, localPriceMinor: number) {
+  return Math.abs(serverPriceMinor - localPriceMinor) > 1;
+}
+
 export function getOrCreateDeviceId() {
   const key = "pos-device-id";
   let id = localStorage.getItem(key);

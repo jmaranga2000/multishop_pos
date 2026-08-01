@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { hasPriceMismatchBetweenMinorUnits } from "@/lib/offline/sync";
 import { fromMinorUnits } from "@/lib/utils";
 import { reconcileStockAlert } from "@/lib/stock-alerts";
 import { AppError } from "@/lib/errors/app-error";
@@ -138,7 +139,7 @@ export async function synchronizeOfflineSales(user: ShopSyncContext, payload: Of
           const product = productMap.get(item.productId);
           if (!product || product.status !== "ACTIVE") conflicts.push(`PRODUCT_DEACTIVATED:${item.productId}`);
           const serverPriceMinor = Math.round(Number(inventory.sellingPrice) * 100);
-          if (serverPriceMinor !== item.unitPriceMinor) conflicts.push(`PRICE_CHANGED:${item.productId}`);
+          if (hasPriceMismatchBetweenMinorUnits(serverPriceMinor, item.unitPriceMinor)) conflicts.push(`PRICE_CHANGED:${item.productId}`);
           const newQuantity = Math.max(0, inventory.quantity - item.quantity);
           if (inventory.quantity < item.quantity) conflicts.push(`INSUFFICIENT_SERVER_STOCK:${item.productId}`);
 

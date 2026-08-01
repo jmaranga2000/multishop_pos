@@ -19,6 +19,8 @@ type RefundPageProps = {
 export default async function RefundRequestPage({ searchParams }: RefundPageProps) {
   const user = await requireShop();
   const resolvedSearchParams = (await searchParams) ?? {};
+  const successMessage = typeof resolvedSearchParams.success === "string" ? decodeURIComponent(resolvedSearchParams.success) : "";
+  const errorMessage = typeof resolvedSearchParams.error === "string" ? decodeURIComponent(resolvedSearchParams.error) : "";
   const query = {
     receiptNumber: typeof resolvedSearchParams.receiptNumber === "string" ? resolvedSearchParams.receiptNumber : "",
     saleReference: typeof resolvedSearchParams.saleReference === "string" ? resolvedSearchParams.saleReference : "",
@@ -34,6 +36,8 @@ export default async function RefundRequestPage({ searchParams }: RefundPageProp
 
   return <>
     <PageHeading title="Refund requests" description="Search completed sales, select return items, and request manager approval without changing the original sale record." />
+    {successMessage ? <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{successMessage}</div> : null}
+    {errorMessage ? <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{errorMessage}</div> : null}
     <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
       <Card className="overflow-hidden">
         <CardHeader><h2 className="font-extrabold">Request history</h2></CardHeader>
@@ -86,22 +90,20 @@ export default async function RefundRequestPage({ searchParams }: RefundPageProp
 
             {matchingSales.length ? <div className="mt-4 space-y-2">
               <h3 className="text-sm font-semibold text-slate-700">Matches</h3>
-              {matchingSales.map((sale: { id: string; receiptNumber: string; customerName?: string | null; occurredAt: Date | string; total: number | string }) => (
-                <label key={sale.id} className={`flex items-start justify-between rounded-xl border p-3 text-sm ${selectedSaleId === sale.id ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
-                  <div>
-                    <p className="font-semibold text-slate-800">{sale.receiptNumber}</p>
-                    <p className="text-slate-500">{sale.customerName ?? "Walk-in customer"}</p>
-                    <p className="text-slate-500">{new Date(sale.occurredAt).toLocaleString("en-KE")}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold">{formatMoney(String(sale.total), business.currency)}</p>
-                    <input type="radio" name="saleId" value={sale.id} defaultChecked={selectedSaleId === sale.id} />
-                  </div>
-                </label>
-              ))}
-
               <form action={createRefundRequestAction} className="space-y-4 border-t border-slate-200 pt-4">
-                <input type="hidden" name="saleId" value={selectedSale?.id ?? ""} />
+                {matchingSales.map((sale: { id: string; receiptNumber: string; customerName?: string | null; occurredAt: Date | string; total: number | string }) => (
+                  <label key={sale.id} className={`flex items-start justify-between rounded-xl border p-3 text-sm ${selectedSaleId === sale.id ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
+                    <div>
+                      <p className="font-semibold text-slate-800">{sale.receiptNumber}</p>
+                      <p className="text-slate-500">{sale.customerName ?? "Walk-in customer"}</p>
+                      <p className="text-slate-500">{new Date(sale.occurredAt).toLocaleString("en-KE")}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold">{formatMoney(String(sale.total), business.currency)}</p>
+                      <input type="radio" name="saleId" value={sale.id} defaultChecked={selectedSaleId === sale.id} />
+                    </div>
+                  </label>
+                ))}
                 <input type="hidden" name="receiptNumber" value={selectedSale?.receiptNumber ?? ""} />
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="text-sm font-medium text-slate-700">Request type
