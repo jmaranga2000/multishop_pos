@@ -12,6 +12,11 @@ import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
+function formatSessionTimestamp(value: Date | string) {
+  const date = typeof value === "string" ? new Date(value) : value;
+  return Number.isFinite(date.getTime()) ? date.toISOString().replace("T", " ").slice(0, 19) : "Unknown time";
+}
+
 export default async function RegisterPage() {
   const user = await requireShop();
   const { business, shop, registers, salespeople, openSession, recentSessions, paymentChannels, paymentWarnings } = await getShopRegisterData(user.shopId, user.businessId);
@@ -24,7 +29,7 @@ export default async function RegisterPage() {
           <CardHeader>
             <div>
               <h2 className="font-extrabold">{openSession ? "Register session open" : "Open register session"}</h2>
-              <p className="text-sm text-slate-500">{openSession ? `${openSession.register.name} opened ${openSession.openedAt.toLocaleString("en-KE")}` : "Open one shared session for the shop and track Cash and M-Pesa in one place."}</p>
+              <p className="text-sm text-slate-500">{openSession ? `${openSession.register.name} opened ${formatSessionTimestamp(openSession.openedAt)}` : "Open one shared session for the shop and track Cash and M-Pesa in one place."}</p>
             </div>
           </CardHeader>
           <CardContent>
@@ -36,7 +41,7 @@ export default async function RegisterPage() {
                     <div>
                       <p className="text-xs font-semibold uppercase text-blue-700">Session status</p>
                       <p className="mt-1 text-xl font-black text-blue-950">{openSession.register.name}</p>
-                      <p className="mt-1 text-sm text-blue-800">Opened {openSession.openedAt.toLocaleString("en-KE")}</p>
+                      <p className="mt-1 text-sm text-blue-800">Opened {formatSessionTimestamp(openSession.openedAt)}</p>
                     </div>
                     <Badge tone="info">Live shift</Badge>
                   </div>
@@ -97,7 +102,7 @@ export default async function RegisterPage() {
                 <textarea name="closingNote" placeholder="Closing note (optional)" className="min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm" />
                 <textarea name="varianceReason" placeholder="Variance explanation required when counts differ" className="min-h-20 w-full rounded-xl border border-slate-200 p-3 text-sm" />
                 <textarea name="unresolvedClosureReason" placeholder="Unresolved M-Pesa reason (required if any payment remains unresolved)" className="min-h-20 w-full rounded-xl border border-slate-200 p-3 text-sm" />
-                <Button variant="danger" className="w-full"><LockKeyhole className="h-4 w-4" />Close and reconcile</Button>
+                <Button type="submit" variant="danger" className="w-full"><LockKeyhole className="h-4 w-4" />Close and reconcile</Button>
               </form>
             ) : registers.length ? (
               <form action={openRegisterAction} className="space-y-4">
@@ -138,14 +143,14 @@ export default async function RegisterPage() {
                   <Input name="openingMpesaBalance" type="number" min="0" step="0.01" placeholder="Opening M-Pesa balance" required className="mt-3" />
                 </div>
                 <textarea name="openingNote" placeholder="Opening note (optional)" className="min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm" />
-                <Button className="w-full"><UnlockKeyhole className="h-4 w-4" />Open register session</Button>
+                <Button type="submit" className="w-full"><UnlockKeyhole className="h-4 w-4" />Open register session</Button>
               </form>
             ) : <EmptyState title="No active register" description="Ask the administrator to configure a register for this shop." />}
           </CardContent>
         </Card>
         <Card className="overflow-hidden">
           <CardHeader><div><h2 className="font-extrabold">Recent sessions</h2><p className="text-sm text-slate-500">Opening, closing and reconciliation history for this shop.</p></div></CardHeader>
-          {recentSessions.length ? <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Register</th><th>Operator</th><th>Opened</th><th>Cash opening</th><th>M-Pesa opening</th><th>Expected cash</th><th>Variance</th><th>Status</th></tr></thead><tbody>{recentSessions.map((session) => <tr key={session.id}><td><div className="flex items-center gap-2"><Banknote className="h-4 w-4 text-slate-400" />{session.register.name}</div></td><td>{session.salesperson?.name ?? "Shop account"}</td><td>{session.openedAt.toLocaleString("en-KE")}</td><td>{formatMoney(session.openingCash.toString(), business.currency)}</td><td>{formatMoney((session.openingMpesaBalance ?? 0).toString(), business.currency)}</td><td>{formatMoney((session.expectedCash ?? 0).toString(), business.currency)}</td><td>{session.variance !== null && session.variance !== undefined ? formatMoney(session.variance.toString(), business.currency) : "—"}</td><td><Badge tone={session.status === "OPEN" ? "warning" : session.variance && session.variance !== 0 ? "danger" : "success"}>{session.status}</Badge></td></tr>)}</tbody></table></div> : <EmptyState icon={<CircleDollarSign className="h-7 w-7" />} title="No register history" description="Open the first shift to begin register tracking." />}
+          {recentSessions.length ? <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Register</th><th>Operator</th><th>Opened</th><th>Cash opening</th><th>M-Pesa opening</th><th>Expected cash</th><th>Variance</th><th>Status</th></tr></thead><tbody>{recentSessions.map((session) => <tr key={session.id}><td><div className="flex items-center gap-2"><Banknote className="h-4 w-4 text-slate-400" />{session.register.name}</div></td><td>{session.salesperson?.name ?? "Shop account"}</td><td>{formatSessionTimestamp(session.openedAt)}</td><td>{formatMoney(session.openingCash.toString(), business.currency)}</td><td>{formatMoney((session.openingMpesaBalance ?? 0).toString(), business.currency)}</td><td>{formatMoney((session.expectedCash ?? 0).toString(), business.currency)}</td><td>{session.variance !== null && session.variance !== undefined ? formatMoney(session.variance.toString(), business.currency) : "—"}</td><td><Badge tone={session.status === "OPEN" ? "warning" : session.variance && session.variance !== 0 ? "danger" : "success"}>{session.status}</Badge></td></tr>)}</tbody></table></div> : <EmptyState icon={<CircleDollarSign className="h-7 w-7" />} title="No register history" description="Open the first shift to begin register tracking." />}
         </Card>
       </div>
     </>

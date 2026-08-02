@@ -18,9 +18,11 @@ export function Button<T extends React.ElementType = "button">({
   variant = "primary",
   size = "md",
   className,
+  type,
   ...props
 }: ButtonProps<T>) {
   const Component = as || "button";
+  const safeType = type ?? (Component === "button" ? "button" : undefined);
   const variants: Record<ButtonVariants, string> = {
     primary: "bg-[#173b89] text-white hover:bg-[#102f73] shadow-sm",
     secondary: "bg-white text-slate-800 border border-slate-200 hover:bg-slate-50",
@@ -36,6 +38,7 @@ export function Button<T extends React.ElementType = "button">({
   };
 
   return React.createElement(Component, {
+    type: safeType,
     className: cn(
       "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
       variants[variant],
