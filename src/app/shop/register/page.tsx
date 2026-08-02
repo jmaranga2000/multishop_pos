@@ -45,11 +45,20 @@ export default async function RegisterPage() {
                     <p className="text-xs uppercase text-slate-500">Opening M-Pesa</p>
                     <p className="mt-1 font-semibold">{formatMoney((openSession.openingMpesaBalance ?? 0).toString(), business.currency)}</p>
                   </div>
+                  <div className="rounded-2xl border border-slate-200 p-3">
+                    <p className="text-xs uppercase text-slate-500">Expected cash</p>
+                    <p className="mt-1 font-semibold">{formatMoney((openSession.expectedCash ?? 0).toString(), business.currency)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 p-3">
+                    <p className="text-xs uppercase text-slate-500">Expected M-Pesa</p>
+                    <p className="mt-1 font-semibold">{formatMoney((openSession.expectedMpesa ?? 0).toString(), business.currency)}</p>
+                  </div>
                 </div>
                 <Input name="actualCash" type="number" min="0" step="0.01" placeholder="Physical cash counted" required />
                 <Input name="actualMpesaBalance" type="number" min="0" step="0.01" placeholder="Actual M-Pesa balance" />
                 <textarea name="closingNote" placeholder="Closing note (optional)" className="min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm" />
-                <textarea name="varianceReason" placeholder="Variance explanation (optional)" className="min-h-20 w-full rounded-xl border border-slate-200 p-3 text-sm" />
+                <textarea name="varianceReason" placeholder="Variance explanation required when counts differ" className="min-h-20 w-full rounded-xl border border-slate-200 p-3 text-sm" />
+                <textarea name="unresolvedClosureReason" placeholder="Unresolved M-Pesa reason (required if any payment remains unresolved)" className="min-h-20 w-full rounded-xl border border-slate-200 p-3 text-sm" />
                 <Button variant="danger" className="w-full"><LockKeyhole className="h-4 w-4" />Close and reconcile</Button>
               </form>
             ) : registers.length ? (

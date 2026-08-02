@@ -53,6 +53,63 @@ function toNumber(value: number | string | null | undefined) {
   return Number.isFinite(numeric) ? Number(numeric) : 0;
 }
 
+export function calculateExpectedCash(input: {
+  openingCash?: number | string | null;
+  cashSalesTotal?: number | string | null;
+  cashExpenseTotal?: number | string | null;
+  cashInTotal?: number | string | null;
+  cashOutTotal?: number | string | null;
+}) {
+  return Number(input.openingCash ?? 0)
+    + Number(input.cashSalesTotal ?? 0)
+    + Number(input.cashInTotal ?? 0)
+    - Number(input.cashExpenseTotal ?? 0)
+    - Number(input.cashOutTotal ?? 0);
+}
+
+export function calculateExpectedMpesa(input: {
+  openingMpesaBalance?: number | string | null;
+  mpesaPayments?: Array<{ status?: string | null; receivedAmountMinor?: number | string | null; expectedAmountMinor?: number | string | null }>;
+}) {
+  const confirmedStatuses = new Set(["SUCCESSFUL", "MATCHED", "RECEIVED"]);
+  const confirmedTotal = (input.mpesaPayments ?? []).reduce((sum, payment) => {
+    if (!confirmedStatuses.has(String(payment.status ?? ""))) return sum;
+    const amount = toNumber(payment.receivedAmountMinor ?? payment.expectedAmountMinor ?? 0);
+    return sum + fromMinorUnits(amount);
+  }, 0);
+
+  return Number(input.openingMpesaBalance ?? 0) + confirmedTotal;
+}
+
+export function validateRegisterClosingInput(input: {
+  actualCash?: number | string | null;
+  expectedCash?: number | string | null;
+  variance?: number | string | null;
+  actualMpesaBalance?: number | string | null;
+  expectedMpesa?: number | string | null;
+  mpesaVariance?: number | string | null;
+  varianceReason?: string | null;
+  unresolvedClosureReason?: string | null;
+  unresolvedPayments?: number | string | null;
+}) {
+  const issues: string[] = [];
+
+  const cashVariance = Number(input.variance ?? (Number(input.actualCash ?? 0) - Number(input.expectedCash ?? 0)));
+  const mpesaVariance = Number(input.mpesaVariance ?? (Number(input.actualMpesaBalance ?? 0) - Number(input.expectedMpesa ?? 0)));
+
+  if (Math.abs(cashVariance) > 0.0001 || Math.abs(mpesaVariance) > 0.0001) {
+    if (!String(input.varianceReason ?? "").trim()) {
+      issues.push("A variance explanation is required when the counted cash or M-Pesa balance does not match the expected balance.");
+    }
+  }
+
+  if (Number(input.unresolvedPayments ?? 0) > 0 && !String(input.unresolvedClosureReason ?? "").trim()) {
+    issues.push("An unresolved closure reason is required when there are unresolved M-Pesa payments.");
+  }
+
+  return issues;
+}
+
 export async function getShopRegisterData(shopId: string, businessId: string) {
   const [business, shop, registers, salespeople, openSession, recentSessions] = await Promise.all([
     db.business.findUniqueOrThrow({ where: { id: businessId } }),
@@ -100,11 +157,20 @@ async function buildSessionViewModel(session: any, shopId: string) {
   const cashExpenseTotal = registerTransactions.filter((entry: any) => entry.type === "EXPENSE").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
   const cashInTotal = registerTransactions.filter((entry: any) => entry.type === "CASH_IN" || entry.type === "SAFE_TRANSFER_IN" || entry.type === "REGISTER_TRANSFER_IN").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
   const cashOutTotal = registerTransactions.filter((entry: any) => entry.type === "CASH_OUT" || entry.type === "SAFE_TRANSFER_OUT" || entry.type === "REGISTER_TRANSFER_OUT" || entry.type === "VARIANCE_ADJUSTMENT").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
-  const expectedCash = Number(session.openingCash ?? 0) + cashSalesTotal + cashInTotal - cashExpenseTotal - cashOutTotal;
+  const expectedCash = calculateExpectedCash({
+    openingCash: session.openingCash,
+    cashSalesTotal,
+    cashExpenseTotal,
+    cashInTotal,
+    cashOutTotal,
+  });
 
   const confirmedMpesaPayments = mpesaPayments.filter((payment: any) => ["SUCCESSFUL", "MATCHED", "RECEIVED"].includes(payment.status));
   const mpesaSalesTotal = confirmedMpesaPayments.reduce((sum: number, payment: any) => sum + fromMinorUnits(toNumber(payment.receivedAmountMinor || payment.expectedAmountMinor)), 0);
-  const expectedMpesa = Number(session.openingMpesaBalance ?? 0) + mpesaSalesTotal;
+  const expectedMpesa = calculateExpectedMpesa({
+    openingMpesaBalance: session.openingMpesaBalance,
+    mpesaPayments,
+  });
 
   const unmatchedPayments = mpesaPayments.filter((payment: any) => ["PENDING", "WAITING_FOR_CUSTOMER", "MATCHING", "UNMATCHED", "AMBIGUOUS", "UNDERPAID", "OVERPAID"].includes(payment.status));
 
@@ -401,16 +467,40 @@ export async function closeRegisterSession(shopUser: ShopContext, input: CloseRe
   const cashExpenseTotal = registerTransactions.filter((entry: any) => entry.type === "EXPENSE").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
   const cashInTotal = registerTransactions.filter((entry: any) => entry.type === "CASH_IN" || entry.type === "SAFE_TRANSFER_IN" || entry.type === "REGISTER_TRANSFER_IN").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
   const cashOutTotal = registerTransactions.filter((entry: any) => entry.type === "CASH_OUT" || entry.type === "SAFE_TRANSFER_OUT" || entry.type === "REGISTER_TRANSFER_OUT" || entry.type === "VARIANCE_ADJUSTMENT").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
-  const expectedCash = Number(session.openingCash ?? 0) + cashSalesTotal + cashInTotal - cashExpenseTotal - cashOutTotal;
+  const expectedCash = calculateExpectedCash({
+    openingCash: session.openingCash,
+    cashSalesTotal,
+    cashExpenseTotal,
+    cashInTotal,
+    cashOutTotal,
+  });
 
   const confirmedMpesaPayments = mpesaPayments.filter((payment: any) => ["SUCCESSFUL", "MATCHED", "RECEIVED"].includes(payment.status));
   const mpesaSalesTotal = confirmedMpesaPayments.reduce((sum: number, payment: any) => sum + fromMinorUnits(toNumber(payment.receivedAmountMinor || payment.expectedAmountMinor)), 0);
-  const expectedMpesa = Number(session.openingMpesaBalance ?? 0) + mpesaSalesTotal;
+  const expectedMpesa = calculateExpectedMpesa({
+    openingMpesaBalance: session.openingMpesaBalance,
+    mpesaPayments,
+  });
   const actualMpesaBalance = Number(input.actualMpesaBalance ?? 0);
   const mpesaVariance = actualMpesaBalance - expectedMpesa;
   const unresolvedPayments = mpesaPayments.filter((payment: any) => ["PENDING", "WAITING_FOR_CUSTOMER", "MATCHING", "UNMATCHED", "AMBIGUOUS", "UNDERPAID", "OVERPAID"].includes(payment.status)).length;
   const closedWithUnresolvedPayments = unresolvedPayments > 0;
   const variance = Number(input.actualCash ?? 0) - expectedCash;
+  const validationErrors = validateRegisterClosingInput({
+    actualCash: input.actualCash,
+    expectedCash,
+    variance,
+    actualMpesaBalance: actualMpesaBalance,
+    expectedMpesa,
+    mpesaVariance,
+    varianceReason: input.varianceReason,
+    unresolvedClosureReason: input.unresolvedClosureReason,
+    unresolvedPayments,
+  });
+
+  if (validationErrors.length) {
+    throw new AppError(validationErrors.join(" "), "REGISTER_CLOSURE_VALIDATION", 400);
+  }
 
   const closed = await db.$transaction(async (tx) => {
     const updated = await tx.registerSession.update({
