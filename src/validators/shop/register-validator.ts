@@ -5,8 +5,8 @@ const denominationSchema = z.coerce.number().nonnegative().optional();
 export const openRegisterSchema = z.object({
   registerId: z.string().min(1),
   openingCash: z.coerce.number().nonnegative(),
-  salespersonId: z.string().optional(),
-  pin: z.string().optional(),
+  salespersonId: z.string().min(1),
+  pin: z.string().min(1),
   openingNote: z.string().trim().max(500).optional(),
   openingCashSource: z.string().trim().max(100).optional(),
   openingMpesaBalance: z.coerce.number().nonnegative().optional(),

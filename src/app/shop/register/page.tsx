@@ -112,6 +112,17 @@ export default async function RegisterPage() {
                     {registers.map((register) => <option key={register.id} value={register.id}>{register.name}</option>)}
                   </select>
                 </div>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">Cashier</label>
+                  <select name="salespersonId" required className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm">
+                    <option value="">Select cashier</option>
+                    {salespeople.map((salesperson) => <option key={salesperson.id} value={salesperson.id}>{salesperson.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">Cashier PIN</label>
+                  <Input name="pin" type="password" inputMode="numeric" autoComplete="one-time-code" placeholder="Enter cashier PIN" required className="mt-0" maxLength={6} />
+                </div>
                 <div className="rounded-2xl border border-slate-200 p-3">
                   <div className="flex items-center gap-2">
                     <Wallet className="h-4 w-4 text-slate-500" />

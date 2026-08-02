@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { PosShell } from "@/components/shop/pos-shell";
 import { db } from "@/lib/db";
 import { getMpesaEnvConfig } from "@/lib/mpesa-env";
@@ -23,6 +24,11 @@ export default async function PosPage() {
     select: { id: true },
     orderBy: { openedAt: "desc" },
   });
+
+  if (!openRegisterSession) {
+    redirect("/shop/register?error=" + encodeURIComponent("Open a register session before using the POS."));
+  }
+
   const envConfig = getMpesaEnvConfig();
 
   return <PosShell

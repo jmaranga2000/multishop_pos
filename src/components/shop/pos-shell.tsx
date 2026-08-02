@@ -394,6 +394,10 @@ export function PosShell({
   }
 
   async function checkout() {
+    if (!registerSessionId) {
+      toast.error("Open a register session before completing a sale.");
+      return;
+    }
     if (!cart.length || processing) return;
     if (!splitPaymentEnabled && receivedMinor < totalMinor) {
       toast.error("Amount received is lower than the sale total");
@@ -793,7 +797,7 @@ export function PosShell({
                 ) : null}
               </div>
             ) : null}
-            {paymentMode === "CASH" ? <Button onClick={() => void checkout()} disabled={!cart.length || processing} className="mt-3 w-full" size="lg"><Banknote className="h-5 w-5"/>{processing ? "Completing sale..." : `Complete cash sale${pendingCount ? ` • ${pendingCount} pending` : ""}`}</Button> : null}
+            {paymentMode === "CASH" ? <Button onClick={() => void checkout()} disabled={!registerSessionId || !cart.length || processing} className="mt-3 w-full" size="lg"><Banknote className="h-5 w-5"/>{processing ? "Completing sale..." : `Complete cash sale${pendingCount ? ` • ${pendingCount} pending` : ""}`}</Button> : null}
           </div>
         </div>
       </Card>

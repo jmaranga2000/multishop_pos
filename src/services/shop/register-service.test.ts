@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildEnabledPaymentChannels,
+  calculateCashSalesTotal,
   calculateExpectedCash,
   calculateExpectedMpesa,
   validateRegisterClosingInput,
@@ -37,6 +38,18 @@ test("calculateExpectedCash totals opening float, sales and adjustments", () => 
   });
 
   assert.equal(expected, 1140);
+});
+
+test("calculateCashSalesTotal uses each sale total for verified cash payments instead of the tendered amount", () => {
+  const expected = calculateCashSalesTotal([
+    { id: "sale-1", total: 120, status: "COMPLETED" },
+    { id: "sale-2", total: 160, status: "COMPLETED" },
+  ] as any[], [
+    { saleId: "sale-1", method: "CASH", status: "VERIFIED", amount: 150 },
+    { saleId: "sale-2", method: "CASH", status: "VERIFIED", amount: 200 },
+  ] as any[]);
+
+  assert.equal(expected, 280);
 });
 
 test("calculateExpectedMpesa only counts confirmed payments and ignores failed ones", () => {

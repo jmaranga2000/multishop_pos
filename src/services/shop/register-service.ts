@@ -53,6 +53,15 @@ function toNumber(value: number | string | null | undefined) {
   return Number.isFinite(numeric) ? Number(numeric) : 0;
 }
 
+export function calculateCashSalesTotal(sales: Array<{ id: string; total?: number | string | null }>, payments: Array<{ saleId: string; method?: string | null; status?: string | null; amount?: number | string | null }>) {
+  const verifiedCashPayments = payments.filter((payment) => payment.method === "CASH" && payment.status === "VERIFIED");
+  return verifiedCashPayments.reduce((sum, payment) => {
+    const sale = sales.find((entry) => entry.id === payment.saleId);
+    const saleTotal = toNumber(sale?.total ?? payment.amount ?? 0);
+    return sum + saleTotal;
+  }, 0);
+}
+
 export function calculateExpectedCash(input: {
   openingCash?: number | string | null;
   cashSalesTotal?: number | string | null;
@@ -152,8 +161,7 @@ async function buildSessionViewModel(session: any, shopId: string) {
     db.mpesaPayment.findMany({ where: { shopId, shiftId: session.id } }),
   ]);
 
-  const cashSales = payments.filter((payment: any) => payment.method === "CASH" && payment.status === "VERIFIED");
-  const cashSalesTotal = cashSales.reduce((sum: number, payment: any) => sum + toNumber(payment.amount), 0);
+  const cashSalesTotal = calculateCashSalesTotal(sales, payments);
   const cashExpenseTotal = registerTransactions.filter((entry: any) => entry.type === "EXPENSE").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
   const cashInTotal = registerTransactions.filter((entry: any) => entry.type === "CASH_IN" || entry.type === "SAFE_TRANSFER_IN" || entry.type === "REGISTER_TRANSFER_IN").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
   const cashOutTotal = registerTransactions.filter((entry: any) => entry.type === "CASH_OUT" || entry.type === "SAFE_TRANSFER_OUT" || entry.type === "REGISTER_TRANSFER_OUT" || entry.type === "VARIANCE_ADJUSTMENT").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
@@ -220,7 +228,7 @@ export function buildCashLedgerEntries(
       entryType: "Cash sale",
       description: sale ? `Sale ${sale.receiptNumber}` : "Cash sale",
       reference: sale?.receiptNumber ?? payment.reference ?? payment.id,
-      moneyIn: toNumber(payment.amount),
+      moneyIn: toNumber(sale?.total ?? payment.amount ?? 0),
       moneyOut: 0,
       runningBalance: 0,
       user: sale?.salespersonId ? "Salesperson" : "Operator",
@@ -361,15 +369,17 @@ export async function openRegisterSession(shopUser: ShopContext, input: OpenRegi
   const duplicate = await db.registerSession.findFirst({ where: { shopId: shopUser.shopId, idempotencyKey } });
   if (duplicate) throw new AppError("This opening request has already been processed.");
 
-  let salespersonId: string | null = null;
-  if (input.salespersonId) {
-    const salesperson = await db.salespersonProfile.findFirst({
-      where: { id: input.salespersonId, shopId: shopUser.shopId, isActive: true },
-    });
-    if (!salesperson) throw new AppError("Salesperson profile was not found.");
-    if (!input.pin || !(await argon2.verify(salesperson.pinHash, input.pin))) throw new AppError("The salesperson PIN is incorrect.");
-    salespersonId = salesperson.id;
+  if (!input.salespersonId || !input.pin) {
+    throw new AppError("A valid salesperson ID and PIN are required to open the register.");
   }
+
+  const salesperson = await db.salespersonProfile.findFirst({
+    where: { id: input.salespersonId, shopId: shopUser.shopId, isActive: true },
+  });
+  if (!salesperson) throw new AppError("Salesperson profile was not found.");
+  if (!(await argon2.verify(salesperson.pinHash, input.pin))) throw new AppError("The salesperson PIN is incorrect.");
+
+  const salespersonId = salesperson.id;
 
   const denominationTotal = [
     input.cashDenomination1000 ?? 0,
@@ -462,8 +472,7 @@ export async function closeRegisterSession(shopUser: ShopContext, input: CloseRe
     db.mpesaPayment.findMany({ where: { shopId: shopUser.shopId, shiftId: session.id } }),
   ]);
 
-  const cashSales = payments.filter((payment: any) => payment.method === "CASH" && payment.status === "VERIFIED");
-  const cashSalesTotal = cashSales.reduce((sum: number, payment: any) => sum + toNumber(payment.amount), 0);
+  const cashSalesTotal = calculateCashSalesTotal(sales, payments);
   const cashExpenseTotal = registerTransactions.filter((entry: any) => entry.type === "EXPENSE").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
   const cashInTotal = registerTransactions.filter((entry: any) => entry.type === "CASH_IN" || entry.type === "SAFE_TRANSFER_IN" || entry.type === "REGISTER_TRANSFER_IN").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
   const cashOutTotal = registerTransactions.filter((entry: any) => entry.type === "CASH_OUT" || entry.type === "SAFE_TRANSFER_OUT" || entry.type === "REGISTER_TRANSFER_OUT" || entry.type === "VARIANCE_ADJUSTMENT").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
