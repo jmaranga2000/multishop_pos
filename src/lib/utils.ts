@@ -22,6 +22,21 @@ export function formatDate(value: string | Date, locale = "en-KE") {
   return Number.isFinite(date.getTime()) ? date.toLocaleDateString(locale) : ""
 }
 
+export function formatVariance(value: string | number, currency = "KES") {
+  const amount = typeof value === "string" ? Number(value) : value
+  const safeAmount = Number.isFinite(amount) ? Number(amount) : 0
+  const formatter = new Intl.NumberFormat("en-KE", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })
+
+  if (safeAmount > 0) return `Surplus (+${formatter.format(safeAmount)})`
+  if (safeAmount < 0) return `Shortage (${formatter.format(safeAmount)})`
+  return `Balanced (${formatter.format(0)})`
+}
+
 export function getStockStatus(quantity: number, reorderLevel: number, criticalLevel: number) {
   if (quantity <= 0) return "OUT_OF_STOCK" as const
   if (quantity <= criticalLevel) return "CRITICAL" as const

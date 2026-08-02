@@ -54,8 +54,82 @@ export default async function RegisterPage() {
                     <p className="mt-1 font-semibold">{formatMoney((openSession.expectedMpesa ?? 0).toString(), business.currency)}</p>
                   </div>
                 </div>
-                <Input name="actualCash" type="number" min="0" step="0.01" placeholder="Physical cash counted" required />
-                <Input name="actualMpesaBalance" type="number" min="0" step="0.01" placeholder="Actual M-Pesa balance" />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 p-3">
+                    <p className="text-xs uppercase text-slate-500">Opening cash</p>
+                    <p className="mt-1 font-semibold">{formatMoney((openSession.openingCash ?? 0).toString(), business.currency)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 p-3">
+                    <p className="text-xs uppercase text-slate-500">Cash sales</p>
+                    <p className="mt-1 font-semibold">{formatMoney((openSession.cashSalesTotal ?? 0).toString(), business.currency)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 p-3">
+                    <p className="text-xs uppercase text-slate-500">Cash refunds</p>
+                    <p className="mt-1 font-semibold">{formatMoney((0).toString(), business.currency)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 p-3">
+                    <p className="text-xs uppercase text-slate-500">Cash expenses</p>
+                    <p className="mt-1 font-semibold">{formatMoney((0).toString(), business.currency)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 p-3">
+                    <p className="text-xs uppercase text-slate-500">Cash paid in</p>
+                    <p className="mt-1 font-semibold">{formatMoney((0).toString(), business.currency)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 p-3">
+                    <p className="text-xs uppercase text-slate-500">Cash paid out</p>
+                    <p className="mt-1 font-semibold">{formatMoney((0).toString(), business.currency)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 p-3 sm:col-span-2">
+                    <p className="text-xs uppercase text-slate-500">Expected cash</p>
+                    <p className="mt-1 font-semibold">{formatMoney((openSession.expectedCash ?? 0).toString(), business.currency)}</p>
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 p-3">
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">Actual cash counted</label>
+                  <Input name="actualCash" type="number" min="0" step="0.01" placeholder="Physical cash counted" required />
+                </div>
+                <div className="rounded-2xl border border-slate-200 p-3">
+                  <p className="text-xs uppercase text-slate-500">Cash variance</p>
+                  <p className="mt-1 font-semibold text-emerald-700">{formatMoney((Number(openSession.variance ?? 0)).toString(), business.currency)}</p>
+                </div>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 p-3">
+                    <p className="text-xs uppercase text-slate-500">Opening M-Pesa</p>
+                    <p className="mt-1 font-semibold">{formatMoney((openSession.openingMpesaBalance ?? 0).toString(), business.currency)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 p-3">
+                    <p className="text-xs uppercase text-slate-500">M-Pesa sales</p>
+                    <p className="mt-1 font-semibold">{formatMoney((openSession.mpesaSalesTotal ?? 0).toString(), business.currency)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 p-3">
+                    <p className="text-xs uppercase text-slate-500">M-Pesa refunds</p>
+                    <p className="mt-1 font-semibold">{formatMoney((0).toString(), business.currency)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 p-3">
+                    <p className="text-xs uppercase text-slate-500">M-Pesa expenses</p>
+                    <p className="mt-1 font-semibold">{formatMoney((0).toString(), business.currency)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 p-3">
+                    <p className="text-xs uppercase text-slate-500">Transfers in</p>
+                    <p className="mt-1 font-semibold">{formatMoney((0).toString(), business.currency)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 p-3">
+                    <p className="text-xs uppercase text-slate-500">Transfers out</p>
+                    <p className="mt-1 font-semibold">{formatMoney((0).toString(), business.currency)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 p-3 sm:col-span-2">
+                    <p className="text-xs uppercase text-slate-500">Expected M-Pesa balance</p>
+                    <p className="mt-1 font-semibold">{formatMoney((openSession.expectedMpesa ?? 0).toString(), business.currency)}</p>
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 p-3">
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">Actual M-Pesa balance</label>
+                  <Input name="actualMpesaBalance" type="number" min="0" step="0.01" placeholder="Actual M-Pesa balance" />
+                </div>
+                <div className="rounded-2xl border border-slate-200 p-3">
+                  <p className="text-xs uppercase text-slate-500">M-Pesa variance</p>
+                  <p className="mt-1 font-semibold text-emerald-700">{formatMoney((Number(openSession.variance ?? 0)).toString(), business.currency)}</p>
+                </div>
                 <textarea name="closingNote" placeholder="Closing note (optional)" className="min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm" />
                 <textarea name="varianceReason" placeholder="Variance explanation required when counts differ" className="min-h-20 w-full rounded-xl border border-slate-200 p-3 text-sm" />
                 <textarea name="unresolvedClosureReason" placeholder="Unresolved M-Pesa reason (required if any payment remains unresolved)" className="min-h-20 w-full rounded-xl border border-slate-200 p-3 text-sm" />
@@ -74,46 +148,19 @@ export default async function RegisterPage() {
                     {registers.map((register) => <option key={register.id} value={register.id}>{register.name}</option>)}
                   </select>
                 </div>
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">Operator</label>
-                  <select name="salespersonId" className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm">
-                    <option value="">Use authenticated shop operator</option>
-                    {salespeople.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">Salesperson PIN</label>
-                  <Input name="pin" type="password" inputMode="numeric" placeholder="PIN when selected" />
-                </div>
                 <div className="rounded-2xl border border-slate-200 p-3">
                   <div className="flex items-center gap-2">
                     <Wallet className="h-4 w-4 text-slate-500" />
                     <p className="text-sm font-semibold">Cash opening</p>
                   </div>
                   <Input name="openingCash" type="number" min="0" step="0.01" placeholder="Opening cash float" required className="mt-3" />
-                  <Input name="openingCashSource" placeholder="Opening cash source" className="mt-3" />
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-3">
                   <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4 text-slate-500" />
                     <p className="text-sm font-semibold">M-Pesa opening</p>
                   </div>
-                  <Input name="openingMpesaBalance" type="number" min="0" step="0.01" placeholder="Opening M-Pesa balance" className="mt-3" />
-                  <Input name="openingMpesaBalanceMethod" placeholder="Balance method" className="mt-3" />
-                  <Input name="openingMpesaVerifiedBy" placeholder="Verified by" className="mt-3" />
-                  <Input name="openingMpesaReference" placeholder="Reference" className="mt-3" />
-                </div>
-                <div className="rounded-2xl border border-slate-200 p-3">
-                  <div className="flex items-center gap-2">
-                    <Smartphone className="h-4 w-4 text-slate-500" />
-                    <p className="text-sm font-semibold">Payment channels</p>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {paymentChannels.map((channel) => <Badge key={channel} tone="info">{channel === "CASH" ? "Cash" : channel === "MPESA_STK_PUSH" ? "M-Pesa STK Push" : channel === "MPESA_PAY_TO_TILL" ? "M-Pesa Pay to Till" : channel}</Badge>)}
-                  </div>
-                  {paymentWarnings.length ? <div className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
-                    <div className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 flex-none" /><ul className="space-y-1">{paymentWarnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div>
-                  </div> : null}
+                  <Input name="openingMpesaBalance" type="number" min="0" step="0.01" placeholder="Opening M-Pesa balance" required className="mt-3" />
                 </div>
                 <textarea name="openingNote" placeholder="Opening note (optional)" className="min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm" />
                 <Button className="w-full"><UnlockKeyhole className="h-4 w-4" />Open register session</Button>
