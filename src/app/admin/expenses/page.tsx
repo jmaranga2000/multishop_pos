@@ -99,6 +99,7 @@ export default async function ExpensesPage() {
                   <th>Shop</th>
                   <th>Category</th>
                   <th>Description</th>
+                  <th>Source</th>
                   <th>Amount</th>
                   <th>Date</th>
                   <th>Status</th>
@@ -116,6 +117,7 @@ export default async function ExpensesPage() {
                       </div>
                     </td>
                     <td className="max-w-sm">{expense.description}</td>
+                    <td><Badge tone={expense.source === "MPESA" ? "info" : "neutral"}>{expense.source}</Badge></td>
                     <td className="font-bold">{formatMoney(expense.amount.toString(), business.currency)}</td>
                     <td>{expense.occurredAt.toLocaleDateString("en-KE")}</td>
                     <td>

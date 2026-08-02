@@ -47,10 +47,10 @@ export function AppShell({ children, navItems, userName, userEmail, accountLabel
           </div>
         </div>
         <div className="relative flex items-center gap-3">
-          <Button type="button" variant="secondary" size="icon" aria-label="Notifications" aria-expanded={notificationOpen} onClick={() => setNotificationOpen((open) => !open)} className="relative overflow-visible">
+          <button type="button" aria-label="Notifications" aria-expanded={notificationOpen} onClick={() => setNotificationOpen((open) => !open)} className="relative inline-flex h-10 w-10 items-center justify-center overflow-visible rounded-xl border border-slate-200 bg-white text-slate-800 transition hover:bg-slate-50">
             <Bell className="h-5 w-5" />
             {notificationCount > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">{notificationCount > 99 ? "99+" : notificationCount}</span>}
-          </Button>
+          </button>
           {notificationOpen && (
             <div className="absolute right-0 top-12 z-50 w-72 rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl shadow-slate-900/10">
               <p className="text-sm font-bold text-slate-900">Notifications</p>

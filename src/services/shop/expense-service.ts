@@ -24,6 +24,7 @@ export async function createShopExpense(shopUser: ShopContext, input: CreateExpe
       data: {
         shopId: shopUser.shopId,
         categoryId: category.id,
+        source: input.source,
         amount: input.amount,
         description: input.description,
         occurredAt: input.occurredAt,

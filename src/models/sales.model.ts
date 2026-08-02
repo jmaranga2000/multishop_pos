@@ -35,7 +35,8 @@ export const RegisterSessionModel = defineModel<RegisterSessionDocument>({
 export const RegisterTransactionModel = defineModel<RegisterTransactionDocument>({
   collection: "registerTransactions",
   required: ["registerSessionId", "type", "amount"],
-  defaults: { createdAt: now },
+  defaults: { createdAt: now, source: "CASH" },
+  enums: { source: ["CASH", "MPESA"] },
   indexes: [index({ registerSessionId: 1, createdAt: 1 })],
   timestamps: false,
 });

@@ -209,6 +209,7 @@ export interface RegisterSessionDocument extends BaseDocument {
 export interface RegisterTransactionDocument extends BaseDocument {
   registerSessionId: string;
   type: string;
+  source?: "CASH" | "MPESA" | null;
   amount: number;
   note?: string | null;
 }
@@ -433,6 +434,7 @@ export interface ExpenseCategoryDocument extends BaseDocument {
 export interface ExpenseDocument extends BaseDocument {
   shopId: string;
   categoryId: string;
+  source: "CASH" | "MPESA";
   amount: number;
   description: string;
   status: ExpenseStatus;

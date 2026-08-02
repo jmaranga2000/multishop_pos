@@ -79,6 +79,7 @@ export function calculateExpectedCash(input: {
 export function calculateExpectedMpesa(input: {
   openingMpesaBalance?: number | string | null;
   mpesaPayments?: Array<{ status?: string | null; receivedAmountMinor?: number | string | null; expectedAmountMinor?: number | string | null }>;
+  mpesaExpenseTotal?: number | string | null;
 }) {
   const confirmedStatuses = new Set(["SUCCESSFUL", "MATCHED", "RECEIVED"]);
   const confirmedTotal = (input.mpesaPayments ?? []).reduce((sum, payment) => {
@@ -87,7 +88,7 @@ export function calculateExpectedMpesa(input: {
     return sum + fromMinorUnits(amount);
   }, 0);
 
-  return Number(input.openingMpesaBalance ?? 0) + confirmedTotal;
+  return Number(input.openingMpesaBalance ?? 0) + confirmedTotal - Number(input.mpesaExpenseTotal ?? 0);
 }
 
 export function validateRegisterClosingInput(input: {
@@ -473,7 +474,8 @@ export async function closeRegisterSession(shopUser: ShopContext, input: CloseRe
   ]);
 
   const cashSalesTotal = calculateCashSalesTotal(sales, payments);
-  const cashExpenseTotal = registerTransactions.filter((entry: any) => entry.type === "EXPENSE").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
+  const cashExpenseTotal = registerTransactions.filter((entry: any) => entry.type === "EXPENSE" && (entry.source ?? "CASH") === "CASH").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
+  const mpesaExpenseTotal = registerTransactions.filter((entry: any) => entry.type === "EXPENSE" && (entry.source ?? "CASH") === "MPESA").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
   const cashInTotal = registerTransactions.filter((entry: any) => entry.type === "CASH_IN" || entry.type === "SAFE_TRANSFER_IN" || entry.type === "REGISTER_TRANSFER_IN").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
   const cashOutTotal = registerTransactions.filter((entry: any) => entry.type === "CASH_OUT" || entry.type === "SAFE_TRANSFER_OUT" || entry.type === "REGISTER_TRANSFER_OUT" || entry.type === "VARIANCE_ADJUSTMENT").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
   const expectedCash = calculateExpectedCash({
@@ -489,6 +491,7 @@ export async function closeRegisterSession(shopUser: ShopContext, input: CloseRe
   const expectedMpesa = calculateExpectedMpesa({
     openingMpesaBalance: session.openingMpesaBalance,
     mpesaPayments,
+    mpesaExpenseTotal,
   });
   const actualMpesaBalance = Number(input.actualMpesaBalance ?? 0);
   const mpesaVariance = actualMpesaBalance - expectedMpesa;

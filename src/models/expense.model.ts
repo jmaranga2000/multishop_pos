@@ -11,9 +11,9 @@ export const ExpenseCategoryModel = defineModel<ExpenseCategoryDocument>({
 
 export const ExpenseModel = defineModel<ExpenseDocument>({
   collection: "expenses",
-  required: ["shopId", "categoryId", "amount", "description", "occurredAt"],
-  defaults: { status: "PENDING" },
-  enums: { status: ["PENDING", "APPROVED", "REJECTED"] },
+  required: ["shopId", "categoryId", "source", "amount", "description", "occurredAt"],
+  defaults: { status: "PENDING", source: "CASH" },
+  enums: { status: ["PENDING", "APPROVED", "REJECTED"], source: ["CASH", "MPESA"] },
   indexes: [index({ shopId: 1, status: 1, occurredAt: 1 })],
 });
 
