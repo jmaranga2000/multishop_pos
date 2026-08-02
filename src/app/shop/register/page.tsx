@@ -32,52 +32,67 @@ export default async function RegisterPage() {
               <form action={closeRegisterAction} className="space-y-4">
                 <input type="hidden" name="sessionId" value={openSession.id} />
                 <div className="rounded-2xl bg-blue-50 p-4">
-                  <p className="text-xs font-semibold uppercase text-blue-700">Session status</p>
-                  <p className="mt-1 text-xl font-black text-blue-950">{openSession.register.name}</p>
-                  <p className="mt-1 text-sm text-blue-800">Opened {openSession.openedAt.toLocaleString("en-KE")}</p>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-semibold uppercase text-blue-700">Session status</p>
+                      <p className="mt-1 text-xl font-black text-blue-950">{openSession.register.name}</p>
+                      <p className="mt-1 text-sm text-blue-800">Opened {openSession.openedAt.toLocaleString("en-KE")}</p>
+                    </div>
+                    <Badge tone="info">Live shift</Badge>
+                  </div>
                   <p className="mt-2 text-xs font-medium text-blue-900">Expected balances are auto-calculated from verified sales and confirmed M-Pesa payments. The cashier only enters the counted balances at close.</p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-slate-200 p-3">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                     <p className="text-xs uppercase text-slate-500">Opening cash</p>
                     <p className="mt-1 font-semibold">{formatMoney((openSession.openingCash ?? 0).toString(), business.currency)}</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 p-3">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                     <p className="text-xs uppercase text-slate-500">Cash sales</p>
                     <p className="mt-1 font-semibold">{formatMoney((openSession.cashSalesTotal ?? 0).toString(), business.currency)}</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 p-3">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                     <p className="text-xs uppercase text-slate-500">Expected cash</p>
-                    <p className="mt-1 font-semibold">{formatMoney((openSession.expectedCash ?? 0).toString(), business.currency)}</p>
+                    <p className="mt-1 font-semibold text-slate-900">{formatMoney((openSession.expectedCash ?? 0).toString(), business.currency)}</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 p-3">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                     <p className="text-xs uppercase text-slate-500">Opening M-Pesa</p>
                     <p className="mt-1 font-semibold">{formatMoney((openSession.openingMpesaBalance ?? 0).toString(), business.currency)}</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 p-3">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                     <p className="text-xs uppercase text-slate-500">M-Pesa sales</p>
                     <p className="mt-1 font-semibold">{formatMoney((openSession.mpesaSalesTotal ?? 0).toString(), business.currency)}</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 p-3">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                     <p className="text-xs uppercase text-slate-500">Expected M-Pesa</p>
-                    <p className="mt-1 font-semibold">{formatMoney((openSession.expectedMpesa ?? 0).toString(), business.currency)}</p>
+                    <p className="mt-1 font-semibold text-slate-900">{formatMoney((openSession.expectedMpesa ?? 0).toString(), business.currency)}</p>
                   </div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 p-3">
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">Actual cash counted</label>
-                  <Input name="actualCash" type="number" min="0" step="0.01" placeholder="Physical cash counted" required />
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <p className="text-sm font-bold text-slate-900">Cashier closeout inputs</p>
+                    <Badge tone={(openSession.unresolvedPayments ?? 0) > 0 ? "warning" : "success"}>{(openSession.unresolvedPayments ?? 0) > 0 ? `${openSession.unresolvedPayments} unresolved` : "Clean reconciliation"}</Badge>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-slate-700">Actual cash counted</label>
+                      <Input name="actualCash" type="number" min="0" step="0.01" placeholder="Physical cash counted" required />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-slate-700">Actual M-Pesa balance</label>
+                      <Input name="actualMpesaBalance" type="number" min="0" step="0.01" placeholder="Actual M-Pesa balance" />
+                    </div>
+                  </div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 p-3">
-                  <p className="text-xs uppercase text-slate-500">Cash variance</p>
-                  <p className="mt-1 font-semibold text-emerald-700">{formatVariance(Number(openSession.variance ?? 0), business.currency)}</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 p-3">
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">Actual M-Pesa balance</label>
-                  <Input name="actualMpesaBalance" type="number" min="0" step="0.01" placeholder="Actual M-Pesa balance" />
-                </div>
-                <div className="rounded-2xl border border-slate-200 p-3">
-                  <p className="text-xs uppercase text-slate-500">Current M-Pesa status</p>
-                  <p className="mt-1 font-semibold text-slate-700">{(openSession.unresolvedPayments ?? 0) > 0 ? `${openSession.unresolvedPayments} unresolved payment(s)` : "All confirmed M-Pesa payments are accounted for"}</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 p-3">
+                    <p className="text-xs uppercase text-slate-500">Derived cash variance</p>
+                    <p className="mt-1 font-semibold text-slate-900">{formatVariance(Number(openSession.variance ?? 0), business.currency)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 p-3">
+                    <p className="text-xs uppercase text-slate-500">M-Pesa status</p>
+                    <p className="mt-1 font-semibold text-slate-700">{(openSession.unresolvedPayments ?? 0) > 0 ? `${openSession.unresolvedPayments} unresolved payment(s)` : "All confirmed M-Pesa payments are accounted for"}</p>
+                  </div>
                 </div>
                 <textarea name="closingNote" placeholder="Closing note (optional)" className="min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm" />
                 <textarea name="varianceReason" placeholder="Variance explanation required when counts differ" className="min-h-20 w-full rounded-xl border border-slate-200 p-3 text-sm" />
