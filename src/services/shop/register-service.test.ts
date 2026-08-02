@@ -5,6 +5,7 @@ import {
   calculateCashSalesTotal,
   calculateExpectedCash,
   calculateExpectedMpesa,
+  getApprovedExpenseTotalsForSession,
   validateRegisterClosingInput,
 } from "./register-service";
 
@@ -64,6 +65,24 @@ test("calculateExpectedMpesa only counts confirmed payments and ignores failed o
   });
 
   assert.equal(expected, 40 + 150 + 220);
+});
+
+test("getApprovedExpenseTotalsForSession only includes approved expenses from the active session window", () => {
+  const totals = getApprovedExpenseTotalsForSession(
+    {
+      openedAt: "2026-08-01T08:00:00.000Z",
+      closedAt: "2026-08-01T17:00:00.000Z",
+    },
+    [
+      { status: "APPROVED", source: "CASH", amount: 100, occurredAt: "2026-08-01T09:30:00.000Z" },
+      { status: "PENDING", source: "CASH", amount: 50, occurredAt: "2026-08-01T11:00:00.000Z" },
+      { status: "APPROVED", source: "MPESA", amount: 120, occurredAt: "2026-08-01T15:30:00.000Z" },
+      { status: "APPROVED", source: "CASH", amount: 75, occurredAt: "2026-08-01T18:30:00.000Z" },
+    ] as any[],
+  );
+
+  assert.equal(totals.cashExpenseTotal, 100);
+  assert.equal(totals.mpesaExpenseTotal, 120);
 });
 
 test("validateRegisterClosingInput requires a variance explanation when the counts do not match", () => {

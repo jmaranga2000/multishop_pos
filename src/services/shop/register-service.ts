@@ -91,6 +91,33 @@ export function calculateExpectedMpesa(input: {
   return Number(input.openingMpesaBalance ?? 0) + confirmedTotal - Number(input.mpesaExpenseTotal ?? 0);
 }
 
+export function getApprovedExpenseTotalsForSession(
+  session: { openedAt?: Date | string | null; closedAt?: Date | string | null },
+  expenses: Array<{ status?: string | null; source?: string | null; amount?: number | string | null; occurredAt?: Date | string | null }>,
+) {
+  const openedAt = session.openedAt ? new Date(session.openedAt).getTime() : 0;
+  const closedAt = session.closedAt ? new Date(session.closedAt).getTime() : Number.POSITIVE_INFINITY;
+
+  const approvedExpenses = (expenses ?? []).filter((expense) => {
+    if (String(expense.status ?? "") !== "APPROVED") return false;
+    const occurredAt = expense.occurredAt ? new Date(expense.occurredAt).getTime() : Number.NEGATIVE_INFINITY;
+    return occurredAt >= openedAt && occurredAt <= closedAt;
+  });
+
+  const cashExpenseTotal = approvedExpenses
+    .filter((expense) => (expense.source ?? "CASH") === "CASH")
+    .reduce((sum, expense) => sum + toNumber(expense.amount ?? 0), 0);
+
+  const mpesaExpenseTotal = approvedExpenses
+    .filter((expense) => (expense.source ?? "CASH") === "MPESA")
+    .reduce((sum, expense) => sum + toNumber(expense.amount ?? 0), 0);
+
+  return {
+    cashExpenseTotal,
+    mpesaExpenseTotal,
+  };
+}
+
 export function validateRegisterClosingInput(input: {
   actualCash?: number | string | null;
   expectedCash?: number | string | null;
@@ -155,15 +182,26 @@ export async function getShopRegisterData(shopId: string, businessId: string) {
 }
 
 async function buildSessionViewModel(session: any, shopId: string) {
-  const [sales, payments, registerTransactions, mpesaPayments] = await Promise.all([
+  const [sales, payments, registerTransactions, mpesaPayments, approvedExpenses] = await Promise.all([
     db.sale.findMany({ where: { shopId, registerSessionId: session.id, status: { in: ["COMPLETED", "REFUNDED"] } } }),
     db.payment.findMany({ where: { sale: { registerSessionId: session.id } } }),
     db.registerTransaction.findMany({ where: { registerSessionId: session.id } }),
     db.mpesaPayment.findMany({ where: { shopId, shiftId: session.id } }),
+    db.expense.findMany({
+      where: {
+        shopId,
+        status: "APPROVED",
+        occurredAt: {
+          gte: session.openedAt,
+          lte: session.closedAt ?? new Date(),
+        },
+      },
+    }),
   ]);
 
   const cashSalesTotal = calculateCashSalesTotal(sales, payments);
-  const cashExpenseTotal = registerTransactions.filter((entry: any) => entry.type === "EXPENSE").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
+  const approvedExpenseTotals = getApprovedExpenseTotalsForSession(session, approvedExpenses);
+  const cashExpenseTotal = approvedExpenseTotals.cashExpenseTotal;
   const cashInTotal = registerTransactions.filter((entry: any) => entry.type === "CASH_IN" || entry.type === "SAFE_TRANSFER_IN" || entry.type === "REGISTER_TRANSFER_IN").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
   const cashOutTotal = registerTransactions.filter((entry: any) => entry.type === "CASH_OUT" || entry.type === "SAFE_TRANSFER_OUT" || entry.type === "REGISTER_TRANSFER_OUT" || entry.type === "VARIANCE_ADJUSTMENT").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
   const expectedCash = calculateExpectedCash({
@@ -179,6 +217,7 @@ async function buildSessionViewModel(session: any, shopId: string) {
   const expectedMpesa = calculateExpectedMpesa({
     openingMpesaBalance: session.openingMpesaBalance,
     mpesaPayments,
+    mpesaExpenseTotal: approvedExpenseTotals.mpesaExpenseTotal,
   });
 
   const unmatchedPayments = mpesaPayments.filter((payment: any) => ["PENDING", "WAITING_FOR_CUSTOMER", "MATCHING", "UNMATCHED", "AMBIGUOUS", "UNDERPAID", "OVERPAID"].includes(payment.status));
