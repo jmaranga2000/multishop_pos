@@ -8,9 +8,9 @@ test("retry-only mode targets failed and conflict queue rows", () => {
   assert.deepEqual(statuses, ["FAILED", "CONFLICT"]);
 });
 
-test("default sync mode targets pending and failed rows", () => {
+test("default sync mode targets pending, failed and conflict rows", () => {
   const statuses = getSyncQueueStatuses();
-  assert.deepEqual(statuses, ["PENDING_SYNC", "FAILED"]);
+  assert.deepEqual(statuses, ["PENDING_SYNC", "FAILED", "CONFLICT"]);
 });
 
 test("tiny currency rounding differences do not create false sync conflicts", () => {

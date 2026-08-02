@@ -71,6 +71,7 @@ export function PosShell({
   mpesaPayToTillEnabled = false,
   mpesaTillNumber,
   shopName,
+  registerSessionId,
   canReprintReceipts = false,
 }: {
   barcodeScanningEnabled?: boolean;
@@ -79,6 +80,7 @@ export function PosShell({
   mpesaPayToTillEnabled?: boolean;
   mpesaTillNumber?: string | null;
   shopName?: string;
+  registerSessionId?: string | null;
   canReprintReceipts?: boolean;
 }) {
   const { shopId, online, pendingCount } = useOffline();
@@ -401,6 +403,7 @@ export function PosShell({
     try {
       const sale = await createLocalSale({
         shopId,
+        registerSessionId,
         paymentMethod: "CASH",
         amountPaidMinor: receivedMinor,
         items: cart.map((item) => ({

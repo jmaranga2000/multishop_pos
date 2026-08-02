@@ -34,6 +34,27 @@ export async function resolveSynchronizationConflict(
       where: { id: conflict.id },
       data: { status: "RESOLVED", resolvedAt: new Date() },
     });
+
+    const matchingRecords = await tx.idempotencyRecord.findMany({
+      where: { shopId: conflict.shopId, operation: "OFFLINE_SALE" },
+    });
+
+    for (const record of matchingRecords) {
+      const responseData = record.responseData as { localId?: string; status?: string; conflicts?: string[] } | null;
+      if (!responseData || responseData.localId !== conflict.entityReference) continue;
+
+      await tx.idempotencyRecord.update({
+        where: { key: record.key },
+        data: {
+          responseData: {
+            ...responseData,
+            status: "SYNCED",
+            conflicts: [],
+          },
+        },
+      });
+    }
+
     await writeAuditLog(tx, {
       userId: admin.id,
       shopId: conflict.shopId,

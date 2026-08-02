@@ -10,7 +10,7 @@ export type SyncPendingSalesOptions = {
 
 export function getSyncQueueStatuses(options: SyncPendingSalesOptions = {}) {
   if (options.retryFailedOnly) return ["FAILED", "CONFLICT"] as const;
-  return ["PENDING_SYNC", "FAILED"] as const;
+  return ["PENDING_SYNC", "FAILED", "CONFLICT"] as const;
 }
 
 export function getOrCreateDeviceId() {

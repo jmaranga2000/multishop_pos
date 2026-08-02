@@ -18,6 +18,11 @@ export default async function PosPage() {
       name: true,
     },
   });
+  const openRegisterSession = await db.registerSession.findFirst({
+    where: { shopId: user.shopId, status: "OPEN" },
+    select: { id: true },
+    orderBy: { openedAt: "desc" },
+  });
   const envConfig = getMpesaEnvConfig();
 
   return <PosShell
@@ -27,6 +32,7 @@ export default async function PosPage() {
     mpesaPayToTillEnabled={envConfig.payToTillEnabled}
     mpesaTillNumber={envConfig.tillNumber}
     shopName={shop.name}
+    registerSessionId={openRegisterSession?.id ?? null}
     canReprintReceipts={true}
   />;
 }

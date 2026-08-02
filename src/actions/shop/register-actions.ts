@@ -2,6 +2,7 @@
 
 import argon2 from "argon2";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireShop } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
@@ -10,18 +11,30 @@ import { closeRegisterSchema, openRegisterSchema } from "@/validators/shop/regis
 
 export async function openRegisterAction(formData: FormData) {
   const shopUser = await requireShop();
-  const input = openRegisterSchema.parse(Object.fromEntries(formData));
-  await openRegisterSession(shopUser, input);
-  revalidatePath("/shop/register");
-  revalidatePath("/shop/dashboard");
+  try {
+    const input = openRegisterSchema.parse(Object.fromEntries(formData));
+    await openRegisterSession(shopUser, input);
+    revalidatePath("/shop/register");
+    revalidatePath("/shop/dashboard");
+  } catch (error) {
+    if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
+    const message = error instanceof AppError ? error.message : "Unable to open the register session.";
+    redirect(`/shop/register?error=${encodeURIComponent(message)}`);
+  }
 }
 
 export async function closeRegisterAction(formData: FormData) {
   const shopUser = await requireShop();
-  const input = closeRegisterSchema.parse(Object.fromEntries(formData));
-  await closeRegisterSession(shopUser, input);
-  revalidatePath("/shop/register");
-  revalidatePath("/shop/dashboard");
+  try {
+    const input = closeRegisterSchema.parse(Object.fromEntries(formData));
+    await closeRegisterSession(shopUser, input);
+    revalidatePath("/shop/register");
+    revalidatePath("/shop/dashboard");
+  } catch (error) {
+    if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
+    const message = error instanceof AppError ? error.message : "Unable to close the register session.";
+    redirect(`/shop/register?error=${encodeURIComponent(message)}`);
+  }
 }
 
 export async function unlockShopPortalAction(formData: FormData) {

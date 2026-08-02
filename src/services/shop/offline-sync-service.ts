@@ -56,8 +56,28 @@ export async function synchronizeOfflineSales(user: ShopSyncContext, payload: Of
 
       const existing = await db.idempotencyRecord.findUnique({ where: { key: entry.sale.idempotencyKey } });
       if (existing?.responseData) {
-        results.push(existing.responseData as unknown as SyncResult);
-        successCount += 1;
+        const existingResponse = existing.responseData as unknown as SyncResult;
+        const openConflict = await db.offlineSyncConflict.findFirst({
+          where: { entityReference: entry.sale.localId, status: "OPEN" },
+          select: { id: true },
+        });
+        if (existingResponse.status === "CONFLICT" && !openConflict) {
+          const resolvedResponse: SyncResult = {
+            ...existingResponse,
+            status: "SYNCED",
+            conflicts: [],
+          };
+          await db.idempotencyRecord.update({
+            where: { key: entry.sale.idempotencyKey },
+            data: { responseData: resolvedResponse },
+          });
+          results.push(resolvedResponse);
+          successCount += 1;
+          continue;
+        }
+        results.push(existingResponse);
+        if (existingResponse.status === "CONFLICT") conflictCount += 1;
+        else successCount += 1;
         continue;
       }
 
