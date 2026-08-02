@@ -181,7 +181,7 @@ export async function getShopRegisterData(shopId: string, businessId: string) {
   };
 }
 
-async function buildSessionViewModel(session: any, shopId: string) {
+export async function buildSessionViewModel(session: any, shopId: string) {
   const [sales, payments, registerTransactions, mpesaPayments, approvedExpenses] = await Promise.all([
     db.sale.findMany({ where: { shopId, registerSessionId: session.id, status: { in: ["COMPLETED", "REFUNDED"] } } }),
     db.payment.findMany({ where: { sale: { registerSessionId: session.id } } }),
@@ -505,16 +505,27 @@ export async function closeRegisterSession(shopUser: ShopContext, input: CloseRe
   const duplicate = await db.registerSession.findFirst({ where: { shopId: shopUser.shopId, idempotencyKey } });
   if (duplicate) throw new AppError("This closure request has already been processed.");
 
-  const [sales, payments, registerTransactions, mpesaPayments] = await Promise.all([
+  const [sales, payments, registerTransactions, mpesaPayments, approvedExpenses] = await Promise.all([
     db.sale.findMany({ where: { shopId: shopUser.shopId, registerSessionId: session.id, status: { in: ["COMPLETED", "REFUNDED"] } } }),
     db.payment.findMany({ where: { sale: { registerSessionId: session.id } } }),
     db.registerTransaction.findMany({ where: { registerSessionId: session.id } }),
     db.mpesaPayment.findMany({ where: { shopId: shopUser.shopId, shiftId: session.id } }),
+    db.expense.findMany({
+      where: {
+        shopId: shopUser.shopId,
+        status: "APPROVED",
+        occurredAt: {
+          gte: session.openedAt,
+          lte: new Date(),
+        },
+      },
+    }),
   ]);
 
   const cashSalesTotal = calculateCashSalesTotal(sales, payments);
-  const cashExpenseTotal = registerTransactions.filter((entry: any) => entry.type === "EXPENSE" && (entry.source ?? "CASH") === "CASH").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
-  const mpesaExpenseTotal = registerTransactions.filter((entry: any) => entry.type === "EXPENSE" && (entry.source ?? "CASH") === "MPESA").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
+  const approvedExpenseTotals = getApprovedExpenseTotalsForSession(session, approvedExpenses);
+  const cashExpenseTotal = approvedExpenseTotals.cashExpenseTotal;
+  const mpesaExpenseTotal = approvedExpenseTotals.mpesaExpenseTotal;
   const cashInTotal = registerTransactions.filter((entry: any) => entry.type === "CASH_IN" || entry.type === "SAFE_TRANSFER_IN" || entry.type === "REGISTER_TRANSFER_IN").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
   const cashOutTotal = registerTransactions.filter((entry: any) => entry.type === "CASH_OUT" || entry.type === "SAFE_TRANSFER_OUT" || entry.type === "REGISTER_TRANSFER_OUT" || entry.type === "VARIANCE_ADJUSTMENT").reduce((sum: number, entry: any) => sum + toNumber(entry.amount), 0);
   const expectedCash = calculateExpectedCash({

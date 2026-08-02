@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { buildSessionViewModel } from "@/services/shop/register-service";
 
 export async function getAdminRegisterPageData(businessId: string) {
   const [business, sessions] = await Promise.all([
@@ -10,5 +11,10 @@ export async function getAdminRegisterPageData(businessId: string) {
       take: 200,
     }),
   ]);
-  return { business, sessions };
+
+  const normalizedSessions = await Promise.all(
+    sessions.map(async (session) => buildSessionViewModel(session, session.shopId)),
+  );
+
+  return { business, sessions: normalizedSessions };
 }
