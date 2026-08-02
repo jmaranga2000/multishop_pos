@@ -22,7 +22,7 @@ export function Button<T extends React.ElementType = "button">({
   ...props
 }: ButtonProps<T>) {
   const Component = as || "button";
-  const safeType = type ?? (Component === "button" ? "button" : undefined);
+  const safeType = type ?? (Component === "button" ? "submit" : undefined);
   const variants: Record<ButtonVariants, string> = {
     primary: "bg-[#173b89] text-white hover:bg-[#102f73] shadow-sm",
     secondary: "bg-white text-slate-800 border border-slate-200 hover:bg-slate-50",
