@@ -221,13 +221,15 @@ export async function buildSessionViewModel(session: any, shopId: string) {
   });
 
   const unmatchedPayments = mpesaPayments.filter((payment: any) => ["PENDING", "WAITING_FOR_CUSTOMER", "MATCHING", "UNMATCHED", "AMBIGUOUS", "UNDERPAID", "OVERPAID"].includes(payment.status));
+  const actualCash = session.actualCash ?? null;
+  const variance = actualCash !== null && actualCash !== undefined ? Number(actualCash) - expectedCash : null;
 
   return {
     ...session,
     cashSalesTotal,
     expectedCash,
-    actualCash: session.actualCash ?? null,
-    variance: session.variance ?? null,
+    actualCash,
+    variance,
     expectedMpesa,
     mpesaSalesTotal,
     unresolvedPayments: unmatchedPayments.length,
