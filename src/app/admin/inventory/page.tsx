@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { Plus, SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
 import { addStockAction, adjustStockAction } from "@/actions/admin/inventory-actions";
 import { getInventoryManagementData } from "@/services/admin/inventory-service";
+import { StockMovementForm } from "@/components/admin/stock-movement-form";
 import { PageHeading } from "@/components/ui/page-heading";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -89,14 +90,7 @@ export default async function InventoryPage() {
         <Card>
           <CardHeader><div><h2 className="font-extrabold">Add or restock</h2><p className="text-sm text-slate-500">Creates an inventory ledger movement and resolves restored alerts.</p></div></CardHeader>
           <CardContent>
-            <form action={addStockAction} className="space-y-3">
-              <select name="shopId" required className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm"><option value="">Select shop</option>{shops.map((shop) => <option key={shop.id} value={shop.id}>{shop.name}</option>)}</select>
-              <select name="productId" required className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm"><option value="">Select product</option>{products.map((product) => <option key={product.id} value={product.id}>{product.name} ({product.sku})</option>)}</select>
-              <Input name="quantity" type="number" min="1" placeholder="Quantity to add" required />
-              <div className="grid grid-cols-2 gap-3"><Input name="costPrice" type="number" min="0" step="0.01" placeholder="Cost price" required /><Input name="sellingPrice" type="number" min="0.01" step="0.01" placeholder="Selling price" required /></div>
-              <div className="grid grid-cols-2 gap-3"><Input name="reorderLevel" type="number" min="0" defaultValue="10" placeholder="Reorder level" required /><Input name="criticalLevel" type="number" min="0" defaultValue="5" placeholder="Critical level" required /></div>
-              <Button className="w-full"><Plus className="h-4 w-4" />Save stock movement</Button>
-            </form>
+            <StockMovementForm shops={shops} products={products} action={addStockAction} />
           </CardContent>
         </Card>
       </div>
