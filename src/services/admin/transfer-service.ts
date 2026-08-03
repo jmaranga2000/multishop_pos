@@ -63,6 +63,13 @@ export async function dispatchStockTransfer(admin: AdminContext, transferId: str
 
   return db.$transaction(async (tx) => {
     for (const item of transfer.items) {
+      if (!item.product) {
+        throw new AppError(
+          "This transfer includes a product that no longer exists. Cancel the draft and create a new transfer.",
+          "TRANSFER_PRODUCT_MISSING",
+          409,
+        );
+      }
       const inventory = await tx.shopInventory.findUnique({
         where: { shopId_productId: { shopId: transfer.sourceShopId, productId: item.productId } },
       });

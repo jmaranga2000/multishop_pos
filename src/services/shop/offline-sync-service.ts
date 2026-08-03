@@ -159,10 +159,21 @@ export async function synchronizeOfflineSales(user: ShopSyncContext, payload: Of
           const inventory = inventoryMap.get(item.productId)!;
           const product = productMap.get(item.productId);
           if (!product || product.status !== "ACTIVE") conflicts.push(`PRODUCT_DEACTIVATED:${item.productId}`);
-          const serverPriceMinor = Math.round(Number(inventory.sellingPrice) * 100);
-          if (hasPriceMismatchBetweenMinorUnits(serverPriceMinor, item.unitPriceMinor)) conflicts.push(`PRICE_CHANGED:${item.productId}`);
+          // Compare the cart to the price for the unit the cashier selected, not the shop's default price.
+          const pricingUnit = (product?.pricingUnits ?? []).find((pricing: { unitId: string; sellingPrice: number; multiplier?: number }) => pricing.unitId === item.unitId);
+          const isDefaultUnit = !item.unitId || item.unitId === product?.unitId;
+          const currentUnitPrice = pricingUnit?.sellingPrice
+            ?? (isDefaultUnit ? product?.defaultSellingPrice : undefined);
+          const serverPriceMinor = currentUnitPrice === undefined
+            ? undefined
+            : Math.round(Number(currentUnitPrice) * 100);
+          if (
+            serverPriceMinor === undefined
+            || hasPriceMismatchBetweenMinorUnits(serverPriceMinor, item.unitPriceMinor)
+          ) {
+            conflicts.push(`PRICE_CHANGED:${item.productId}`);
+          }
           // Convert sold quantity in the item's unit to base inventory units using pricing unit multiplier
-          const pricingUnit = (product?.pricingUnits ?? []).find((p: any) => p.unitId === item.unitId);
           const multiplier = pricingUnit?.multiplier ?? (product?.unitId === item.unitId ? 1 : 1);
           const effectiveQuantity = item.quantity * multiplier;
           const newQuantity = Math.max(0, inventory.quantity - effectiveQuantity);
