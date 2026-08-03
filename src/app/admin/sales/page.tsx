@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { requireAdmin } from "@/lib/rbac";
 import { formatMoney } from "@/lib/utils";
-import { getAdminSalesPageData } from "@/services/admin/sales-service";
+import { getAdminSalesPageData, type AdminSale } from "@/services/admin/sales-service";
 import { PageHeading } from "@/components/ui/page-heading";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,8 +14,8 @@ function formatDateLabel(date: Date) {
   return date.toLocaleDateString("en-KE", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 }
 
-function groupSalesByDate(sales: Array<any>) {
-  return sales.reduce((groups: Array<{ label: string; key: string; items: Array<any> }>, sale) => {
+function groupSalesByDate(sales: AdminSale[]) {
+  return sales.reduce<Array<{ label: string; key: string; items: AdminSale[] }>>((groups, sale) => {
     const date = sale.occurredAt instanceof Date ? sale.occurredAt : new Date(sale.occurredAt);
     const key = date.toISOString().slice(0, 10);
     const label = formatDateLabel(date);
@@ -40,11 +39,11 @@ export default async function SalesPage() {
   const showQuarter = isSameDay(today, endOfQuarter(today));
 
   const actionButtons = [
-    <Button key="today" as={Link} href="/api/reports/sales/today/pdf" target="_blank" rel="noreferrer">Download today sales</Button>,
+    <Button key="today" href="/api/reports/sales/today/pdf" target="_blank" rel="noreferrer">Download today sales</Button>,
   ];
-  if (showWeek) actionButtons.push(<Button key="week" as={Link} href="/api/reports/sales/week/pdf" target="_blank" rel="noreferrer">Download weekly sales</Button>);
-  if (showMonth) actionButtons.push(<Button key="month" as={Link} href="/api/reports/sales/month/pdf" target="_blank" rel="noreferrer">Download monthly sales</Button>);
-  if (showQuarter) actionButtons.push(<Button key="quarter" as={Link} href="/api/reports/sales/quarter/pdf" target="_blank" rel="noreferrer">Download quarterly sales</Button>);
+  if (showWeek) actionButtons.push(<Button key="week" href="/api/reports/sales/week/pdf" target="_blank" rel="noreferrer">Download weekly sales</Button>);
+  if (showMonth) actionButtons.push(<Button key="month" href="/api/reports/sales/month/pdf" target="_blank" rel="noreferrer">Download monthly sales</Button>);
+  if (showQuarter) actionButtons.push(<Button key="quarter" href="/api/reports/sales/quarter/pdf" target="_blank" rel="noreferrer">Download quarterly sales</Button>);
 
   const availableExports = [
     "Today",

@@ -1,20 +1,20 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { requireAdmin } from "@/lib/rbac";
 import { getUnreadNotificationCount } from "@/services/admin/layout-service";
-import { getSynchronizationMonitorData } from "@/services/admin/synchronization-service";
+import { getOpenSynchronizationConflictCount } from "@/services/admin/synchronization-service";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await requireAdmin();
-  const [unread, { conflicts }] = await Promise.all([
+  const [unread, conflictCount] = await Promise.all([
     getUnreadNotificationCount(user.id),
-    getSynchronizationMonitorData(user.businessId),
+    getOpenSynchronizationConflictCount(user.businessId),
   ]);
-  const conflictCount = conflicts.length;
   const nav: Array<{ href: string; label: string; icon: string; count?: number; countTone?: "danger" | "warning" | "success" }> = [
     { href: "/admin/dashboard", label: "Overview", icon: "BarChart3" },
     { href: "/admin/shops", label: "Shops", icon: "Building2" },
+    { href: "/admin/suppliers", label: "Suppliers", icon: "Truck" },
     { href: "/admin/products", label: "Products", icon: "Boxes" },
     { href: "/admin/inventory", label: "Inventory", icon: "Store" },
     { href: "/admin/sales", label: "Sales", icon: "ShoppingCart" },

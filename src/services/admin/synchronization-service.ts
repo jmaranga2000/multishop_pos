@@ -2,6 +2,12 @@ import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
 import { writeAuditLog } from "@/services/shared/audit-service";
 
+export async function getOpenSynchronizationConflictCount(businessId: string) {
+  return db.offlineSyncConflict.count({
+    where: { shop: { businessId }, status: "OPEN" },
+  });
+}
+
 export async function getSynchronizationMonitorData(businessId: string) {
   const [batches, conflicts] = await Promise.all([
     db.offlineSyncBatch.findMany({

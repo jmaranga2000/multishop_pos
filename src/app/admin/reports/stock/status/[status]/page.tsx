@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { ArrowLeft, Building2, Package2 } from "lucide-react";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/rbac";
-import { getStockStatusMeta, resolveStockStatusKey, type StockStatusKey } from "@/lib/stock-status";
+import { getStockStatusMeta, resolveStockStatusKey } from "@/lib/stock-status";
 import { getStockIntelligenceData } from "@/services/admin/report-service";
 import { PageHeading } from "@/components/ui/page-heading";
 import { Button } from "@/components/ui/button";
@@ -39,7 +38,7 @@ export default async function StockStatusPage({ params, searchParams }: { params
           title={`${meta.label} details`}
           description={meta.description}
         />
-        <Button as={Link} href="/admin/reports/stock" size="sm" variant="secondary">
+        <Button href="/admin/reports/stock" size="sm" variant="secondary">
           <ArrowLeft className="h-4 w-4" />
           Back to stock intelligence
         </Button>
@@ -82,7 +81,7 @@ export default async function StockStatusPage({ params, searchParams }: { params
               Filter
             </Button>
             {(selectedShopId || selectedCategoryId) ? (
-              <Button as={Link} href={`/admin/reports/stock/status/${meta.slug}`} size="sm" variant="ghost">
+              <Button href={`/admin/reports/stock/status/${meta.slug}`} size="sm" variant="ghost">
                 Clear
               </Button>
             ) : null}

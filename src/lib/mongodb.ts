@@ -19,8 +19,13 @@ function databaseNameFromUri(uri: string) {
   return pathname || "multishop_pos";
 }
 
+function shouldInitializeModels() {
+  return process.env.MONGODB_INITIALIZE_MODELS === "true"
+    || process.argv.some((argument) => /scripts[\\/]init-db\\.ts$/.test(argument));
+}
+
 export async function connectToMongoDB() {
-  if (cache.promise) return await cache.promise;
+  if (cache.promise) return cache.promise;
   if (!process.env.MONGODB_URI) {
     throw new Error("MONGODB_URI is required to connect to MongoDB.");
   }
@@ -39,8 +44,9 @@ export async function connectToMongoDB() {
     if (!database) {
       throw new Error("Mongoose failed to initialize the MongoDB database connection.");
     }
-
-    await ensureMongoModels(database);
+    if (shouldInitializeModels()) {
+      await ensureMongoModels(database);
+    }
     return database;
   })();
 
@@ -50,6 +56,12 @@ export async function connectToMongoDB() {
     cache.promise = null;
     throw error;
   }
+}
+
+/** Create collections, validation rules, and indexes from the model registry. */
+export async function initializeMongoModels() {
+  const database = await connectToMongoDB();
+  await ensureMongoModels(database);
 }
 
 export async function disconnectFromMongoDB() {

@@ -1,9 +1,8 @@
-import Link from "next/link";
 import { ArrowLeft, ReceiptText } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
 import { updateExpenseCategoryAction } from "@/actions/admin/expense-actions";
 import { getExpenseCategoryById } from "@/services/admin/expense-service";
-import { formatDate, formatMoney } from "@/lib/utils";
+import { formatMoney } from "@/lib/utils";
 import { PageHeading } from "@/components/ui/page-heading";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,7 +29,7 @@ export default async function ExpenseTypeDetailsPage({ params }: { params: Promi
           title={category.name}
           description="Manage the expense category and review recent submissions for it."
         />
-        <Button as={Link} href="/admin/expenses" size="sm" variant="ghost">
+        <Button href="/admin/expenses" size="sm" variant="ghost">
           <ArrowLeft className="h-4 w-4" />
           Back
         </Button>

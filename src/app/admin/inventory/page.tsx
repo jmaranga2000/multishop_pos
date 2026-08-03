@@ -56,11 +56,14 @@ export default async function InventoryPage() {
                         <tbody>
                           {shopInventory.map((item) => {
                             const status = getStockStatus(item.quantity, item.reorderLevel, item.criticalLevel);
+                            const productName = item.product?.name ?? "Unknown product";
+                            const productSku = item.product?.sku ?? "No SKU";
+                            const productBrand = item.product?.brand?.name;
                             return (
                               <tr key={item.id}>
                                 <td>
-                                  <p className="font-bold">{item.product.name}</p>
-                                  <p className="text-xs text-slate-500">{item.product.sku}{item.product.brand?.name ? ` • ${item.product.brand.name}` : ""}</p>
+                                  <p className="font-bold">{productName}</p>
+                                  <p className="text-xs text-slate-500">{productSku}{productBrand ? ` • ${productBrand}` : ""}</p>
                                 </td>
                                 <td className="font-black">{item.quantity}</td>
                                 <td><p className="text-xs">Reorder: {item.reorderLevel}</p><p className="text-xs text-slate-500">Critical: {item.criticalLevel}</p></td>

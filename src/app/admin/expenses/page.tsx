@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Check, Plus, ReceiptText, X } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
 import { reviewExpenseAction, toggleExpenseCategoryAction } from "@/actions/admin/expense-actions";
@@ -23,7 +22,7 @@ export default async function ExpensesPage() {
           title="Expense types"
           description="Create the expense categories that shops can select when recording expenses."
         />
-        <Button as={Link} href="/admin/expenses/new" size="sm" variant="secondary">
+        <Button href="/admin/expenses/new" size="sm" variant="secondary">
           <Plus className="h-4 w-4" />
           New expense type
         </Button>
@@ -65,7 +64,7 @@ export default async function ExpensesPage() {
                     </td>
                     <td>
                       <div className="flex flex-wrap gap-2">
-                        <Button as={Link} href={`/admin/expenses/${category.id}`} size="sm" variant="secondary">
+                        <Button href={`/admin/expenses/${category.id}`} size="sm" variant="secondary">
                           View
                         </Button>
                         <form action={toggleExpenseCategoryAction}>

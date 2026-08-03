@@ -45,7 +45,10 @@ export function getStockStatus(quantity: number, reorderLevel: number, criticalL
 }
 
 export function absoluteUrl(path: string) {
-  return path.startsWith("http") ? path : `https://localhost${path}`
+  if (path.startsWith("http")) return path;
+  const base = process.env.APP_URL?.replace(/\/$/, "") ?? "https://localhost";
+  const prefix = path.startsWith("/") ? "" : "/";
+  return `${base}${prefix}${path}`;
 }
 
 export function fromMinorUnits(value: number | string) {

@@ -1,6 +1,4 @@
-import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/rbac";
 import { createExpenseCategoryAction } from "@/actions/admin/expense-actions";
 import { PageHeading } from "@/components/ui/page-heading";
@@ -20,7 +18,7 @@ export default async function NewExpenseTypePage() {
           title="New expense type"
           description="Create a new category that shops can select when recording expenses."
         />
-        <Button as={Link} href="/admin/expenses" size="sm" variant="ghost">
+        <Button href="/admin/expenses" size="sm" variant="ghost">
           <ArrowLeft className="h-4 w-4" />
           Back
         </Button>

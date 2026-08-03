@@ -163,6 +163,46 @@ export interface ShopInventoryDocument extends BaseDocument {
   version: number;
 }
 
+export interface SupplierDocument extends BaseDocument {
+  businessId: string;
+  shopId: string;
+  name: string;
+  company: string;
+  email: string;
+  phone: string;
+  alternativePhone?: string | null;
+  address?: string | null;
+  notes?: string | null;
+  status: "ACTIVE" | "DISABLED";
+}
+
+export interface SupplierProductDocument extends BaseDocument {
+  supplierId: string;
+  shopId: string;
+  productId: string;
+  targetQuantity: number;
+  preferredUnit?: string | null;
+  lastNotificationAt?: Date | null;
+  lastNotifiedQuantity?: number | null;
+  lastNotifiedStatus?: string | null;
+}
+
+export interface SupplierNotificationHistoryDocument extends BaseDocument {
+  businessId: string;
+  shopId: string;
+  supplierId: string;
+  referenceNumber: string;
+  status: "PENDING" | "SENT" | "FAILED";
+  notificationType: "RESTOCK_REQUEST" | "TEST_EMAIL";
+  productCount: number;
+  emailAddress: string;
+  subject: string;
+  pdfUrl?: string | null;
+  sentAt?: Date | null;
+  failedAt?: Date | null;
+  failureReason?: string | null;
+}
+
 export interface RegisterDocument extends BaseDocument {
   shopId: string;
   name: string;

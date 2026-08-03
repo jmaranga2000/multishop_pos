@@ -1,13 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
 type ButtonVariants = "primary" | "secondary" | "ghost" | "danger" | "success";
 type ButtonSizes = "sm" | "md" | "lg" | "icon";
 
-type ButtonOwnProps<T extends React.ElementType> = {
-  as?: T;
+type ButtonProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "className"> & {
+  /** A serializable navigation target. Links stay inside this client component. */
+  href?: string;
+  target?: string;
+  rel?: string;
   variant?: ButtonVariants;
   size?: ButtonSizes;
   className?: string;
@@ -16,19 +20,29 @@ type ButtonOwnProps<T extends React.ElementType> = {
   isLoading?: boolean;
 };
 
-type ButtonProps<T extends React.ElementType> = ButtonOwnProps<T> & Omit<React.ComponentPropsWithoutRef<T>, keyof ButtonOwnProps<T>>;
-
-export const Button = React.forwardRef(function Button<T extends React.ElementType = "button">(
-  { as, variant = "primary", size = "md", className, type, loadingText, autoLoading = true, isLoading: externalLoading, children, ...props }: ButtonProps<T>,
-  ref: React.ForwardedRef<any>,
+export const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonProps>(function Button(
+  {
+    href,
+    target,
+    rel,
+    variant = "primary",
+    size = "md",
+    className,
+    type,
+    loadingText,
+    autoLoading = true,
+    isLoading: externalLoading,
+    children,
+    disabled,
+    onClick,
+    as: _as,
+    ...buttonProps
+  },
+  ref,
 ) {
   const [loading, setLoading] = React.useState(false);
-  const innerRef = React.useRef<HTMLElement | null>(null);
+  const innerRef = React.useRef<HTMLButtonElement | HTMLAnchorElement | null>(null);
 
-  React.useImperativeHandle(ref, () => innerRef.current);
-
-  const Component = (as as any) || "button";
-  const safeType = (type as any) ?? (Component === "button" ? "submit" : undefined);
   const variants: Record<ButtonVariants, string> = {
     primary: "bg-[#173b89] text-white hover:bg-[#102f73] shadow-sm",
     secondary: "bg-white text-slate-800 border border-slate-200 hover:bg-slate-50",
@@ -43,56 +57,78 @@ export const Button = React.forwardRef(function Button<T extends React.ElementTy
     icon: "h-10 w-10 p-0 text-sm",
   };
 
-  // Derive a reasonable default loading text from the children if not provided
   const derivedLoadingText = React.useMemo(() => {
     if (loadingText) return loadingText;
     const text = typeof children === "string" ? children.toLowerCase() : "";
     if (text.includes("create") || text.includes("new") || text.includes("add")) return "Creating...";
     if (text.includes("update") || text.includes("save")) return "Updating...";
-    if (text.includes("delete") || text.includes("remove")) return "Processing...";
     return "Processing...";
   }, [children, loadingText]);
-
   const isLoading = externalLoading ?? loading;
 
   React.useEffect(() => {
-    if (!autoLoading) return;
-    if (typeof window === "undefined") return;
-    const el = innerRef.current as HTMLElement | null;
-    if (!el) return;
-    // find parent form
-    let parent: HTMLElement | null = el.parentElement;
+    if (!autoLoading || href || typeof window === "undefined") return;
+    const element = innerRef.current;
+    if (!element) return;
+    let parent: HTMLElement | null = element.parentElement;
     while (parent && parent.tagName !== "FORM") parent = parent.parentElement;
     if (!parent) return;
-    const onSubmit = () => setLoading(true);
-    parent.addEventListener("submit", onSubmit as EventListener);
-    return () => parent.removeEventListener("submit", onSubmit as EventListener);
-  }, [autoLoading]);
+    const handleSubmit = () => setLoading(true);
+    parent.addEventListener("submit", handleSubmit);
+    return () => parent.removeEventListener("submit", handleSubmit);
+  }, [autoLoading, href]);
+
+  const buttonClassName = cn(
+    "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
+    variants[variant],
+    sizes[size],
+    className,
+  );
+  const content = isLoading ? (
+    <span className="inline-flex items-center gap-2">
+      <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+      {derivedLoadingText}
+    </span>
+  ) : children;
+  const setRef = (node: HTMLButtonElement | HTMLAnchorElement | null) => {
+    innerRef.current = node;
+    if (typeof ref === "function") ref(node);
+    else if (ref) ref.current = node;
+  };
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        target={target}
+        rel={rel}
+        ref={setRef}
+        className={buttonClassName}
+        aria-busy={isLoading}
+        aria-disabled={disabled || isLoading || undefined}
+        onClick={(event) => {
+          if (disabled || isLoading) event.preventDefault();
+          else onClick?.(event as unknown as React.MouseEvent<HTMLButtonElement>);
+        }}
+      >
+        {content}
+      </Link>
+    );
+  }
 
   return (
-    <Component
-      ref={(node: any) => { innerRef.current = node; if (typeof ref === "function") ref(node); else if (ref) (ref as any).current = node; }}
-      type={safeType}
-      className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
-        variants[variant],
-        sizes[size],
-        className,
-      )}
-      disabled={Boolean((props as any).disabled) || isLoading}
+    <button
+      ref={setRef}
+      type={type ?? "submit"}
+      className={buttonClassName}
+      disabled={disabled || isLoading}
       aria-busy={isLoading}
-      {...(props as any)}
+      onClick={onClick}
+      {...buttonProps}
     >
-      {isLoading ? (
-        <span className="inline-flex items-center gap-2">
-          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          {derivedLoadingText}
-        </span>
-      ) : (
-        children
-      )}
-    </Component>
+      {content}
+    </button>
   );
-}) as <T extends React.ElementType = "button">(props: ButtonProps<T> & { ref?: React.Ref<any> }) => React.ReactElement;
+});
 
 export default Button;

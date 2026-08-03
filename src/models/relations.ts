@@ -23,12 +23,17 @@ export const modelRelations: Record<string, Record<string, RelationDefinition>> 
     inventoryReports: relation("inventoryReport", "id", "businessId", true),
     notificationPreference: relation("notificationPreference", "id", "businessId"),
     expenseCategories: relation("expenseCategory", "id", "businessId", true),
+    suppliers: relation("supplier", "id", "businessId", true),
+    supplierNotificationHistory: relation("supplierNotificationHistory", "id", "businessId", true),
   },
   shop: {
     business: relation("business", "businessId", "id"),
     account: relation("user", "id", "shopId"),
     salespeople: relation("salespersonProfile", "id", "shopId", true),
     inventory: relation("shopInventory", "id", "shopId", true),
+    suppliers: relation("supplier", "id", "shopId", true),
+    supplierProducts: relation("supplierProduct", "id", "shopId", true),
+    supplierNotificationHistory: relation("supplierNotificationHistory", "id", "shopId", true),
     sales: relation("sale", "id", "shopId", true),
     registers: relation("register", "id", "shopId", true),
     registerSessions: relation("registerSession", "id", "shopId", true),
@@ -80,6 +85,7 @@ export const modelRelations: Record<string, Record<string, RelationDefinition>> 
     unit: relation("unit", "unitId", "id"),
     pricingUnits: relation("productPricingUnit", "id", "productId", true),
     inventory: relation("shopInventory", "id", "productId", true),
+    supplierProducts: relation("supplierProduct", "id", "productId", true),
     saleItems: relation("saleItem", "id", "productId", true),
     stockMovements: relation("stockMovement", "id", "productId", true),
     transferItems: relation("stockTransferItem", "id", "productId", true),
@@ -90,6 +96,22 @@ export const modelRelations: Record<string, Record<string, RelationDefinition>> 
   shopInventory: {
     shop: relation("shop", "shopId", "id"),
     product: relation("product", "productId", "id"),
+  },
+  supplier: {
+    business: relation("business", "businessId", "id"),
+    shop: relation("shop", "shopId", "id"),
+    supplierProducts: relation("supplierProduct", "id", "supplierId", true),
+    notificationHistory: relation("supplierNotificationHistory", "id", "supplierId", true),
+  },
+  supplierProduct: {
+    supplier: relation("supplier", "supplierId", "id"),
+    shop: relation("shop", "shopId", "id"),
+    product: relation("product", "productId", "id"),
+  },
+  supplierNotificationHistory: {
+    supplier: relation("supplier", "supplierId", "id"),
+    shop: relation("shop", "shopId", "id"),
+    business: relation("business", "businessId", "id"),
   },
   register: {
     shop: relation("shop", "shopId", "id"),

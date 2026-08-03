@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { requireAdmin } from "@/lib/rbac";
 import { Button } from "@/components/ui/button";
 
@@ -10,16 +9,16 @@ export default async function AdminReportsLayout({ children }: { children: React
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2">
-        <Button as={Link} href="/admin/reports" variant="secondary" size="sm">
+        <Button href="/admin/reports" variant="secondary" size="sm">
           Overview
         </Button>
-        <Button as={Link} href="/admin/reports/inventory" variant="secondary" size="sm">
+        <Button href="/admin/reports/inventory" variant="secondary" size="sm">
           Weekly inventory
         </Button>
-        <Button as={Link} href="/admin/reports/stock" variant="secondary" size="sm">
+        <Button href="/admin/reports/stock" variant="secondary" size="sm">
           Stock intelligence
         </Button>
-        <Button as={Link} href="/admin/reports/daily" variant="secondary" size="sm">
+        <Button href="/admin/reports/daily" variant="secondary" size="sm">
           Daily snapshot
         </Button>
       </div>

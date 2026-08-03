@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Bell, Store, Menu } from "lucide-react";
 import { useState } from "react";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
@@ -55,7 +54,7 @@ export function AppShell({ children, navItems, userName, userEmail, accountLabel
             <div className="absolute right-0 top-12 z-50 w-72 rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl shadow-slate-900/10">
               <p className="text-sm font-bold text-slate-900">Notifications</p>
               <p className="mt-1 text-xs text-slate-500">{notificationCount > 0 ? `${notificationCount} unread notifications` : "No unread notifications"}</p>
-              <Button as={Link} href="/admin/notifications" variant="primary" size="sm" className="mt-3 w-full" onClick={() => setNotificationOpen(false)}>
+              <Button href="/admin/notifications" variant="primary" size="sm" className="mt-3 w-full" onClick={() => setNotificationOpen(false)}>
                 Open notifications
               </Button>
             </div>

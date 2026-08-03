@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { CalendarDays, Clock3, Download, FileText } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
 import { formatMoney } from "@/lib/utils";
@@ -23,13 +22,13 @@ export default async function DailySnapshotPage() {
           description="This report shows current stock health and today’s completed sales across all shops."
         />
         <div className="flex flex-wrap gap-2">
-          <Button as={Link} href="/admin/reports/stock" size="sm" variant="secondary">
+          <Button href="/admin/reports/stock" size="sm" variant="secondary">
             Stock intelligence
           </Button>
-          <Button as={Link} href="/admin/reports/inventory" size="sm" variant="ghost">
+          <Button href="/admin/reports/inventory" size="sm" variant="ghost">
             Weekly inventory
           </Button>
-          <Button as={Link} href="/api/reports/sales/today/pdf" target="_blank" rel="noreferrer" size="sm" variant="secondary">
+          <Button href="/api/reports/sales/today/pdf" target="_blank" rel="noreferrer" size="sm" variant="secondary">
             <Download className="h-4 w-4" />
             Sales PDF
           </Button>

@@ -45,19 +45,19 @@ export default async function ReportsPage() {
           {data.latestReport ? (
             <>
               <div className="mt-6 flex flex-wrap items-center gap-3">
-                <Button as={Link} href={`/admin/reports/inventory/${data.latestReport.id}`} size="sm" variant="secondary">
+                <Button href={`/admin/reports/inventory/${data.latestReport.id}`} size="sm" variant="secondary">
                   View latest report
                 </Button>
-                <Button as={Link} href="/admin/reports/inventory" size="sm" variant="ghost">
+                <Button href="/admin/reports/inventory" size="sm" variant="ghost">
                   All inventory reports
                 </Button>
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-3">
-                <Button as={Link} href={`/api/reports/inventory/${data.latestReport.id}/excel`} target="_blank" rel="noreferrer" size="sm" variant="secondary">
+                <Button href={`/api/reports/inventory/${data.latestReport.id}/excel`} target="_blank" rel="noreferrer" size="sm" variant="secondary">
                   <FileSpreadsheet className="h-4 w-4" />
                   Excel
                 </Button>
-                <Button as={Link} href={`/api/reports/inventory/${data.latestReport.id}/pdf`} target="_blank" rel="noreferrer" size="sm" variant="ghost">
+                <Button href={`/api/reports/inventory/${data.latestReport.id}/pdf`} target="_blank" rel="noreferrer" size="sm" variant="ghost">
                   <Download className="h-4 w-4" />
                   PDF
                 </Button>
@@ -167,7 +167,7 @@ export default async function ReportsPage() {
           <div className="flex items-center gap-3 text-slate-700">
             <Clock3 className="h-5 w-5" />
             <div>
-              <p className="text-sm font-semibold">Today's snapshot</p>
+              <p className="text-sm font-semibold">Today&apos;s snapshot</p>
               <p className="text-xs text-slate-500">Current sales and stock visibility for all active shops.</p>
             </div>
           </div>
@@ -177,7 +177,7 @@ export default async function ReportsPage() {
               <p className="mt-2 text-2xl font-black">{formatMoney(data.dailySales.total.toString(), data.business.currency)}</p>
               <p className="mt-1 text-sm text-slate-500">{data.dailySales.transactions} transactions</p>
             </div>
-            <Button as={Link} href="/admin/reports/daily" size="md">
+            <Button href="/admin/reports/daily" size="md">
               View today&apos;s snapshot
             </Button>
           </div>

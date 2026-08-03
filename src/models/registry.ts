@@ -15,6 +15,7 @@ import { offlineModels } from "./offline.model";
 import { reportingModels } from "./reporting.model";
 import { salesModels } from "./sales.model";
 import { systemModels } from "./system.model";
+import { supplierModels } from "./supplier.model";
 
 export const modelDefinitions = {
   ...coreModels,
@@ -24,6 +25,7 @@ export const modelDefinitions = {
   ...expenseModels,
   ...mpesaModels,
   ...notificationModels,
+  ...supplierModels,
   ...offlineModels,
   ...reportingModels,
   ...systemModels,

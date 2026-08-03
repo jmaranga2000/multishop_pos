@@ -24,13 +24,13 @@ export default async function StockIntelligencePage() {
           description="Understand current stock risk by shop, product category and action priority."
         />
         <div className="flex flex-wrap gap-2">
-          <Button as={Link} href="/admin/reports/inventory" size="sm" variant="secondary">
+          <Button href="/admin/reports/inventory" size="sm" variant="secondary">
             Weekly inventory
           </Button>
-          <Button as={Link} href="/admin/reports/daily" size="sm" variant="ghost">
+          <Button href="/admin/reports/daily" size="sm" variant="ghost">
             Today&apos;s snapshot
           </Button>
-          <Button as={Link} href="/api/reports/stock/intelligence.csv" target="_blank" rel="noreferrer" size="sm" variant="secondary">
+          <Button href="/api/reports/stock/intelligence.csv" target="_blank" rel="noreferrer" size="sm" variant="secondary">
             <Download className="h-4 w-4" />
             Export CSV
           </Button>

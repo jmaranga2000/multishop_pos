@@ -22,10 +22,11 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
   if (!item) return <p className="p-6">Inventory record not found.</p>;
 
   const status = getStockStatus(item.quantity, item.reorderLevel, item.criticalLevel);
+  const productName = item.product?.name ?? "Unknown product";
 
   return (
     <>
-      <PageHeading title={item.product.name} description={`Shop: ${item.shop.name}`} />
+      <PageHeading title={productName} description={`Shop: ${item.shop.name}`} />
       <div className="mb-4">
         <Link href="/admin/inventory" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
           Back to list
@@ -43,8 +44,8 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
             <div className="grid gap-3 md:grid-cols-2">
               <div className="rounded-xl bg-slate-50 p-4">
                 <p className="text-xs uppercase tracking-wide text-slate-500">Product</p>
-                <p className="mt-1 font-bold">{item.product.name}</p>
-                <p className="text-sm text-slate-500">{item.product.sku}{item.product.brand?.name ? ` • ${item.product.brand.name}` : ""}</p>
+                <p className="mt-1 font-bold">{item.product?.name ?? "Unknown product"}</p>
+                <p className="text-sm text-slate-500">{item.product?.sku ?? "No SKU"}{item.product?.brand?.name ? ` • ${item.product.brand.name}` : ""}</p>
               </div>
               <div className="rounded-xl bg-slate-50 p-4">
                 <p className="text-xs uppercase tracking-wide text-slate-500">Shop</p>
