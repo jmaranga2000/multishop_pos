@@ -80,9 +80,17 @@ export const Button = React.forwardRef(function Button<T extends React.ElementTy
         className,
       )}
       disabled={Boolean((props as any).disabled) || isLoading}
+      aria-busy={isLoading}
       {...(props as any)}
     >
-      {isLoading ? <span>{derivedLoadingText}</span> : children}
+      {isLoading ? (
+        <span className="inline-flex items-center gap-2">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          {derivedLoadingText}
+        </span>
+      ) : (
+        children
+      )}
     </Component>
   );
 }) as <T extends React.ElementType = "button">(props: ButtonProps<T> & { ref?: React.Ref<any> }) => React.ReactElement;
