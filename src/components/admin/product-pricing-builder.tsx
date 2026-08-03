@@ -9,6 +9,7 @@ type PricingRow = {
   unitId: string;
   costPrice: string;
   sellingPrice: string;
+  multiplier: string;
 };
 
 export function ProductPricingBuilder({
@@ -16,7 +17,7 @@ export function ProductPricingBuilder({
   initialRows = [],
 }: {
   units: Array<{ id: string; name: string; symbol: string }>;
-  initialRows?: Array<{ unitId: string; costPrice: number; sellingPrice: number }>;
+  initialRows?: Array<{ unitId: string; costPrice: number; sellingPrice: number; multiplier?: number }>;
 }) {
   const [rows, setRows] = useState<PricingRow[]>(() => {
     if (initialRows.length) {
@@ -24,6 +25,7 @@ export function ProductPricingBuilder({
         unitId: row.unitId,
         costPrice: String(row.costPrice),
         sellingPrice: String(row.sellingPrice),
+        multiplier: String(row.multiplier ?? 1),
       }));
     }
     return [
@@ -31,6 +33,7 @@ export function ProductPricingBuilder({
         unitId: units[0]?.id ?? "",
         costPrice: "0",
         sellingPrice: "0",
+        multiplier: "1",
       },
     ];
   });
@@ -39,6 +42,7 @@ export function ProductPricingBuilder({
     unitId: row.unitId,
     costPrice: Number(row.costPrice || 0),
     sellingPrice: Number(row.sellingPrice || 0),
+    multiplier: Number(row.multiplier || 1),
   }))), [rows]);
 
   function updateRow(index: number, key: keyof PricingRow, value: string) {
@@ -52,6 +56,7 @@ export function ProductPricingBuilder({
         unitId: units[0]?.id ?? "",
         costPrice: "0",
         sellingPrice: "0",
+        multiplier: "1",
       },
     ]);
   }
@@ -65,6 +70,7 @@ export function ProductPricingBuilder({
       <input type="hidden" name="unitPricing" value={serialized} />
       <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
         Add one or more unit/price pairs for this product. The first option becomes the default selling unit on the POS.
+        <div className="mt-2 text-xs text-slate-500">Multiplier = number of base units per this unit (for example, crate = 30). Use whole numbers greater than 0.</div>
       </div>
       {rows.map((row, index) => (
         <div key={`${index}-${row.unitId}`} className="rounded-2xl border border-slate-200 p-3">
@@ -76,7 +82,7 @@ export function ProductPricingBuilder({
               </button>
             ) : null}
           </div>
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-4">
             <select
               value={row.unitId}
               onChange={(event) => updateRow(index, "unitId", event.target.value)}
@@ -106,6 +112,19 @@ export function ProductPricingBuilder({
               placeholder="Selling price"
               required
             />
+            <div>
+              <label className="text-xs text-slate-600 mb-1 block">Multiplier</label>
+              <Input
+                value={row.multiplier}
+                onChange={(event) => updateRow(index, "multiplier", event.target.value)}
+                type="number"
+                min="1"
+                step="1"
+                placeholder="e.g., 30"
+                title="Number of base units per this unit (crate = 30)"
+                required
+              />
+            </div>
           </div>
         </div>
       ))}

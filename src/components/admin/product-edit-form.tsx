@@ -48,6 +48,7 @@ export function ProductEditForm({ product, categories, brands, units }: ProductE
         unitId: entry.unitId,
         costPrice: entry.costPrice,
         sellingPrice: entry.sellingPrice,
+        multiplier: (entry as any).multiplier ?? 1,
       }));
     }
     return [
