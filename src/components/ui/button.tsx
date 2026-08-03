@@ -35,7 +35,6 @@ export const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, Bu
     children,
     disabled,
     onClick,
-    as: _as,
     ...buttonProps
   },
   ref,
