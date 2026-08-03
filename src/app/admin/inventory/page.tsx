@@ -58,7 +58,10 @@ export default async function InventoryPage() {
                             const status = getStockStatus(item.quantity, item.reorderLevel, item.criticalLevel);
                             return (
                               <tr key={item.id}>
-                                <td><p className="font-bold">{item.product.name}</p><p className="text-xs text-slate-500">{item.product.sku}</p></td>
+                                <td>
+                                  <p className="font-bold">{item.product.name}</p>
+                                  <p className="text-xs text-slate-500">{item.product.sku}{item.product.brand?.name ? ` • ${item.product.brand.name}` : ""}</p>
+                                </td>
                                 <td className="font-black">{item.quantity}</td>
                                 <td><p className="text-xs">Reorder: {item.reorderLevel}</p><p className="text-xs text-slate-500">Critical: {item.criticalLevel}</p></td>
                                 <td>{formatMoney(item.sellingPrice.toString(), business.currency)}</td>

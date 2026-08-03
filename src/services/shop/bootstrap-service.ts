@@ -62,6 +62,7 @@ export async function bootstrapShopDevice(input: {
         unitSymbol: pricing.unit?.symbol ?? null,
         costPriceMinor: toMinorUnits(pricing.costPrice.toString()),
         sellingPriceMinor: toMinorUnits(pricing.sellingPrice.toString()),
+        multiplier: (pricing as any).multiplier ?? 1,
       })),
       status: entry.product.status,
     })),

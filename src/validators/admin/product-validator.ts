@@ -4,6 +4,7 @@ const pricingEntrySchema = z.object({
   unitId: z.string().min(1),
   costPrice: z.coerce.number().nonnegative(),
   sellingPrice: z.coerce.number().positive(),
+  multiplier: z.coerce.number().int().positive().optional().default(1),
 });
 
 export const createProductSchema = z.object({

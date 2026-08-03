@@ -56,7 +56,7 @@ export const ProductModel = defineModel<ProductDocument>({
 export const ProductPricingUnitModel = defineModel<ProductPricingUnitDocument>({
   collection: "productPricingUnits",
   required: ["productId", "unitId", "costPrice", "sellingPrice"],
-  defaults: {},
+  defaults: { multiplier: 1 },
   indexes: [
     index({ productId: 1, unitId: 1 }, { unique: true }),
     index({ unitId: 1 }),

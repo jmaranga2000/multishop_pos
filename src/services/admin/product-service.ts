@@ -127,6 +127,7 @@ export async function createProduct(admin: { id: string; businessId: string }, i
         productId: product.id,
         unitId: entry.unitId,
         costPrice: entry.costPrice,
+          multiplier: entry.multiplier ?? 1,
         sellingPrice: entry.sellingPrice,
       })),
     });
@@ -167,6 +168,7 @@ export async function updateProduct(admin: { id: string; businessId: string }, i
         productId: updatedProduct.id,
         unitId: entry.unitId,
         costPrice: entry.costPrice,
+        multiplier: entry.multiplier ?? 1,
         sellingPrice: entry.sellingPrice,
       })),
     });

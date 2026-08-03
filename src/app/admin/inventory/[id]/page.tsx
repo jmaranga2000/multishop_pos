@@ -44,7 +44,7 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
               <div className="rounded-xl bg-slate-50 p-4">
                 <p className="text-xs uppercase tracking-wide text-slate-500">Product</p>
                 <p className="mt-1 font-bold">{item.product.name}</p>
-                <p className="text-sm text-slate-500">{item.product.sku}</p>
+                <p className="text-sm text-slate-500">{item.product.sku}{item.product.brand?.name ? ` • ${item.product.brand.name}` : ""}</p>
               </div>
               <div className="rounded-xl bg-slate-50 p-4">
                 <p className="text-xs uppercase tracking-wide text-slate-500">Shop</p>

@@ -143,6 +143,7 @@ export interface ProductPricingUnitDocument extends BaseDocument {
   unitId: string;
   costPrice: number;
   sellingPrice: number;
+  multiplier?: number;
 }
 
 export interface ShopInventoryDocument extends BaseDocument {

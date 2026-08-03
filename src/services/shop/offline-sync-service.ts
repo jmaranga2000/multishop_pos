@@ -101,7 +101,7 @@ export async function synchronizeOfflineSales(user: ShopSyncContext, payload: Of
         }
 
         const productIds = entry.items.map((item) => item.productId);
-        const products = await tx.product.findMany({ where: { id: { in: productIds }, businessId: user.businessId } });
+        const products = await tx.product.findMany({ where: { id: { in: productIds }, businessId: user.businessId }, include: { pricingUnits: true } });
         const productMap = new Map(products.map((product) => [product.id, product]));
         const inventories = await tx.shopInventory.findMany({ where: { shopId: user.shopId, productId: { in: productIds } } });
         const inventoryMap = new Map(inventories.map((inventory) => [inventory.productId, inventory]));
@@ -161,8 +161,12 @@ export async function synchronizeOfflineSales(user: ShopSyncContext, payload: Of
           if (!product || product.status !== "ACTIVE") conflicts.push(`PRODUCT_DEACTIVATED:${item.productId}`);
           const serverPriceMinor = Math.round(Number(inventory.sellingPrice) * 100);
           if (hasPriceMismatchBetweenMinorUnits(serverPriceMinor, item.unitPriceMinor)) conflicts.push(`PRICE_CHANGED:${item.productId}`);
-          const newQuantity = Math.max(0, inventory.quantity - item.quantity);
-          if (inventory.quantity < item.quantity) conflicts.push(`INSUFFICIENT_SERVER_STOCK:${item.productId}`);
+          // Convert sold quantity in the item's unit to base inventory units using pricing unit multiplier
+          const pricingUnit = (product?.pricingUnits ?? []).find((p: any) => p.unitId === item.unitId);
+          const multiplier = pricingUnit?.multiplier ?? (product?.unitId === item.unitId ? 1 : 1);
+          const effectiveQuantity = item.quantity * multiplier;
+          const newQuantity = Math.max(0, inventory.quantity - effectiveQuantity);
+          if (inventory.quantity < effectiveQuantity) conflicts.push(`INSUFFICIENT_SERVER_STOCK:${item.productId}`);
 
           await tx.shopInventory.update({
             where: { id: inventory.id },
@@ -172,13 +176,13 @@ export async function synchronizeOfflineSales(user: ShopSyncContext, payload: Of
             data: {
               shopId: user.shopId,
               productId: item.productId,
-              type: inventory.quantity < item.quantity ? "OFFLINE_RECONCILIATION" : "SALE",
-              quantityChange: -item.quantity,
+              type: inventory.quantity < effectiveQuantity ? "OFFLINE_RECONCILIATION" : "SALE",
+              quantityChange: -effectiveQuantity,
               quantityBefore: inventory.quantity,
               quantityAfter: newQuantity,
               referenceType: "SALE",
               referenceId: sale.id,
-              note: inventory.quantity < item.quantity
+              note: inventory.quantity < effectiveQuantity
                 ? "Offline sale exceeded current server stock; administrator reconciliation required."
                 : undefined,
             },
