@@ -28,6 +28,8 @@ export async function receiveIncomingTransfer(shopUser: ShopContext, transferId:
 
   return db.$transaction(async (tx) => {
     for (const item of transfer.items) {
+      if (!item.product) continue;
+
       const quantity = item.dispatchedQuantity - item.receivedQuantity;
       if (quantity <= 0) continue;
       const existing = await tx.shopInventory.findUnique({
