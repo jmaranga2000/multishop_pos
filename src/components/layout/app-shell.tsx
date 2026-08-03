@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 
 export function AppShell({ children, navItems, userName, userEmail, accountLabel, notificationCount = 0, headerExtra }: {
   children: React.ReactNode;
-  navItems: { href: string; label: string; icon: string }[];
+  navItems: { href: string; label: string; icon: string; count?: number; countTone?: "danger" | "warning" | "success" }[];
   userName: string;
   userEmail?: string;
   accountLabel: string;

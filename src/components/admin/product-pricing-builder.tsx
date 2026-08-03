@@ -15,9 +15,11 @@ type PricingRow = {
 export function ProductPricingBuilder({
   units,
   initialRows = [],
+  onRowsChange,
 }: {
   units: Array<{ id: string; name: string; symbol: string }>;
   initialRows?: Array<{ unitId: string; costPrice: number; sellingPrice: number; multiplier?: number }>;
+  onRowsChange?: () => void;
 }) {
   const [rows, setRows] = useState<PricingRow[]>(() => {
     if (initialRows.length) {
@@ -46,23 +48,35 @@ export function ProductPricingBuilder({
   }))), [rows]);
 
   function updateRow(index: number, key: keyof PricingRow, value: string) {
-    setRows((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, [key]: value } : row));
+    setRows((current) => {
+      const updated = current.map((row, rowIndex) => rowIndex === index ? { ...row, [key]: value } : row);
+      onRowsChange?.();
+      return updated;
+    });
   }
 
   function addRow() {
-    setRows((current) => [
-      ...current,
-      {
-        unitId: units[0]?.id ?? "",
-        costPrice: "0",
-        sellingPrice: "0",
-        multiplier: "1",
-      },
-    ]);
+    setRows((current) => {
+      const updated = [
+        ...current,
+        {
+          unitId: units[0]?.id ?? "",
+          costPrice: "0",
+          sellingPrice: "0",
+          multiplier: "1",
+        },
+      ];
+      onRowsChange?.();
+      return updated;
+    });
   }
 
   function removeRow(index: number) {
-    setRows((current) => current.filter((_, rowIndex) => rowIndex !== index));
+    setRows((current) => {
+      const updated = current.filter((_, rowIndex) => rowIndex !== index);
+      onRowsChange?.();
+      return updated;
+    });
   }
 
   return (

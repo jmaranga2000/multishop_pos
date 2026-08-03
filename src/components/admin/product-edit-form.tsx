@@ -114,7 +114,10 @@ export function ProductEditForm({ product, categories, brands, units }: ProductE
         </select>
         <a href="/admin/products/units/new" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm">New</a>
       </div>
-      <ProductPricingBuilder units={units} initialRows={pricingInitialRows} />
+      <ProductPricingBuilder units={units} initialRows={pricingInitialRows} onRowsChange={() => {
+        setDirty(true);
+        setSaved(false);
+      }} />
       <div className="grid grid-cols-2 gap-3">
         <Input name="defaultCostPrice" value={values.defaultCostPrice} onChange={(event) => updateField("defaultCostPrice", event.target.value)} type="number" min="0" step="0.01" placeholder="Cost price" required />
         <Input name="defaultSellingPrice" value={values.defaultSellingPrice} onChange={(event) => updateField("defaultSellingPrice", event.target.value)} type="number" min="0.01" step="0.01" placeholder="Selling price" required />
