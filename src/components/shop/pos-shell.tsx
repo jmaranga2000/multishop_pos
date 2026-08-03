@@ -591,7 +591,7 @@ export function PosShell({
           <Button type="button" variant="secondary" onClick={handleSendSms}>Send SMS</Button>
           <Button type="button" variant="secondary" onClick={handleSendEmail}>Send email</Button>
           <Button type="button" variant="secondary" onClick={handleShareWhatsapp}>Share WhatsApp</Button>
-          {canReprintReceipts ? <Button type="button" variant="ghost" onClick={() => void handleReprintReceipt()} disabled={reprintInFlight}>{reprintInFlight ? "Reprinting..." : "Reprint receipt"}</Button> : null}
+          {canReprintReceipts ? <Button type="button" variant="ghost" onClick={() => void handleReprintReceipt()} isLoading={reprintInFlight} disabled={reprintInFlight} loadingText="Reprinting...">Reprint receipt</Button> : null}
         </div>
       </Card>
     ) : null}
@@ -758,7 +758,7 @@ export function PosShell({
                     </div>
                     <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Customer phone number</label>
                     <Input value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="0712 345 678" />
-                    <Button type="button" onClick={() => void startMpesaPayment("STK_PUSH")} disabled={mpesaInFlight || !cart.length}>{mpesaInFlight ? "Sending request..." : "Send payment request"}</Button>
+                    <Button type="button" onClick={() => void startMpesaPayment("STK_PUSH")} isLoading={mpesaInFlight} disabled={mpesaInFlight || !cart.length} loadingText="Sending request...">Send payment request</Button>
                     {mpesaError ? <p className="text-sm text-red-600">{mpesaError}</p> : null}
                     <div className="flex flex-wrap gap-2">
                       <Button type="button" variant="secondary" onClick={() => setMpesaStatus("Ready")}>Retry</Button>
@@ -788,7 +788,7 @@ export function PosShell({
                     </div>
                     <Input value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="Optional customer phone number" />
                     <div className="flex flex-wrap gap-2">
-                      <Button type="button" onClick={() => void startMpesaPayment("PAY_TO_TILL")} disabled={mpesaInFlight || !cart.length}>{mpesaInFlight ? "Preparing payment..." : "Start waiting"}</Button>
+                      <Button type="button" onClick={() => void startMpesaPayment("PAY_TO_TILL")} isLoading={mpesaInFlight} disabled={mpesaInFlight || !cart.length} loadingText="Preparing payment...">Start waiting</Button>
                       <Button type="button" variant="secondary" onClick={() => setMpesaStatus("Checking payment status")}>Check payment</Button>
                       <Button type="button" variant="ghost" onClick={() => setMpesaFlow(null)}>Cancel waiting</Button>
                     </div>
@@ -797,7 +797,7 @@ export function PosShell({
                 ) : null}
               </div>
             ) : null}
-            {paymentMode === "CASH" ? <Button onClick={() => void checkout()} disabled={!registerSessionId || !cart.length || processing} className="mt-3 w-full" size="lg"><Banknote className="h-5 w-5"/>{processing ? "Completing sale..." : `Complete cash sale${pendingCount ? ` • ${pendingCount} pending` : ""}`}</Button> : null}
+            {paymentMode === "CASH" ? <Button onClick={() => void checkout()} isLoading={processing} disabled={!registerSessionId || !cart.length || processing} className="mt-3 w-full" size="lg" loadingText="Completing sale..."><Banknote className="h-5 w-5"/>Complete cash sale{pendingCount ? ` • ${pendingCount} pending` : ""}</Button> : null}
           </div>
         </div>
       </Card>

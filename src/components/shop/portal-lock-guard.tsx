@@ -104,10 +104,7 @@ export function ShopPortalLockGuard({ salespersonId, salespersonName }: { salesp
                 />
               </div>
               {error ? <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
-              <Button className="w-full" disabled={isPending}>
-                <ShieldCheck className="h-4 w-4" />
-                {isPending ? "Unlocking..." : "Resume portal"}
-              </Button>
+              <Button className="w-full" isLoading={isPending} disabled={isPending} loadingText="Unlocking..."><ShieldCheck className="h-4 w-4" />Resume portal</Button>
             </form>
           </div>
         </div>

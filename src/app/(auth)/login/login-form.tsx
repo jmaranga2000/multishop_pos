@@ -74,7 +74,7 @@ export function LoginForm({
       </div>
     </div>
     {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-    <Button type="submit" className="w-full" size="lg" disabled={loading}>{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LockKeyhole className="h-4 w-4" />}{loading ? "Signing in..." : "Sign in securely"}</Button>
+    <Button type="submit" className="w-full" size="lg" isLoading={loading} loadingText="Signing in..."><LockKeyhole className="h-4 w-4" />Sign in securely</Button>
     <p className="text-center text-xs text-slate-500">{helpText}</p>
   </form>;
 }

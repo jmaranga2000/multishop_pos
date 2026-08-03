@@ -94,7 +94,7 @@ export function BusinessSettingsForm({ business }: BusinessSettingsFormProps) {
           <div><label className="mb-1 block text-xs font-bold text-slate-600">Weekly report hour (0–23)</label><Input name="weeklyReportHour" type="number" min="0" max="23" value={values.weeklyReportHour} onChange={(event) => setField("weeklyReportHour", event.target.value)} required /></div>
           <div className="md:col-span-2"><label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-700"><input className={checkboxClass} type="checkbox" name="posBarcodeScanningEnabled" checked={values.posBarcodeScanningEnabled} onChange={(event) => setField("posBarcodeScanningEnabled", event.target.checked)} />Enable barcode scanning on the shop POS</label></div>
           <div className="md:col-span-2"><label className="mb-1 block text-xs font-bold text-slate-600">Receipt footer</label><textarea name="receiptFooter" value={values.receiptFooter} onChange={(event) => setField("receiptFooter", event.target.value)} className="min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm" /></div>
-          <div className="md:col-span-2"><Button type="submit" disabled={!dirty || isPending}>{isPending ? "Saving..." : "Save business settings"}</Button></div>
+          <div className="md:col-span-2"><Button type="submit" isLoading={isPending} disabled={!dirty || isPending} loadingText="Saving business settings...">Save business settings</Button></div>
         </form>
       </CardContent>
     </Card>
@@ -176,7 +176,7 @@ export function NotificationPreferencesForm({ preferences }: NotificationPrefere
               <label className="flex items-center gap-2 text-sm"><input className={checkboxClass} type="checkbox" name={`${prefix}Email`} checked={Boolean(email)} onChange={() => updateFlag(`${String(prefix)}Email` as keyof typeof initialValues)} />Email</label>
             </div>
           ))}
-          <Button type="submit" disabled={!dirty || isPending}>{isPending ? "Saving..." : "Save notification preferences"}</Button>
+          <Button type="submit" isLoading={isPending} disabled={!dirty || isPending} loadingText="Saving notification preferences...">Save notification preferences</Button>
         </form>
       </CardContent>
     </Card>

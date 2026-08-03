@@ -120,8 +120,8 @@ export function ProductEditForm({ product, categories, brands, units }: ProductE
         <Input name="defaultSellingPrice" value={values.defaultSellingPrice} onChange={(event) => updateField("defaultSellingPrice", event.target.value)} type="number" min="0.01" step="0.01" placeholder="Selling price" required />
       </div>
       <div className="flex gap-2">
-        <Button className="w-full" variant={dirty ? "primary" : "secondary"} disabled={!dirty || isPending}>
-          {saved ? "Saved" : isPending ? "Saving..." : "Save changes"}
+        <Button className="w-full" variant={dirty ? "primary" : "secondary"} isLoading={isPending} disabled={!dirty || isPending} loadingText="Saving changes...">
+          {saved ? "Saved" : "Save changes"}
         </Button>
         <Link href="/admin/products" className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
           Back

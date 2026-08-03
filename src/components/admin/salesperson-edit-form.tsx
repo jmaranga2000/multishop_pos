@@ -66,8 +66,8 @@ export function SalespersonEditForm({ salesperson }: SalespersonEditFormProps) {
         Shop: {salesperson.shopName ?? "Unknown shop"}
       </div>
       <div className="flex gap-2">
-        <Button className="w-full" variant={dirty ? "primary" : "secondary"} disabled={!dirty || isPending}>
-          {saved ? "Saved" : isPending ? "Saving..." : "Save changes"}
+        <Button className="w-full" variant={dirty ? "primary" : "secondary"} isLoading={isPending} disabled={!dirty || isPending} loadingText="Saving changes...">
+          {saved ? "Saved" : "Save changes"}
         </Button>
         <Link href="/admin/salespeople" className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
           Back

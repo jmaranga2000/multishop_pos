@@ -69,8 +69,8 @@ export function ShopEditForm({ shop }: ShopEditFormProps) {
         className="min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-blue-500"
       />
       <div className="flex gap-2">
-        <Button className="w-full" variant={dirty ? "primary" : "secondary"} disabled={!dirty || isPending}>
-          {saved ? "Saved" : isPending ? "Saving..." : "Save changes"}
+        <Button className="w-full" variant={dirty ? "primary" : "secondary"} isLoading={isPending} disabled={!dirty || isPending} loadingText="Saving changes...">
+          {saved ? "Saved" : "Save changes"}
         </Button>
         <Link href="/admin/shops" className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
           Back
