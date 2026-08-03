@@ -17,6 +17,11 @@ export type AdminSale = {
   _count: {
     items: number;
   };
+  products?: Array<{
+    name: string;
+    quantity: number;
+    sku?: string | null;
+  }>;
 };
 
 type BusinessDocument = {
@@ -37,6 +42,13 @@ type SaleDocument = {
   total: number | string;
   isOffline: boolean;
   syncedAt?: Date | string | null;
+};
+
+type SaleItemDocument = {
+  saleId: string;
+  productName: string;
+  sku?: string | null;
+  quantity: number;
 };
 
 type PaymentDocument = {
@@ -97,7 +109,7 @@ async function getSalesWithDetails(
   if (!sales.length) return { business, sales: [] };
 
   const saleIds = sales.map((sale) => sale.id);
-  const [paymentsResult, itemCounts] = await Promise.all([
+  const [paymentsResult, itemCounts, saleItemsResult] = await Promise.all([
     database.collection("payments").find(
       { saleId: { $in: saleIds } },
       { projection: { _id: 0 } },
@@ -106,8 +118,13 @@ async function getSalesWithDetails(
       { $match: { saleId: { $in: saleIds } } },
       { $group: { _id: "$saleId", count: { $sum: 1 } } },
     ]).toArray(),
+    database.collection("saleItems").find(
+      { saleId: { $in: saleIds } },
+      { projection: { _id: 0, saleId: 1, productName: 1, sku: 1, quantity: 1 } },
+    ).toArray(),
   ]);
   const payments = paymentsResult as unknown as PaymentDocument[];
+  const saleItems = saleItemsResult as unknown as SaleItemDocument[];
 
   const shopsById = new Map(shops.map((shop) => [shop.id, shop]));
   const paymentsBySaleId = new Map<string, PaymentDocument[]>();
@@ -117,6 +134,16 @@ async function getSalesWithDetails(
     paymentsBySaleId.set(payment.saleId, salePayments);
   }
   const itemCountBySaleId = new Map(itemCounts.map((itemCount) => [itemCount._id, itemCount.count]));
+  const productsBySaleId = new Map<string, Array<{ name: string; quantity: number; sku?: string | null }>>();
+  for (const item of saleItems) {
+    const saleProducts = productsBySaleId.get(item.saleId) ?? [];
+    saleProducts.push({
+      name: item.productName,
+      quantity: item.quantity,
+      sku: item.sku,
+    });
+    productsBySaleId.set(item.saleId, saleProducts);
+  }
 
   return {
     business,
@@ -129,6 +156,7 @@ async function getSalesWithDetails(
         shop,
         payments: paymentsBySaleId.get(sale.id) ?? [],
         _count: { items: itemCountBySaleId.get(sale.id) ?? 0 },
+        products: productsBySaleId.get(sale.id) ?? [],
       };
     }),
   };

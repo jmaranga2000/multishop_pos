@@ -51,7 +51,7 @@ export async function getSupplierManagementDetails(businessId: string, supplierI
   };
 }
 
-export async function createSupplier(admin: AdminContext, input: CreateSupplierInput) {
+export async function createSupplier(admin: AdminContext, input: CreateSupplierInput, productIds: string[] = []) {
   const shop = await db.shop.findFirst({ where: { id: input.shopId, businessId: admin.businessId } });
   if (!shop) throw new AppError("The assigned shop was not found.", "SHOP_NOT_FOUND", 404);
 
@@ -79,10 +79,22 @@ export async function createSupplier(admin: AdminContext, input: CreateSupplierI
     description: `Created supplier ${supplier.name} for ${shop.name}.`,
   });
 
+  const uniqueProductIds = [...new Set(productIds.filter(Boolean))];
+  if (uniqueProductIds.length) {
+    await db.supplierProduct.createMany({
+      data: uniqueProductIds.map((productId) => ({
+        supplierId: supplier.id,
+        shopId: shop.id,
+        productId,
+        targetQuantity: 0,
+      })),
+    });
+  }
+
   return supplier;
 }
 
-export async function updateSupplier(admin: AdminContext, input: UpdateSupplierInput) {
+export async function updateSupplier(admin: AdminContext, input: UpdateSupplierInput, productIds: string[] = []) {
   const supplier = await db.supplier.findFirst({ where: { id: input.supplierId, businessId: admin.businessId } });
   if (!supplier) throw new AppError("Supplier not found.", "SUPPLIER_NOT_FOUND", 404);
 
@@ -112,6 +124,19 @@ export async function updateSupplier(admin: AdminContext, input: UpdateSupplierI
     entityId: updated.id,
     description: `Updated supplier ${updated.name}.`,
   });
+
+  const uniqueProductIds = [...new Set(productIds.filter(Boolean))];
+  await db.supplierProduct.deleteMany({ where: { supplierId: updated.id } });
+  if (uniqueProductIds.length) {
+    await db.supplierProduct.createMany({
+      data: uniqueProductIds.map((productId) => ({
+        supplierId: updated.id,
+        shopId: shop.id,
+        productId,
+        targetQuantity: 0,
+      })),
+    });
+  }
 
   return updated;
 }

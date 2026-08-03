@@ -17,10 +17,13 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
 
   const { supplier } = details;
 
-  const shops = await db.shop.findMany({
-    where: { businessId: admin.businessId },
-    orderBy: { name: "asc" },
-  });
+  const [shops, products] = await Promise.all([
+    db.shop.findMany({
+      where: { businessId: admin.businessId },
+      orderBy: { name: "asc" },
+    }),
+    listSupplierProductsForBusiness(admin.businessId),
+  ]);
 
   return (
     <>
@@ -31,7 +34,12 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
             <h2 className="font-extrabold">Supplier details</h2>
           </CardHeader>
           <div className="p-6">
-            <SupplierEditForm supplier={supplier} shops={shops} />
+            <SupplierEditForm
+              supplier={supplier}
+              shops={shops}
+              products={products}
+              selectedProductIds={supplier.supplierProducts.map((entry: { productId: string }) => entry.productId)}
+            />
           </div>
         </Card>
       </div>

@@ -88,6 +88,7 @@ export default async function SalesPage() {
                         <th>Shop</th>
                         <th>Time</th>
                         <th>Items</th>
+                        <th>Products sold</th>
                         <th>Payment</th>
                         <th>Total</th>
                         <th>Sync</th>
@@ -100,6 +101,21 @@ export default async function SalesPage() {
                           <td>{sale.shop.name}</td>
                           <td>{new Date(sale.occurredAt).toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" })}</td>
                           <td>{sale._count.items}</td>
+                          <td>
+                            {sale.products?.length ? (
+                              <div className="max-w-xs space-y-1">
+                                {sale.products.slice(0, 3).map((product, index) => (
+                                  <div key={`${sale.id}-${product.name}-${index}`} className="text-sm text-slate-700">
+                                    <span className="font-medium">{product.name}</span>
+                                    <span className="ml-1 text-slate-500">× {product.quantity}</span>
+                                  </div>
+                                ))}
+                                {sale.products.length > 3 ? <p className="text-xs text-slate-500">+{sale.products.length - 3} more</p> : null}
+                              </div>
+                            ) : (
+                              <span className="text-sm text-slate-500">—</span>
+                            )}
+                          </td>
                           <td>{sale.payments.map((payment: typeof sale.payments[number]) => payment.method).join(", ")}</td>
                           <td className="font-black">{formatMoney(sale.total.toString(), business.currency)}</td>
                           <td>

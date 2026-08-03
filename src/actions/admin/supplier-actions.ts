@@ -19,16 +19,24 @@ import {
 
 export async function createSupplierAction(formData: FormData) {
   const admin = await requireAdmin();
-  const input = createSupplierSchema.parse(Object.fromEntries(formData));
-  await createSupplier(admin, input);
+  const productIds = formData.getAll("productIds").map((value) => String(value)).filter(Boolean);
+  const input = createSupplierSchema.parse({
+    ...Object.fromEntries(formData.entries()),
+    productIds,
+  });
+  await createSupplier(admin, input, productIds);
   revalidatePath("/admin/suppliers");
   redirect("/admin/suppliers");
 }
 
 export async function updateSupplierAction(formData: FormData) {
   const admin = await requireAdmin();
-  const input = updateSupplierSchema.parse(Object.fromEntries(formData));
-  await updateSupplier(admin, input);
+  const productIds = formData.getAll("productIds").map((value) => String(value)).filter(Boolean);
+  const input = updateSupplierSchema.parse({
+    ...Object.fromEntries(formData.entries()),
+    productIds,
+  });
+  await updateSupplier(admin, input, productIds);
   revalidatePath(`/admin/suppliers/${input.supplierId}`);
   revalidatePath("/admin/suppliers");
   redirect("/admin/suppliers");

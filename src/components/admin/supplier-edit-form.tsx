@@ -12,6 +12,12 @@ type ShopOption = {
   name: string;
 };
 
+type ProductOption = {
+  id: string;
+  name: string;
+  sku?: string | null;
+};
+
 type SupplierFormProps = {
   supplier?: {
     id: string;
@@ -26,9 +32,11 @@ type SupplierFormProps = {
     shopId: string;
   };
   shops: ShopOption[];
+  products?: ProductOption[];
+  selectedProductIds?: string[];
 };
 
-export function SupplierEditForm({ supplier, shops }: SupplierFormProps) {
+export function SupplierEditForm({ supplier, shops, products = [], selectedProductIds = [] }: SupplierFormProps) {
   const isEdit = Boolean(supplier);
   const [values, setValues] = useState({
     name: supplier?.name ?? "",
@@ -40,12 +48,13 @@ export function SupplierEditForm({ supplier, shops }: SupplierFormProps) {
     notes: supplier?.notes ?? "",
     status: supplier?.status ?? "ACTIVE",
     shopId: supplier?.shopId ?? (shops.length > 0 ? shops[0].id : ""),
+    productIds: selectedProductIds,
   });
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  function updateField(key: keyof typeof values, value: string) {
+  function updateField(key: keyof typeof values, value: string | string[]) {
     setValues((current) => ({ ...current, [key]: value }));
     setDirty(true);
     setSaved(false);
@@ -135,6 +144,42 @@ export function SupplierEditForm({ supplier, shops }: SupplierFormProps) {
           <option value="ACTIVE">Active</option>
           <option value="DISABLED">Disabled</option>
         </select>
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold mb-2">Assigned products</label>
+        <div className="max-h-56 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+          {products.length ? (
+            <div className="space-y-2">
+              {products.map((product) => {
+                const checked = values.productIds.includes(product.id);
+                return (
+                  <label key={product.id} className="flex items-start gap-2 rounded-lg border border-transparent px-2 py-1 hover:border-slate-200 hover:bg-white">
+                    <input
+                      type="checkbox"
+                      name="productIds"
+                      value={product.id}
+                      checked={checked}
+                      onChange={(event) => {
+                        const nextIds = event.target.checked
+                          ? [...values.productIds, product.id]
+                          : values.productIds.filter((id) => id !== product.id);
+                        updateField("productIds", nextIds);
+                      }}
+                      className="mt-1"
+                    />
+                    <span>
+                      <span className="block font-medium text-slate-800">{product.name}</span>
+                      {product.sku ? <span className="block text-xs text-slate-500">SKU {product.sku}</span> : null}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500">No products are available for this business yet.</p>
+          )}
+        </div>
       </div>
 
       <Input
