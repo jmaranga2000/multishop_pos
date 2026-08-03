@@ -14,10 +14,10 @@ export async function getInventoryManagementData(businessId: string) {
   const [business, shops, products, inventory] = await Promise.all([
     db.business.findUniqueOrThrow({ where: { id: businessId } }),
     db.shop.findMany({ where: { businessId, isActive: true }, orderBy: { name: "asc" } }),
-    db.product.findMany({ where: { businessId, status: "ACTIVE" }, orderBy: { name: "asc" } }),
+    db.product.findMany({ where: { businessId, status: "ACTIVE" }, orderBy: { name: "asc" }, include: { brand: true } }),
     db.shopInventory.findMany({
       where: { shop: { businessId } },
-      include: { shop: true, product: true },
+      include: { shop: true, product: { include: { brand: true } } },
       orderBy: [{ shop: { name: "asc" } }, { product: { name: "asc" } }],
     }),
   ]);

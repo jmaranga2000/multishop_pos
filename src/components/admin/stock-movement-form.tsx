@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 export type StockMovementFormProps = {
   shops: Array<{ id: string; name: string }>;
-  products: Array<{ id: string; name: string; sku: string; defaultCostPrice: number; defaultSellingPrice: number }>;
+  products: Array<{ id: string; name: string; sku: string; defaultCostPrice: number; defaultSellingPrice: number; brand?: { id?: string; name?: string } }>;
   action: (formData: FormData) => Promise<void>;
 };
 
@@ -51,7 +51,7 @@ export function StockMovementForm({ shops, products, action }: StockMovementForm
         <option value="">Select product</option>
         {products.map((product) => (
           <option key={product.id} value={product.id}>
-            {product.name} ({product.sku})
+            {product.name} ({product.sku}){product.brand?.name ? ` — ${product.brand.name}` : ""}
           </option>
         ))}
       </select>
