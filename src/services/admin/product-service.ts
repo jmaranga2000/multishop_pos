@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import { writeAuditLog } from "@/services/shared/audit-service";
 import type { z } from "zod";
 import type {
@@ -54,6 +54,59 @@ async function generateUniqueBarcode() {
     candidate = String(Math.floor(100000000000 + Math.random() * 900000000000));
   }
   return candidate;
+}
+
+function normalizeEnvValue(value: string | undefined) {
+  if (!value) return undefined;
+  const t = value.trim();
+  return t.replace(/^"(.*)"$/, "$1").replace(/^'(.*)'$/, "$1");
+}
+
+function extractCloudinaryPublicId(url: string, cloudName?: string) {
+  try {
+    const u = new URL(url);
+    // pathname like /<cloudName>/image/upload/v12345/folder/name.jpg
+    const parts = u.pathname.split("/").filter(Boolean);
+    const uploadIdx = parts.indexOf("upload");
+    if (uploadIdx === -1) return null;
+    const after = parts.slice(uploadIdx + 1).join("/");
+    // remove version prefix v12345/
+    const withoutVersion = after.replace(/^v\d+\//, "");
+    // remove file extension
+    const publicId = withoutVersion.replace(/\.[^.]+$/, "");
+    return publicId;
+  } catch (err) {
+    return null;
+  }
+}
+
+async function deleteCloudinaryImageIfExists(imageUrl: string | null | undefined) {
+  const cloudName = normalizeEnvValue(process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME);
+  const apiKey = normalizeEnvValue(process.env.CLOUDINARY_API_KEY);
+  const apiSecret = normalizeEnvValue(process.env.CLOUDINARY_API_SECRET);
+  if (!cloudName || !apiKey || !apiSecret || !imageUrl) return;
+
+  const publicId = extractCloudinaryPublicId(imageUrl, cloudName);
+  if (!publicId) return;
+
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const stringToSign = `public_id=${publicId}&timestamp=${timestamp}`;
+  const signature = createHash("sha1").update(stringToSign + apiSecret).digest("hex");
+
+  const fd = new FormData();
+  fd.append("public_id", publicId);
+  fd.append("api_key", apiKey);
+  fd.append("timestamp", timestamp);
+  fd.append("signature", signature);
+
+  try {
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/destroy`, { method: "POST", body: fd });
+    // ignore response details; best-effort cleanup
+    await res.text();
+  } catch (err) {
+    // swallow errors to avoid breaking product update
+    console.error("Cloudinary delete failed:", err);
+  }
 }
 
 export async function listAdminProducts(businessId: string) {
@@ -146,6 +199,12 @@ export async function createProduct(admin: { id: string; businessId: string }, i
 export async function updateProduct(admin: { id: string; businessId: string }, input: UpdateProductInput) {
   const product = await db.product.findFirst({ where: { id: input.productId, businessId: admin.businessId } });
   if (!product) throw new Error("Product not found.");
+  // If the product previously had an image but the incoming input clears it,
+  // attempt to remove the image from Cloudinary (best-effort).
+  if (product.imageUrl && (input.imageUrl === undefined || input.imageUrl === null)) {
+    // don't block the update on deletion failures
+    deleteCloudinaryImageIfExists(product.imageUrl).catch(() => {});
+  }
 
   const firstUnitPricing = input.unitPricing?.[0] ?? null;
   const updatedProduct = await db.product.update({

@@ -11,7 +11,13 @@ export const createProductSchema = z.object({
   name: z.string().trim().min(2).max(160),
   sku: z.string().trim().max(60).optional().transform((value) => value?.length ? value.toUpperCase() : undefined),
   barcode: z.string().trim().max(80).optional().transform((value) => value?.length ? value : undefined),
-  imageUrl: z.string().trim().url().optional().transform((value) => value?.length ? value : undefined),
+  imageUrl: z.preprocess((val) => {
+    if (typeof val === "string") {
+      const t = val.trim();
+      return t.length ? t : undefined;
+    }
+    return val;
+  }, z.string().url().optional()),
   categoryId: z.string().optional(),
   brandId: z.string().optional(),
   unitId: z.string().optional(),
@@ -34,7 +40,13 @@ export const updateProductSchema = z.object({
   name: z.string().trim().min(2).max(160),
   sku: z.string().trim().min(2).max(60).transform((value) => value.toUpperCase()),
   barcode: z.string().trim().max(80).optional(),
-  imageUrl: z.string().trim().url().optional().transform((value) => value?.length ? value : undefined),
+  imageUrl: z.preprocess((val) => {
+    if (typeof val === "string") {
+      const t = val.trim();
+      return t.length ? t : undefined;
+    }
+    return val;
+  }, z.string().url().optional()),
   categoryId: z.string().optional(),
   brandId: z.string().optional(),
   unitId: z.string().optional(),
