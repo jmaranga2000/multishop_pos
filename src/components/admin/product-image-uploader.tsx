@@ -62,23 +62,19 @@ export function ProductImageUploader({ value, onChange }: ProductImageUploaderPr
   return (
     <div className="space-y-3">
       <label className="block text-sm font-semibold text-slate-700">Product image</label>
-      <div className="grid gap-2 md:grid-cols-[1fr_auto]">
-        <Input
-          name="imageUrl"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder="Image URL or upload file"
-        />
+      <input type="hidden" name="imageUrl" value={value} />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <Button
           type="button"
           variant="secondary"
-          className="min-w-[120px]"
+          className="min-w-30"
           disabled={uploading || !canUpload}
           onClick={() => fileInputRef.current?.click()}
         >
           <ImagePlus className="h-4 w-4" />
-          {uploading ? "Uploading..." : "Upload"}
+          {uploading ? "Uploading..." : "Upload image"}
         </Button>
+        <span className="text-sm text-slate-500">Upload a product image from your computer.</span>
       </div>
       <input
         ref={fileInputRef}
@@ -88,7 +84,7 @@ export function ProductImageUploader({ value, onChange }: ProductImageUploaderPr
         onChange={handleFileChange}
       />
       {!canUpload ? (
-        <p className="text-xs text-slate-500">Set NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME and NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET in .env.local to enable uploads.</p>
+        <p className="text-xs text-slate-500">Set NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in .env.local to enable uploads.</p>
       ) : null}
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       {value ? (

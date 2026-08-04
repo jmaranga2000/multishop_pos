@@ -1,16 +1,19 @@
 import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 
-const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-const apiKey = process.env.CLOUDINARY_API_KEY;
-const apiSecret = process.env.CLOUDINARY_API_SECRET;
-const folder = process.env.CLOUDINARY_FOLDER;
+const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME?.trim();
+const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
+const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
+const folder = process.env.CLOUDINARY_FOLDER?.trim() || undefined;
 
 function buildSignature(timestamp: string) {
-  const params = [`timestamp=${timestamp}`];
-  if (folder) params.push(`folder=${folder}`);
-  const toSign = params.sort().join("&") + apiSecret;
-  return createHash("sha1").update(toSign).digest("hex");
+  const params = { timestamp, ...(folder ? { folder } : {}) };
+  const signedString = Object.entries(params)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}=${value}`)
+    .join("&");
+
+  return createHash("sha1").update(signedString + apiSecret).digest("hex");
 }
 
 export async function POST(request: Request) {
