@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState, useRef, useEffect } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Banknote, Camera, CreditCard, Minus, PackageX, Plus, ScanLine, Search, ShoppingCart, Trash2, WifiOff } from "lucide-react";
@@ -670,7 +671,13 @@ export function PosShell({
           const pricingOption = getPricingOption(entry);
           return <div key={`${entry.id}-${pricingOption.unitId ?? "default"}`} className="product-card surface rounded-2xl p-4">
             <div className="flex items-start justify-between gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 font-black text-blue-700">{product.name.slice(0, 2).toUpperCase()}</div>
+              <div className="relative h-14 w-14 overflow-hidden rounded-2xl bg-slate-100">
+                {product.imageUrl ? (
+                  <Image src={product.imageUrl} alt={product.name} fill className="object-cover" sizes="56px" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-blue-50 font-black text-blue-700">{product.name.slice(0, 2).toUpperCase()}</div>
+                )}
+              </div>
               <Badge tone={status === "IN_STOCK" ? "success" : status === "LOW_STOCK" ? "warning" : "danger"}>{entry.projectedQuantity} left</Badge>
             </div>
             <p className="mt-3 line-clamp-2 font-bold text-slate-900">{product.name}</p>

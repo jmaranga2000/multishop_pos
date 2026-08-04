@@ -41,7 +41,13 @@ export default async function ProductDetailsPage({ params }: { params: Promise<{
           <CardHeader><h2 className="font-extrabold">Details</h2></CardHeader>
           <CardContent>
             <div className="flex items-center gap-4">
-              <div className="rounded-xl bg-blue-50 p-3 text-blue-700"><Package className="h-6 w-6" /></div>
+              <div className="h-24 w-24 overflow-hidden rounded-3xl bg-slate-100">
+                {product.imageUrl ? (
+                  <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-blue-700"><Package className="h-6 w-6" /></div>
+                )}
+              </div>
               <div>
                 <p className="font-bold text-lg">{product.name} <Badge tone={product.status === "ACTIVE" ? "success" : "neutral"} className="ml-2">{product.status}</Badge></p>
                 <p className="text-sm text-slate-500">{product.category?.name ?? "Uncategorized"} • {product.brand?.name ?? "Unbranded"} • {product.unit?.symbol ?? "unit"}</p>

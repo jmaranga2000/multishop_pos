@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { updateProductAction } from "@/actions/admin/product-actions";
 import { ProductPricingBuilder } from "@/components/admin/product-pricing-builder";
+import { ProductImageUploader } from "@/components/admin/product-image-uploader";
 
 export type ProductEditFormProps = {
   product: {
@@ -14,6 +15,7 @@ export type ProductEditFormProps = {
     name: string;
     sku: string;
     barcode?: string | null;
+    imageUrl?: string | null;
     categoryId?: string | null;
     brandId?: string | null;
     unitId?: string | null;
@@ -32,6 +34,7 @@ export function ProductEditForm({ product, categories, brands, units }: ProductE
     name: product.name,
     sku: product.sku,
     barcode: product.barcode ?? "",
+    imageUrl: product.imageUrl ?? "",
     categoryId: product.categoryId ?? "",
     brandId: product.brandId ?? "",
     unitId: product.unitId ?? "",
@@ -87,6 +90,7 @@ export function ProductEditForm({ product, categories, brands, units }: ProductE
       <Input name="name" value={values.name} onChange={(event) => updateField("name", event.target.value)} placeholder="Product name" required />
       <Input name="sku" value={values.sku} onChange={(event) => updateField("sku", event.target.value)} placeholder="SKU" required />
       <Input name="barcode" value={values.barcode} onChange={(event) => updateField("barcode", event.target.value)} placeholder="Barcode (optional)" />
+      <ProductImageUploader value={values.imageUrl} onChange={(value) => updateField("imageUrl", value)} />
       <div className="flex items-center gap-2">
         <select name="categoryId" value={values.categoryId} onChange={(event) => updateField("categoryId", event.target.value)} className="h-11 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm">
         <option value="">Select category</option>
