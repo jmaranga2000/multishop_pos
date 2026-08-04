@@ -80,14 +80,19 @@ function extractCloudinaryPublicId(url: string, cloudName?: string) {
   }
 }
 
-async function deleteCloudinaryImageIfExists(imageUrl: string | null | undefined) {
+async function deleteCloudinaryImageIfExists(imageUrlOrPublicId: string | null | undefined) {
   const cloudName = normalizeEnvValue(process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME);
   const apiKey = normalizeEnvValue(process.env.CLOUDINARY_API_KEY);
   const apiSecret = normalizeEnvValue(process.env.CLOUDINARY_API_SECRET);
-  if (!cloudName || !apiKey || !apiSecret || !imageUrl) return;
+  if (!cloudName || !apiKey || !apiSecret || !imageUrlOrPublicId) return;
 
-  const publicId = extractCloudinaryPublicId(imageUrl, cloudName);
-  if (!publicId) return;
+  // Determine if the value is a full URL or already a public_id
+  let publicId = imageUrlOrPublicId;
+  if (imageUrlOrPublicId.startsWith("http")) {
+    const extracted = extractCloudinaryPublicId(imageUrlOrPublicId, cloudName);
+    if (!extracted) return;
+    publicId = extracted;
+  }
 
   const timestamp = Math.floor(Date.now() / 1000).toString();
   const stringToSign = `public_id=${publicId}&timestamp=${timestamp}`;
@@ -166,6 +171,7 @@ export async function createProduct(admin: { id: string; businessId: string }, i
       sku,
       barcode,
       imageUrl: input.imageUrl ?? null,
+      imagePublicId: input.imagePublicId ?? null,
       categoryId: input.categoryId || null,
       brandId: input.brandId || null,
       unitId: firstUnitPricing?.unitId ?? input.unitId ?? null,
@@ -201,9 +207,10 @@ export async function updateProduct(admin: { id: string; businessId: string }, i
   if (!product) throw new Error("Product not found.");
   // If the product previously had an image but the incoming input clears it,
   // attempt to remove the image from Cloudinary (best-effort).
-  if (product.imageUrl && (input.imageUrl === undefined || input.imageUrl === null)) {
-    // don't block the update on deletion failures
-    deleteCloudinaryImageIfExists(product.imageUrl).catch(() => {});
+  if ((product.imageUrl || product.imagePublicId) && (input.imageUrl === undefined || input.imageUrl === null)) {
+    // don't block the update on deletion failures; prefer stored public id
+    const toDelete = product.imagePublicId ?? product.imageUrl;
+    deleteCloudinaryImageIfExists(toDelete).catch(() => {});
   }
 
   const firstUnitPricing = input.unitPricing?.[0] ?? null;
@@ -214,6 +221,7 @@ export async function updateProduct(admin: { id: string; businessId: string }, i
       sku: input.sku,
       barcode: input.barcode || null,
       imageUrl: input.imageUrl ?? null,
+      imagePublicId: input.imagePublicId ?? null,
       categoryId: input.categoryId || null,
       brandId: input.brandId || null,
       unitId: firstUnitPricing?.unitId ?? input.unitId ?? null,

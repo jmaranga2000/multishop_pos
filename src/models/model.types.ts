@@ -131,6 +131,7 @@ export interface ProductDocument extends BaseDocument {
   barcode?: string | null;
   description?: string | null;
   imageUrl?: string | null;
+  imagePublicId?: string | null;
   defaultCostPrice: number;
   defaultSellingPrice: number;
   taxRate: number;

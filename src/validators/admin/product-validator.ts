@@ -18,6 +18,13 @@ export const createProductSchema = z.object({
     }
     return val;
   }, z.string().url().optional()),
+  imagePublicId: z.preprocess((val) => {
+    if (typeof val === "string") {
+      const t = val.trim();
+      return t.length ? t : undefined;
+    }
+    return val;
+  }, z.string().optional()),
   categoryId: z.string().optional(),
   brandId: z.string().optional(),
   unitId: z.string().optional(),
@@ -47,6 +54,13 @@ export const updateProductSchema = z.object({
     }
     return val;
   }, z.string().url().optional()),
+  imagePublicId: z.preprocess((val) => {
+    if (typeof val === "string") {
+      const t = val.trim();
+      return t.length ? t : undefined;
+    }
+    return val;
+  }, z.string().optional()),
   categoryId: z.string().optional(),
   brandId: z.string().optional(),
   unitId: z.string().optional(),

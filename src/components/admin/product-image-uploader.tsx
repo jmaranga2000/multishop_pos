@@ -15,6 +15,7 @@ const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
 export function ProductImageUploader({ value, onChange }: ProductImageUploaderProps) {
   const [uploading, setUploading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [publicId, setPublicId] = React.useState<string>("");
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   const canUpload = Boolean(cloudName);
@@ -49,6 +50,7 @@ export function ProductImageUploader({ value, onChange }: ProductImageUploaderPr
       }
 
       onChange(data.secure_url);
+      if (data.public_id) setPublicId(data.public_id);
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Unable to upload image.");
     } finally {
@@ -95,12 +97,13 @@ export function ProductImageUploader({ value, onChange }: ProductImageUploaderPr
           <div className="flex-1">
             <p className="text-sm font-semibold text-slate-900 line-clamp-1">Preview</p>
             <p className="text-xs text-slate-500 line-clamp-2">{value}</p>
-            <Button type="button" variant="ghost" size="sm" className="mt-2" onClick={() => onChange("") }>
+            <Button type="button" variant="ghost" size="sm" className="mt-2" onClick={() => { onChange(""); setPublicId(""); }}>
               <Trash2 className="h-4 w-4" /> Remove image
             </Button>
           </div>
         </div>
       ) : null}
+      <input type="hidden" name="imagePublicId" value={publicId} />
     </div>
   );
 }
