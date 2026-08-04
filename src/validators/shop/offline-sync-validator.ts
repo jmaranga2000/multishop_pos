@@ -7,7 +7,7 @@ export const offlineSyncItemSchema = z.object({
   unitId: z.string().optional().nullable(),
   unitName: z.string().optional().nullable(),
   unitSymbol: z.string().optional().nullable(),
-  quantity: z.number().int().positive(),
+  quantity: z.number().positive(),
   unitPriceMinor: z.number().int().nonnegative(),
   unitCostMinor: z.number().int().nonnegative(),
   lineTotalMinor: z.number().int().nonnegative(),

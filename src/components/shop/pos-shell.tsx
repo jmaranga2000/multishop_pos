@@ -146,9 +146,22 @@ export function PosShell({
       }))
       .filter((item) => item.inventoryEntry) as FrequentProduct[];
   }, [saleItemsQuery, products]);
-  const totalMinor = cart.reduce((sum, item) => sum + item.quantity * item.unitPriceMinor, 0);
+  const totalMinor = cart.reduce((sum, item) => sum + Math.round(item.quantity * item.unitPriceMinor), 0);
   const receivedMinor = Math.round(Number(amountReceived || 0) * 100);
   const changeDueMinor = receivedMinor - totalMinor;
+
+  function setCartQuantity(productId: string, unitId: string | null | undefined, nextQuantity: number) {
+    const normalized = Math.round(nextQuantity * 100) / 100;
+    setCart((current) => current.flatMap((item) => {
+      if (item.productId !== productId || item.unitId !== unitId) return [item];
+      if (normalized <= 0) return [];
+      if (normalized > item.available) {
+        toast.warning(`Only ${item.available} units are projected to be available`);
+        return [item];
+      }
+      return [{ ...item, quantity: normalized }];
+    }));
+  }
 
   function getPricingOption(entry: InventoryEntry): PricingOption {
     const product = entry.product!;
@@ -357,7 +370,7 @@ export function PosShell({
   function changeQuantity(productId: string, unitId: string | null | undefined, delta: number) {
     setCart((current) => current.flatMap((item) => {
       if (item.productId !== productId || item.unitId !== unitId) return [item];
-      const quantity = item.quantity + delta;
+      const quantity = Math.round((item.quantity + delta) * 100) / 100;
       if (quantity <= 0) return [];
       if (quantity > item.available) {
         toast.warning(`Only ${item.available} units are projected to be available`);
@@ -438,7 +451,7 @@ export function PosShell({
           unitName: item.unitName,
           unitSymbol: item.unitSymbol,
           unitPriceMinor: item.unitPriceMinor,
-          lineTotalMinor: item.quantity * item.unitPriceMinor,
+          lineTotalMinor: Math.round(item.quantity * item.unitPriceMinor),
         })),
         subtotalMinor: totalMinor,
         discountMinor,
@@ -692,10 +705,14 @@ export function PosShell({
             <ShoppingCart className="h-5 w-5 text-blue-700" />
             <p className="font-black">Current sale</p>
           </div>
-          <Badge>{cart.reduce((sum, item) => sum + item.quantity, 0)} items</Badge>
+          <Badge>{cart.length} items</Badge>
         </div>
         <div className="cart-scroll flex flex-col p-4">
-          {cart.length ? <div className="space-y-3">{cart.map((item) => <div key={`${item.productId}-${item.unitId ?? "default"}`} className="rounded-xl border border-slate-200 p-3"><div className="flex justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-bold">{item.name}</p><p className="text-xs text-slate-500">{(item.unitName ?? item.unitSymbol) ? `${item.unitName ?? item.unitSymbol} • ` : ""}{formatMoney(fromMinorUnits(item.unitPriceMinor))} each</p></div><button onClick={() => setCart((current) => current.filter((line) => line.productId !== item.productId || line.unitId !== item.unitId))}><Trash2 className="h-4 w-4 text-red-500"/></button></div><div className="mt-3 flex items-center justify-between"><div className="flex items-center gap-2"><button className="rounded-lg border p-1" onClick={() => changeQuantity(item.productId, item.unitId, -1)}><Minus className="h-4 w-4"/></button><span className="w-7 text-center text-sm font-bold">{item.quantity}</span><button className="rounded-lg border p-1" onClick={() => changeQuantity(item.productId, item.unitId, 1)}><Plus className="h-4 w-4"/></button></div><p className="font-black">{formatMoney(fromMinorUnits(item.quantity * item.unitPriceMinor))}</p></div></div>)}</div> : <div className="flex min-h-52 flex-col items-center justify-center text-center"><ShoppingCart className="h-10 w-10 text-slate-200"/><p className="mt-3 font-bold text-slate-700">Your cart is empty</p><p className="mt-1 text-sm text-slate-400">Select a product to begin.</p></div>}
+          {cart.length ? <div className="space-y-3">{cart.map((item) => <div key={`${item.productId}-${item.unitId ?? "default"}`} className="rounded-xl border border-slate-200 p-3"><div className="flex justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-bold">{item.name}</p><p className="text-xs text-slate-500">{(item.unitName ?? item.unitSymbol) ? `${item.unitName ?? item.unitSymbol} • ` : ""}{formatMoney(fromMinorUnits(item.unitPriceMinor))} each</p></div><button onClick={() => setCart((current) => current.filter((line) => line.productId !== item.productId || line.unitId !== item.unitId))}><Trash2 className="h-4 w-4 text-red-500"/></button></div><div className="mt-3 flex items-center justify-between"><div className="flex items-center gap-2"><button className="rounded-lg border p-1" onClick={() => changeQuantity(item.productId, item.unitId, -0.25)}><Minus className="h-4 w-4"/></button><Input type="number" inputMode="decimal" min="0.01" step="0.01" value={String(item.quantity)} onChange={(e) => {
+                const value = Number(e.target.value);
+                if (Number.isNaN(value)) return;
+                setCartQuantity(item.productId, item.unitId, value);
+              }} className="w-20 rounded-lg border border-slate-200 bg-white px-2 py-1 text-center text-sm" /><button className="rounded-lg border p-1" onClick={() => changeQuantity(item.productId, item.unitId, 0.25)}><Plus className="h-4 w-4"/></button></div><p className="font-black">{formatMoney(fromMinorUnits(Math.round(item.quantity * item.unitPriceMinor)))}</p></div></div>)}</div> : <div className="flex min-h-52 flex-col items-center justify-center text-center"><ShoppingCart className="h-10 w-10 text-slate-200"/><p className="mt-3 font-bold text-slate-700">Your cart is empty</p><p className="mt-1 text-sm text-slate-400">Select a product to begin.</p></div>}
           <div className="mt-4 border-t border-slate-200 bg-slate-50 p-4 -mx-4">
             <div className="checkout-summary-grid">
               <div className="checkout-summary-card">

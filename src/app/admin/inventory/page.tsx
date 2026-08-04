@@ -74,7 +74,7 @@ export default async function InventoryPage() {
                                     <Link href={`/admin/inventory/${item.id}`} className="inline-flex items-center rounded-lg border px-3 py-2 text-sm">View</Link>
                                     <form action={adjustStockAction} className="flex min-w-72 gap-2">
                                       <input type="hidden" name="inventoryId" value={item.id} />
-                                      <Input name="quantity" type="number" min="0" defaultValue={item.quantity} className="w-24" required />
+                                      <Input name="quantity" type="number" min="0" step="0.01" defaultValue={item.quantity} className="w-24" required />
                                       <Input name="reason" placeholder="Adjustment reason" required />
                                       <Button size="sm" variant="secondary"><SlidersHorizontal className="h-4 w-4" />Save</Button>
                                     </form>

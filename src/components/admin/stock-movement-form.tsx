@@ -56,7 +56,7 @@ export function StockMovementForm({ shops, products, action }: StockMovementForm
         ))}
       </select>
 
-      <Input name="quantity" type="number" min="1" placeholder="Quantity to add" required />
+      <Input name="quantity" type="number" min="0.01" step="0.01" placeholder="Quantity to add" required />
 
       <div className="grid grid-cols-2 gap-3">
         <Input
