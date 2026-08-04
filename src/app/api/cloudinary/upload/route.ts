@@ -1,19 +1,27 @@
 import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 
-const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME?.trim();
-const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
-const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
-const folder = process.env.CLOUDINARY_FOLDER?.trim() || undefined;
+function normalizeEnvValue(value: string | undefined) {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  return trimmed.replace(/^"(.*)"$/, "$1").replace(/^'(.*)'$/, "$1");
+}
+
+const cloudName = normalizeEnvValue(process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME);
+const apiKey = normalizeEnvValue(process.env.CLOUDINARY_API_KEY);
+const apiSecret = normalizeEnvValue(process.env.CLOUDINARY_API_SECRET);
+const folder = normalizeEnvValue(process.env.CLOUDINARY_FOLDER);
+const debugSignature = normalizeEnvValue(process.env.CLOUDINARY_DEBUG_SIGNATURE) === "true";
 
 function buildSignature(timestamp: string) {
   const params = { timestamp, ...(folder ? { folder } : {}) };
-  const signedString = Object.entries(params)
+  const stringToSign = Object.entries(params)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([key, value]) => `${key}=${value}`)
     .join("&");
 
-  return createHash("sha1").update(signedString + apiSecret).digest("hex");
+  const signature = createHash("sha1").update(stringToSign + apiSecret).digest("hex");
+  return { signature, stringToSign };
 }
 
 export async function POST(request: Request) {
@@ -28,7 +36,7 @@ export async function POST(request: Request) {
   }
 
   const timestamp = Math.floor(Date.now() / 1000).toString();
-  const signature = buildSignature(timestamp);
+  const { signature, stringToSign } = buildSignature(timestamp);
 
   const uploadData = new FormData();
   uploadData.append("file", file);
@@ -46,7 +54,15 @@ export async function POST(request: Request) {
 
   const result = await response.json();
   if (!response.ok) {
-    return NextResponse.json({ error: result.error?.message ?? "Cloudinary upload failed." }, { status: 500 });
+    const errorPayload: Record<string, unknown> = {
+      error: result.error?.message ?? "Cloudinary upload failed.",
+    };
+    if (debugSignature) {
+      errorPayload.stringToSign = stringToSign;
+      errorPayload.timestamp = timestamp;
+      if (folder) errorPayload.folder = folder;
+    }
+    return NextResponse.json(errorPayload, { status: 500 });
   }
 
   return NextResponse.json(result);
