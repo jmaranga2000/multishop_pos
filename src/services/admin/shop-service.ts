@@ -12,7 +12,7 @@ type UpdateShopInput = z.infer<typeof updateShopSchema>;
 
 export async function listAdminShops(businessId: string) {
   return db.shop.findMany({
-    where: { businessId },
+    where: { businessId, isArchived: false },
     include: { account: { select: { id: true, email: true, status: true } }, _count: { select: { inventory: true, sales: true } } },
     orderBy: { name: "asc" },
   });
@@ -126,6 +126,23 @@ export async function setShopActiveState(admin: { id: string; businessId: string
       entityType: "SHOP",
       entityId: shop.id,
       description: `${active ? "Activated" : "Suspended"} ${shop.name}.`,
+    });
+  });
+}
+
+export async function setShopArchivedState(admin: { id: string; businessId: string }, input: { shopId: string; isArchived: "true" | "false" }) {
+  const shop = await db.shop.findFirst({ where: { id: input.shopId, businessId: admin.businessId }, include: { account: true } });
+  if (!shop) throw new AppError("Shop was not found.", "SHOP_NOT_FOUND", 404);
+  const isArchived = input.isArchived === "true";
+  await db.$transaction(async (tx) => {
+    await tx.shop.update({ where: { id: shop.id }, data: { isArchived } });
+    await writeAuditLog(tx, {
+      userId: admin.id,
+      shopId: shop.id,
+      action: isArchived ? "SHOP_ARCHIVED" : "SHOP_UNARCHIVED",
+      entityType: "SHOP",
+      entityId: shop.id,
+      description: `${isArchived ? "Archived" : "Unarchived"} ${shop.name}.`,
     });
   });
 }

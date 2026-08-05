@@ -22,13 +22,13 @@ export default async function AdminDashboard() {
   // sort shops by sales desc and compute a per-row color from green (high) to red (low)
   const shopRowsSorted = [...data.shopRows].sort((a, b) => b.sales - a.sales);
   function interpolateColorGreenToRed(t: number) {
-    // t: 0 => green, 1 => red
-    const r1 = 22, g1 = 163, b1 = 74; // #16a34a (emerald-600)
-    const r2 = 239, g2 = 68, b2 = 68; // #ef4444 (red-500)
+    // t: 0 => green, 1 => red (darker endpoints and stronger tint)
+    const r1 = 6, g1 = 95, b1 = 70; // #065f46 (emerald-700)
+    const r2 = 185, g2 = 28, b2 = 28; // #b91c1c (red-700)
     const r = Math.round(r1 + (r2 - r1) * t);
     const g = Math.round(g1 + (g2 - g1) * t);
     const b = Math.round(b1 + (b2 - b1) * t);
-    return `rgba(${r}, ${g}, ${b}, 0.12)`; // subtle tint
+    return `rgba(${r}, ${g}, ${b}, 0.18)`; // slightly stronger tint
   }
 
   return (

@@ -19,6 +19,7 @@ export const resetShopPasswordSchema = z.object({
 });
 
 export const toggleShopSchema = z.object({ shopId: z.string().min(1), isActive: z.enum(["true", "false"]) });
+export const toggleArchiveSchema = z.object({ shopId: z.string().min(1), isArchived: z.enum(["true", "false"]) });
 
 export const updateShopSchema = z.object({
   shopId: z.string().min(1),

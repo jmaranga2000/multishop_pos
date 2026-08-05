@@ -5,6 +5,7 @@ import { listAdminShops } from "@/services/admin/shop-service";
 import { PageHeading } from "@/components/ui/page-heading";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { archiveShopAction } from "@/actions/admin/shop-actions";
 import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +48,11 @@ export default async function ShopsPage() {
                       <td>
                         <div className="flex gap-2">
                           <a href={`/admin/shops/${shop.id}`} className="inline-flex items-center rounded-lg border px-3 py-2 text-sm">View</a>
+                          <form action={archiveShopAction} method="post">
+                            <input type="hidden" name="shopId" value={shop.id} />
+                            <input type="hidden" name="isArchived" value="true" />
+                            <button type="submit" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm text-rose-600">Archive</button>
+                          </form>
                         </div>
                       </td>
                     </tr>
