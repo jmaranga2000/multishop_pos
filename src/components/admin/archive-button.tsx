@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { archiveShopAction } from "@/actions/admin/shop-actions";
 
 export function ArchiveButton({ shopId }: { shopId: string }) {
   function onClick(e: React.MouseEvent<HTMLButtonElement>) {
@@ -13,7 +14,7 @@ export function ArchiveButton({ shopId }: { shopId: string }) {
   }
 
   return (
-    <form method="post">
+    <form method="post" action={archiveShopAction}>
       <input type="hidden" name="shopId" value={shopId} />
       <input type="hidden" name="isArchived" value="true" />
       <button type="submit" onClick={onClick} className="inline-flex items-center rounded-lg border px-3 py-2 text-sm text-rose-600">Archive</button>

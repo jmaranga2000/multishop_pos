@@ -14,6 +14,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const nav: Array<{ href: string; label: string; icon: string; count?: number; countTone?: "danger" | "warning" | "success" }> = [
     { href: "/admin/dashboard", label: "Overview", icon: "BarChart3" },
     { href: "/admin/shops", label: "Shops", icon: "Building2" },
+    { href: "/admin/shops/archived", label: "Archived shops", icon: "Archive" },
     { href: "/admin/suppliers", label: "Suppliers", icon: "Truck" },
     { href: "/admin/products", label: "Products", icon: "Boxes" },
     { href: "/admin/inventory", label: "Inventory", icon: "Store" },
