@@ -19,6 +19,18 @@ export default async function AdminDashboard() {
   const { business, inventoryHealth } = data;
   const attentionCount = inventoryHealth.low + inventoryHealth.critical + inventoryHealth.out;
 
+  // sort shops by sales desc and compute a per-row color from green (high) to red (low)
+  const shopRowsSorted = [...data.shopRows].sort((a, b) => b.sales - a.sales);
+  function interpolateColorGreenToRed(t: number) {
+    // t: 0 => green, 1 => red
+    const r1 = 22, g1 = 163, b1 = 74; // #16a34a (emerald-600)
+    const r2 = 239, g2 = 68, b2 = 68; // #ef4444 (red-500)
+    const r = Math.round(r1 + (r2 - r1) * t);
+    const g = Math.round(g1 + (g2 - g1) * t);
+    const b = Math.round(b1 + (b2 - b1) * t);
+    return `rgba(${r}, ${g}, ${b}, 0.12)`; // subtle tint
+  }
+
   return (
     <>
       <PageHeading
@@ -98,21 +110,25 @@ export default async function AdminDashboard() {
             <p className="text-sm text-slate-500">Sales, transaction volume and current stock exposure.</p>
           </div>
         </CardHeader>
-        {data.shopRows.length ? (
+        {shopRowsSorted.length ? (
           <div className="overflow-x-auto">
             <table className="data-table">
               <thead><tr><th>Shop</th><th>Sales</th><th>Transactions</th><th>Stock value</th><th>Alerts</th><th>Status</th></tr></thead>
               <tbody>
-                {data.shopRows.map(({ shop, sales, transactions, stockValue, alerts }) => (
-                  <tr key={shop.id}>
-                    <td><div className="flex items-center gap-3"><div className="rounded-xl bg-blue-50 p-2 text-blue-700"><Building2 className="h-4 w-4" /></div><div><p className="font-bold">{shop.name}</p><p className="text-xs text-slate-500">{shop.code}</p></div></div></td>
-                    <td className="font-bold">{formatMoney(sales, business.currency)}</td>
-                    <td>{transactions}</td>
-                    <td>{formatMoney(stockValue, business.currency)}</td>
-                    <td>{alerts ? <Badge tone="warning">{alerts} alerts</Badge> : <Badge tone="success">Healthy</Badge>}</td>
-                    <td><Badge tone="success">Active</Badge></td>
-                  </tr>
-                ))}
+                {shopRowsSorted.map(({ shop, sales, transactions, stockValue, alerts }, idx) => {
+                  const t = shopRowsSorted.length > 1 ? idx / (shopRowsSorted.length - 1) : 0; // 0..1
+                  const bg = interpolateColorGreenToRed(t);
+                  return (
+                    <tr key={shop.id} style={{ backgroundColor: bg }}>
+                      <td><div className="flex items-center gap-3"><div className="rounded-xl bg-blue-50 p-2 text-blue-700"><Building2 className="h-4 w-4" /></div><div><p className="font-bold">{shop.name}</p><p className="text-xs text-slate-500">{shop.code}</p></div></div></td>
+                      <td className="font-bold">{formatMoney(sales, business.currency)}</td>
+                      <td>{transactions}</td>
+                      <td>{formatMoney(stockValue, business.currency)}</td>
+                      <td>{alerts ? <Badge tone="warning">{alerts} alerts</Badge> : <Badge tone="success">Healthy</Badge>}</td>
+                      <td><Badge tone="success">Active</Badge></td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
