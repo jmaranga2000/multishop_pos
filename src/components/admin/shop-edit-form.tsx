@@ -59,7 +59,7 @@ export function ShopEditForm({ shop }: ShopEditFormProps) {
       <Input name="name" value={values.name} onChange={(event) => updateField("name", event.target.value)} placeholder="Shop name" required />
       <Input name="code" value={values.code} onChange={(event) => updateField("code", event.target.value)} placeholder="Unique code" required />
       <Input name="email" value={values.email} onChange={(event) => updateField("email", event.target.value)} type="email" placeholder="Login email (optional)" />
-      <Input name="password" value={values.password} onChange={(event) => updateField("password", event.target.value)} type="password" placeholder="New temporary password (leave blank to keep)" />
+      <PasswordInput name="password" value={values.password} onChange={(event) => updateField("password", event.target.value)} placeholder="New temporary password (leave blank to keep)" />
       <Input name="phone" value={values.phone} onChange={(event) => updateField("phone", event.target.value)} placeholder="Phone (optional)" />
       <textarea
         name="address"

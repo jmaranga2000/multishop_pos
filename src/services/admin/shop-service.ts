@@ -31,12 +31,30 @@ export async function getAdminShopById(businessId: string, shopId: string) {
 
 export async function createShopWithAccount(admin: { id: string; businessId: string }, input: CreateShopInput) {
   const passwordHash = await argon2.hash(input.password);
+  async function generateCodeCandidate(name: string) {
+    const prefix = name.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+    const base = prefix.length ? `${prefix}-${suffix}` : `SHP-${suffix}`;
+    return base.slice(0, 30);
+  }
+
+  async function generateUniqueShopCode(name: string) {
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const candidate = await generateCodeCandidate(name);
+      const existing = await db.shop.findFirst({ where: { businessId: admin.businessId, code: candidate } });
+      if (!existing) return candidate;
+    }
+    // fallback
+    return `${(await generateCodeCandidate(name)).slice(0, 26)}-${Math.floor(Math.random() * 9000 + 1000)}`.slice(0, 30);
+  }
   return db.$transaction(async (tx) => {
+    const codeToUse = input.code ?? (await generateUniqueShopCode(input.name));
+
     const shop = await tx.shop.create({
       data: {
         businessId: admin.businessId,
         name: input.name,
-        code: input.code,
+        code: codeToUse,
         email: input.email,
         phone: input.phone || null,
         address: input.address || null,

@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/rbac";
 import { PageHeading } from "@/components/ui/page-heading";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import { createShopAction } from "@/actions/admin/shop-actions";
 
@@ -24,9 +25,10 @@ export default async function NewShopPage() {
         <CardContent>
           <form action={createShopAction} className="space-y-3">
             <Input name="name" placeholder="Shop name" required />
-            <Input name="code" placeholder="Unique code, e.g. NBI-CBD" required />
+            <Input name="code" placeholder="Optional — leave blank to auto-generate (e.g. NBI-CBD)" />
+            <p className="text-xs text-slate-500">Leave blank to auto-generate a unique shop code.</p>
             <Input name="email" type="email" placeholder="Shop login email" required />
-            <Input name="password" type="password" minLength={8} placeholder="Temporary password" required />
+            <PasswordInput name="password" minLength={8} placeholder="Temporary password" required />
             <Input name="phone" placeholder="Phone (optional)" />
             <textarea name="address" placeholder="Physical address" className="min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-blue-500" />
             <Button className="w-full">Create shop and account</Button>
