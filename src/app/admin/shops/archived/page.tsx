@@ -1,38 +1,34 @@
 import Link from "next/link";
 import { Building2 } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
-import { listAdminShops } from "@/services/admin/shop-service";
+import { listArchivedShops } from "@/services/admin/shop-service";
 import { PageHeading } from "@/components/ui/page-heading";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { archiveShopAction } from "@/actions/admin/shop-actions";
-import ArchiveButton from "@/components/admin/archive-button";
+import UnarchiveButton from "@/components/admin/unarchive-button";
 import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
-export default async function ShopsPage() {
+export default async function ArchivedShopsPage() {
   const user = await requireAdmin();
-  const shops = await listAdminShops(user.businessId);
+  const shops = await listArchivedShops(user.businessId);
 
   return (
     <>
-      <PageHeading title="Shops and login accounts" description="Create each physical location and issue one shared shop login." />
-      <div className="flex justify-end mb-4">
-        <Link href="/admin/shops/new" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">New shop</Link>
-      </div>
+      <PageHeading title="Archived shops" description="Manage archived shops (you can restore them)." />
       <div className="grid gap-5">
         <Card className="overflow-hidden">
           <CardHeader>
             <div>
-              <h2 className="font-extrabold">All shops</h2>
-              <p className="text-sm text-slate-500">Credentials remain isolated to their assigned location.</p>
+              <h2 className="font-extrabold">Archived shops</h2>
+              <p className="text-sm text-slate-500">These shops are hidden from active lists.</p>
             </div>
           </CardHeader>
           {shops.length ? (
             <div className="overflow-x-auto">
               <table className="data-table">
-                <thead><tr><th>Shop</th><th>Account</th><th>Inventory</th><th>Sales</th><th>Status</th><th>Account controls</th></tr></thead>
+                <thead><tr><th>Shop</th><th>Account</th><th>Inventory</th><th>Sales</th><th>Status</th><th>Controls</th></tr></thead>
                 <tbody>
                   {shops.map((shop) => (
                     <tr key={shop.id}>
@@ -49,7 +45,7 @@ export default async function ShopsPage() {
                       <td>
                         <div className="flex gap-2">
                           <a href={`/admin/shops/${shop.id}`} className="inline-flex items-center rounded-lg border px-3 py-2 text-sm">View</a>
-                          <ArchiveButton shopId={shop.id} />
+                          <UnarchiveButton shopId={shop.id} />
                         </div>
                       </td>
                     </tr>
@@ -57,7 +53,7 @@ export default async function ShopsPage() {
                 </tbody>
               </table>
             </div>
-          ) : <EmptyState title="No shops yet" description="Use the creation form to add the first shop and login account." />}
+          ) : <EmptyState title="No archived shops" description="No shops have been archived." />}
         </Card>
 
       </div>

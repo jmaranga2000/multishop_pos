@@ -29,6 +29,14 @@ export async function getAdminShopById(businessId: string, shopId: string) {
   });
 }
 
+export async function listArchivedShops(businessId: string) {
+  return db.shop.findMany({
+    where: { businessId, isArchived: true },
+    include: { account: { select: { id: true, email: true, status: true } }, _count: { select: { inventory: true, sales: true } } },
+    orderBy: { name: "asc" },
+  });
+}
+
 export async function createShopWithAccount(admin: { id: string; businessId: string }, input: CreateShopInput) {
   async function generateCodeCandidate(name: string) {
     const prefix = name.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/(^-|-$)/g, "");

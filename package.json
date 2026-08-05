@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "db:init": "tsx scripts/init-db.ts",
     "db:seed": "tsx scripts/seed.ts",
+    "db:migrate:add-isArchived": "tsx scripts/migrate-add-isArchived.ts",
     "secrets:generate": "node scripts/generate-local-secrets.mjs",
     "verify:integration": "node scripts/verify-integration.mjs",
     "verify:models": "node scripts/verify-mongodb-models.mjs",

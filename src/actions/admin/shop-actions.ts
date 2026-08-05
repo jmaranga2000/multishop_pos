@@ -7,6 +7,15 @@ import { createShopWithAccount, resetShopPassword, setShopActiveState, setShopAr
 import { updateShopAndAccount } from "@/services/admin/shop-service";
 import { createShopSchema, resetShopPasswordSchema, toggleShopSchema, updateShopSchema, toggleArchiveSchema } from "@/validators/admin/shop-validator";
 
+export async function unarchiveShopAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const input = toggleArchiveSchema.parse(Object.fromEntries(formData));
+  await setShopArchivedState(admin, input);
+  revalidatePath("/admin/shops");
+  revalidatePath("/admin/shops/archived");
+  redirect("/admin/shops/archived");
+}
+
 export async function createShopAction(formData: FormData) {
   const admin = await requireAdmin();
   const input = createShopSchema.parse(Object.fromEntries(formData));

@@ -27,6 +27,7 @@ export const ShopModel = defineModel<ShopDocument>({
   required: ["businessId", "name", "code"],
   defaults: {
     isActive: true,
+    isArchived: false,
     mpesaEnabled: false,
     mpesaStkEnabled: false,
     mpesaPayToTillEnabled: false,
@@ -34,6 +35,7 @@ export const ShopModel = defineModel<ShopDocument>({
   indexes: [
     index({ code: 1 }, { unique: true }),
     index({ businessId: 1, isActive: 1 }),
+    index({ businessId: 1, isArchived: 1 }),
   ],
 });
 

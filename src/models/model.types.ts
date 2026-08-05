@@ -62,6 +62,7 @@ export interface ShopDocument extends BaseDocument {
   phone?: string | null;
   address?: string | null;
   isActive: boolean;
+  isArchived: boolean;
   mpesaEnabled?: boolean;
   mpesaStkEnabled?: boolean;
   mpesaPayToTillEnabled?: boolean;
