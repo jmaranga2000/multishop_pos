@@ -10,9 +10,15 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProductUnitsPage() {
+type ProductUnitsPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function ProductUnitsPage({ searchParams }: ProductUnitsPageProps) {
   const user = await requireAdmin();
   const units = await listAdminProductUnits(user.businessId);
+  const resolvedSearchParams = (await searchParams) ?? {};
+  const error = typeof resolvedSearchParams.error === "string" ? decodeURIComponent(resolvedSearchParams.error) : "";
 
   return (
     <>
@@ -32,6 +38,12 @@ export default async function ProductUnitsPage() {
         </Link>
       </div>
 
+      {error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
+
       <div className="grid gap-5">
         <Card>
           <CardHeader>
@@ -44,7 +56,7 @@ export default async function ProductUnitsPage() {
             <form action={createProductUnitAction} className="space-y-3">
               <Input name="name" placeholder="Unit name" required />
               <Input name="symbol" placeholder="Symbol (e.g. pcs, kg, mL)" required />
-              <Button className="w-full">Create unit</Button>
+              <Button className="w-full" variant={error ? "danger" : "primary"}>Create unit</Button>
             </form>
           </CardContent>
         </Card>

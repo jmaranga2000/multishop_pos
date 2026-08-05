@@ -143,7 +143,7 @@ export async function setShopArchivedState(admin: { id: string; businessId: stri
   if (!shop) throw new AppError("Shop was not found.", "SHOP_NOT_FOUND", 404);
   const isArchived = input.isArchived === "true";
   await db.$transaction(async (tx) => {
-    await tx.shop.update({ where: { id: shop.id }, data: { isArchived } });
+    await tx.shop.update({ where: { id: shop.id }, data: { isArchived, isActive: !isArchived } });
     await writeAuditLog(tx, {
       userId: admin.id,
       shopId: shop.id,

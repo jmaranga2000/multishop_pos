@@ -164,6 +164,19 @@ export async function createProduct(admin: { id: string; businessId: string }, i
   const firstUnitPricing = input.unitPricing?.[0] ?? null;
   const sku = input.sku?.trim() || await generateUniqueProductSku(input.name);
   const barcode = input.barcode?.trim() || await generateUniqueBarcode();
+
+  const existingSku = await db.product.findFirst({ where: { businessId: admin.businessId, sku } });
+  if (existingSku) {
+    throw new Error(`A product with SKU ${sku} already exists.`);
+  }
+
+  if (barcode) {
+    const existingBarcode = await db.product.findFirst({ where: { businessId: admin.businessId, barcode } });
+    if (existingBarcode) {
+      throw new Error(`A product with barcode ${barcode} already exists.`);
+    }
+  }
+
   const product = await db.product.create({
     data: {
       businessId: admin.businessId,
@@ -268,6 +281,11 @@ export async function deleteProduct(admin: { id: string; businessId: string }, i
 }
 
 export async function createProductCategory(admin: { id: string; businessId: string }, input: CreateProductCategoryInput) {
+  const existing = await db.category.findFirst({ where: { businessId: admin.businessId, name: input.name } });
+  if (existing) {
+    throw new Error(`Category ${input.name} already exists.`);
+  }
+
   const slug = normalizeSlug(input.name);
   const category = await db.category.create({
     data: {
@@ -288,6 +306,11 @@ export async function createProductCategory(admin: { id: string; businessId: str
 }
 
 export async function createProductBrand(admin: { id: string; businessId: string }, input: CreateProductBrandInput) {
+  const existing = await db.brand.findFirst({ where: { businessId: admin.businessId, name: input.name } });
+  if (existing) {
+    throw new Error(`Brand ${input.name} already exists.`);
+  }
+
   const brand = await db.brand.create({
     data: {
       businessId: admin.businessId,
@@ -306,6 +329,11 @@ export async function createProductBrand(admin: { id: string; businessId: string
 }
 
 export async function createProductUnit(admin: { id: string; businessId: string }, input: CreateProductUnitInput) {
+  const existing = await db.unit.findFirst({ where: { businessId: admin.businessId, symbol: input.symbol } });
+  if (existing) {
+    throw new Error(`Unit symbol ${input.symbol} already exists.`);
+  }
+
   const unit = await db.unit.create({
     data: {
       businessId: admin.businessId,

@@ -48,7 +48,12 @@ export async function deleteProductAction(formData: FormData) {
 export async function createProductCategoryAction(formData: FormData) {
   const admin = await requireAdmin();
   const input = createProductCategorySchema.parse(Object.fromEntries(formData));
-  await createProductCategory(admin, input);
+  try {
+    await createProductCategory(admin, input);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to create category.";
+    redirect(`/admin/products/categories?error=${encodeURIComponent(message)}`);
+  }
   revalidatePath("/admin/products/categories");
   revalidatePath("/admin/products/new");
   redirect("/admin/products/categories");
@@ -57,7 +62,12 @@ export async function createProductCategoryAction(formData: FormData) {
 export async function createProductBrandAction(formData: FormData) {
   const admin = await requireAdmin();
   const input = createProductBrandSchema.parse(Object.fromEntries(formData));
-  await createProductBrand(admin, input);
+  try {
+    await createProductBrand(admin, input);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to create brand.";
+    redirect(`/admin/products/brands?error=${encodeURIComponent(message)}`);
+  }
   revalidatePath("/admin/products/brands");
   revalidatePath("/admin/products/new");
   redirect("/admin/products/brands");
@@ -66,7 +76,12 @@ export async function createProductBrandAction(formData: FormData) {
 export async function createProductUnitAction(formData: FormData) {
   const admin = await requireAdmin();
   const input = createProductUnitSchema.parse(Object.fromEntries(formData));
-  await createProductUnit(admin, input);
+  try {
+    await createProductUnit(admin, input);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to create unit.";
+    redirect(`/admin/products/units?error=${encodeURIComponent(message)}`);
+  }
   revalidatePath("/admin/products/units");
   revalidatePath("/admin/products/new");
   redirect("/admin/products/units");

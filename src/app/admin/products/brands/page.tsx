@@ -10,9 +10,15 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProductBrandsPage() {
+type ProductBrandsPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function ProductBrandsPage({ searchParams }: ProductBrandsPageProps) {
   const user = await requireAdmin();
   const brands = await listAdminProductBrands(user.businessId);
+  const resolvedSearchParams = (await searchParams) ?? {};
+  const error = typeof resolvedSearchParams.error === "string" ? decodeURIComponent(resolvedSearchParams.error) : "";
 
   return (
     <>
@@ -32,6 +38,12 @@ export default async function ProductBrandsPage() {
         </Link>
       </div>
 
+      {error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
+
       <div className="grid gap-5">
         <Card>
           <CardHeader>
@@ -43,7 +55,7 @@ export default async function ProductBrandsPage() {
           <CardContent>
             <form action={createProductBrandAction} className="space-y-3">
               <Input name="name" placeholder="Brand name" required />
-              <Button className="w-full">Create brand</Button>
+              <Button className="w-full" variant={error ? "danger" : "primary"}>Create brand</Button>
             </form>
           </CardContent>
         </Card>
