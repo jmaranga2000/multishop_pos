@@ -7,6 +7,7 @@ export const createShopSchema = z.object({
     return v;
   }, z.string().trim().min(2).max(30).transform((value) => value.toUpperCase()).optional()),
   email: z.string().trim().email().transform((value) => value.toLowerCase()),
+  email: z.string().trim().email().transform((value) => value.toLowerCase()),
   password: z.string().min(8).max(128),
   phone: z.string().trim().max(30).optional(),
   address: z.string().trim().max(500).optional(),

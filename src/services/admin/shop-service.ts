@@ -30,7 +30,6 @@ export async function getAdminShopById(businessId: string, shopId: string) {
 }
 
 export async function createShopWithAccount(admin: { id: string; businessId: string }, input: CreateShopInput) {
-  const passwordHash = await argon2.hash(input.password);
   async function generateCodeCandidate(name: string) {
     const prefix = name.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
@@ -60,17 +59,21 @@ export async function createShopWithAccount(admin: { id: string; businessId: str
         address: input.address || null,
       },
     });
-    const account = await tx.user.create({
-      data: {
-        businessId: admin.businessId,
-        shopId: shop.id,
-        name: `${input.name} account`,
-        email: input.email,
-        passwordHash,
-        role: "SHOP",
-        createdById: admin.id,
-      },
-    });
+    let account: { id: string } | null = null;
+    if (input.email && input.password) {
+      const passwordHash = await argon2.hash(input.password);
+      account = await tx.user.create({
+        data: {
+          businessId: admin.businessId,
+          shopId: shop.id,
+          name: `${input.name} account`,
+          email: input.email,
+          passwordHash,
+          role: "SHOP",
+          createdById: admin.id,
+        },
+      });
+    }
     await tx.register.create({ data: { shopId: shop.id, name: "Main counter", code: "MAIN" } });
     await writeAuditLog(tx, {
       userId: admin.id,
@@ -78,9 +81,9 @@ export async function createShopWithAccount(admin: { id: string; businessId: str
       action: "SHOP_CREATED",
       entityType: "SHOP",
       entityId: shop.id,
-      description: `Created ${shop.name} and its shop login account.`,
+      description: account ? `Created ${shop.name} and its shop login account.` : `Created ${shop.name} (no login account).`,
     });
-    return { shop, accountId: account.id };
+    return { shop, accountId: account?.id ?? null };
   });
 }
 
