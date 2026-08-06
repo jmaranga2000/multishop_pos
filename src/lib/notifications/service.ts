@@ -17,6 +17,12 @@ type InventoryAlertType = "LOW_STOCK" | "CRITICAL_STOCK" | "OUT_OF_STOCK";
   | "STOCK_TRANSFER"
   | "SYSTEM";
 
+type EmailAttachment = {
+  filename: string;
+  contentType: string;
+  content: string;
+};
+
 type QueueNotificationInput = {
   tx?: Tx;
   businessId: string;
@@ -27,7 +33,7 @@ type QueueNotificationInput = {
   title: string;
   message: string;
   actionUrl?: string;
-  email?: { to: string; subject?: string; html?: string };
+  email?: { to: string; subject?: string; html?: string; attachments?: Array<{ filename: string; contentType: string; content: string }> };
   push?: boolean;
   inApp?: boolean;
 };
@@ -118,6 +124,7 @@ export async function queueNotification(input: QueueNotificationInput) {
         htmlBody: input.email.html ?? `<h2>${escapeHtml(input.title)}</h2><p>${escapeHtml(input.message)}</p><p><a href="${absoluteUrl(input.actionUrl ?? "/admin/notifications")}">Open MultiShop POS</a></p>`,
         textBody: `${input.title}\n\n${input.message}`,
         type: input.type,
+        attachments: input.email.attachments,
       },
     });
   }

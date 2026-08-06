@@ -519,6 +519,11 @@ export interface EmailQueueDocument extends BaseDocument {
   htmlBody: string;
   textBody: string | null;
   type: string;
+  attachments?: Array<{
+    filename: string;
+    contentType: string;
+    content: string;
+  }>;
   status: QueueStatus;
   attempts: number;
   maximumAttempts: number;

@@ -3,6 +3,9 @@ import { AppError } from "@/lib/errors/app-error";
 import { absoluteUrl } from "@/lib/utils";
 import { queueNotification } from "@/lib/notifications/service";
 import { writeAuditLog } from "@/services/shared/audit-service";
+import { renderToBuffer } from "@react-pdf/renderer";
+import { SupplierRestockPdf } from "@/lib/reports/supplier-restock-pdf";
+import React from "react";
 import type { z } from "zod";
 import type { createSupplierSchema, updateSupplierSchema, supplierProductAssignmentSchema } from "@/validators/admin/supplier-validator";
 
@@ -187,7 +190,19 @@ export async function updateSupplierProductTarget(admin: AdminContext, supplierP
   return db.supplierProduct.update({ where: { id: record.id }, data: { targetQuantity } });
 }
 
-export async function getSupplierRestockItems(supplierId: string) {
+type SupplierRestockItem = {
+  supplierProductId: string;
+  productId: string;
+  productName: string;
+  sku: string;
+  currentQuantity: number;
+  targetQuantity: number;
+  quantityNeeded: number;
+  status: string;
+  unit: string;
+};
+
+export async function getSupplierRestockItems(supplierId: string): Promise<SupplierRestockItem[]> {
   const supplier = await db.supplier.findFirst({
     where: { id: supplierId },
     include: { shop: true, supplierProducts: { include: { product: { include: { unit: true } } } } },
@@ -248,6 +263,16 @@ export async function generateSupplierRestockRequest(admin: AdminContext, suppli
   const pdfUrl = absoluteUrl(`/api/supplier-notifications/${history.id}/pdf`);
   await db.supplierNotificationHistory.update({ where: { id: history.id }, data: { pdfUrl } });
 
+  const products = items.map((item: SupplierRestockItem) => ({
+    productName: item.productName,
+    sku: item.sku,
+    currentQuantity: item.currentQuantity,
+    targetQuantity: item.targetQuantity,
+    quantityNeeded: item.quantityNeeded,
+    status: item.status,
+    unit: item.unit,
+  }));
+
   const html = `
     <div style="font-family:Arial,sans-serif;color:#111827;">
       <h1>Restock request</h1>
@@ -256,6 +281,20 @@ export async function generateSupplierRestockRequest(admin: AdminContext, suppli
       <p><a href="${pdfUrl}">Download the purchase request PDF</a></p>
     </div>
   `;
+
+  const pdfDoc = React.createElement(SupplierRestockPdf, {
+    shopName: supplier.shop?.name ?? "Unknown shop",
+    supplierName: supplier.name,
+    supplierCompany: supplier.company,
+    supplierEmail: supplier.email,
+    supplierPhone: supplier.phone,
+    shopAddress: supplier.address ?? undefined,
+    referenceNumber: history.referenceNumber,
+    products,
+    generatedAt: new Date().toISOString(),
+  }) as any;
+  const pdfBuffer = await renderToBuffer(pdfDoc as any);
+  const pdfBase64 = Buffer.from(pdfBuffer).toString("base64");
 
   await queueNotification({
     businessId: admin.businessId,
@@ -267,10 +306,18 @@ export async function generateSupplierRestockRequest(admin: AdminContext, suppli
     message: `${supplier.name} has ${items.length} items waiting to be ordered.`,
     actionUrl: `/admin/suppliers/${supplier.id}`,
     inApp: true,
+    push: true,
     email: {
       to: supplier.email,
       subject: history.subject,
       html,
+      attachments: [
+        {
+          filename: `restock-request-${history.referenceNumber}.pdf`,
+          contentType: "application/pdf",
+          content: pdfBase64,
+        },
+      ],
     },
   });
 
