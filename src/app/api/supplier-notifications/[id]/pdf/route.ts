@@ -10,13 +10,24 @@ import React from "react";
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: notificationId } = await params;
-    const user = await requireUser();
+    const url = new URL(request.url);
+    const token = url.searchParams.get("token");
 
-    const history = await getSupplierNotificationById(user.businessId, notificationId);
+    let history;
+    let userBusinessId: string | null = null;
+
+    if (token) {
+      history = await db.supplierNotificationHistory.findFirst({ where: { id: notificationId, pdfToken: token } });
+    } else {
+      const user = await requireUser();
+      userBusinessId = user.businessId;
+      history = await getSupplierNotificationById(userBusinessId, notificationId);
+    }
+
     if (!history) throw new AppError("Notification not found.", "NOTIFICATION_NOT_FOUND", 404);
 
     const supplier = await db.supplier.findFirst({
-      where: { id: history.supplierId, businessId: user.businessId },
+      where: token ? { id: history.supplierId } : { id: history.supplierId, businessId: userBusinessId! },
       include: { shop: true },
     });
     if (!supplier) throw new AppError("Supplier not found.", "SUPPLIER_NOT_FOUND", 404);

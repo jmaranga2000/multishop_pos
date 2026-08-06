@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
 import { absoluteUrl } from "@/lib/utils";
@@ -260,8 +261,9 @@ export async function generateSupplierRestockRequest(admin: AdminContext, suppli
     },
   });
 
-  const pdfUrl = absoluteUrl(`/api/supplier-notifications/${history.id}/pdf`);
-  await db.supplierNotificationHistory.update({ where: { id: history.id }, data: { pdfUrl } });
+  const pdfToken = randomBytes(32).toString("hex");
+  const pdfUrl = absoluteUrl(`/api/supplier-notifications/${history.id}/pdf?token=${pdfToken}`);
+  await db.supplierNotificationHistory.update({ where: { id: history.id }, data: { pdfUrl, pdfToken } });
 
   const products = items.map((item: SupplierRestockItem) => ({
     productName: item.productName,

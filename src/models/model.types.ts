@@ -200,6 +200,7 @@ export interface SupplierNotificationHistoryDocument extends BaseDocument {
   emailAddress: string;
   subject: string;
   pdfUrl?: string | null;
+  pdfToken?: string | null;
   sentAt?: Date | null;
   failedAt?: Date | null;
   failureReason?: string | null;
