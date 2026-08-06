@@ -57,7 +57,7 @@ export async function reconcileStockAlert(tx: Tx, input: {
     { label: "Remaining", value: `${input.quantity} units`, tone: input.quantity > 0 ? "amber" : "red" },
   ]);
 
-  if (!inAppEnabled) return;
+  if (!inAppEnabled && !pushEnabled && !emailEnabled) return;
 
   await queueNotification({
     tx,
@@ -69,6 +69,7 @@ export async function reconcileStockAlert(tx: Tx, input: {
     title: `${label}: ${input.productName}`,
     message,
     actionUrl: `/admin/inventory?shop=${input.shopId}&product=${input.productId}`,
+    inApp: inAppEnabled,
     push: pushEnabled,
     email: emailEnabled && input.adminEmail ? { to: input.adminEmail, subject: `${label}: ${input.productName}`, html } : undefined,
   });

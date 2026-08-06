@@ -121,7 +121,7 @@ Recommended Africa/Nairobi schedules:
 
 ```text
 POST /api/jobs/process-queues      every 5 minutes
-POST /api/jobs/weekly-inventory    Monday at 08:00
+POST /api/jobs/weekly-inventory    Friday at 21:00
 ```
 
 ## Verification

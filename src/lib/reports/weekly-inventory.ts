@@ -1,7 +1,11 @@
 import { endOfDay, startOfDay, subDays } from "date-fns";
+import { createElement } from "react";
+import { connectToMongoDB } from "@/lib/mongodb";
 import { db } from "@/lib/db";
 import { buildSnapshotHtml, queueNotification } from "@/lib/notifications/service";
 import { getStockStatus } from "@/lib/utils";
+import { renderToBuffer } from "@react-pdf/renderer";
+import { WeeklyInventoryReportPdf, type WeeklyReportPdfData } from "@/lib/reports/weekly-report-pdf";
 
 export function previousWeekRange(reference = new Date()) {
   const day = reference.getDay() || 7;
@@ -9,6 +13,184 @@ export function previousWeekRange(reference = new Date()) {
   const periodEnd = endOfDay(subDays(currentMonday, 1));
   const periodStart = startOfDay(subDays(periodEnd, 6));
   return { periodStart, periodEnd };
+}
+
+export type WeeklyReportSummary = {
+  totalSalesCount: number;
+  totalRevenue: number;
+  totalProfit: number;
+  totalExpenses: number;
+  totalNet: number;
+  shopRankings: Array<{
+    shopId: string;
+    shopName: string;
+    transactions: number;
+    sales: number;
+    profit: number;
+    expenses: number;
+    alerts: number;
+  }>;
+  bestSellersByShop: Array<{
+    shopName: string;
+    products: Array<{ productName: string; quantity: number; revenue: number }>;
+  }>;
+  stockSummary: Array<{
+    shopName: string;
+    totalProducts: number;
+    lowStockCount: number;
+    criticalStockCount: number;
+    outOfStockCount: number;
+    inventoryValue: number;
+  }>;
+};
+
+export async function loadWeeklyReportSummary(businessId: string, periodStart: Date, periodEnd: Date) {
+  const database = await connectToMongoDB();
+
+  const shops = await database
+    .collection("shops")
+    .find({ businessId, isActive: true }, { projection: { _id: 0, id: 1, name: 1 } })
+    .toArray();
+  const shopIds = shops.map((shop) => shop.id);
+
+  const [sales, expenses, inventoryRows] = await Promise.all([
+    database
+      .collection("sales")
+      .find({ shopId: { $in: shopIds }, status: "COMPLETED", occurredAt: { $gte: periodStart, $lte: periodEnd } }, { projection: { _id: 0, id: 1, shopId: 1, total: 1 } })
+      .toArray(),
+    database
+      .collection("expenses")
+      .find({ shopId: { $in: shopIds }, status: "APPROVED", occurredAt: { $gte: periodStart, $lte: periodEnd } }, { projection: { _id: 0, shopId: 1, amount: 1 } })
+      .toArray(),
+    database
+      .collection("shopInventory")
+      .find({ shopId: { $in: shopIds } }, { projection: { _id: 0, shopId: 1, quantity: 1, reorderLevel: 1, criticalLevel: 1, costPrice: 1 } })
+      .toArray(),
+  ]);
+
+  const saleIds = sales.map((sale) => sale.id);
+  const saleItems = saleIds.length
+    ? await database
+        .collection("saleItems")
+        .find({ saleId: { $in: saleIds } }, { projection: { _id: 0, saleId: 1, productName: 1, quantity: 1, unitCost: 1, unitPrice: 1, lineTotal: 1 } })
+        .toArray()
+    : [];
+
+  const salesById = new Map(sales.map((sale) => [sale.id, sale]));
+  const shopSales = new Map<string, { transactions: number; sales: number; profit: number }>();
+  const shopExpenses = new Map<string, number>();
+  const productTotalsByShop = new Map<string, Map<string, { quantity: number; revenue: number }>>();
+
+  const totalSalesCount = sales.length;
+  let totalRevenue = 0;
+  let totalProfit = 0;
+  let totalExpenses = 0;
+
+  for (const sale of sales) {
+    const numericTotal = Number(sale.total) || 0;
+    totalRevenue += numericTotal;
+    const shopMetrics = shopSales.get(sale.shopId) ?? { transactions: 0, sales: 0, profit: 0 };
+    shopMetrics.transactions += 1;
+    shopMetrics.sales += numericTotal;
+    shopSales.set(sale.shopId, shopMetrics);
+  }
+
+  for (const expense of expenses) {
+    const amount = Number(expense.amount) || 0;
+    totalExpenses += amount;
+    shopExpenses.set(expense.shopId, (shopExpenses.get(expense.shopId) ?? 0) + amount);
+  }
+
+  for (const item of saleItems) {
+    const sale = salesById.get(item.saleId);
+    if (!sale) continue;
+    const shopId = sale.shopId;
+    const unitPrice = Number(item.unitPrice) || 0;
+    const unitCost = Number(item.unitCost) || 0;
+    const quantity = Number(item.quantity) || 0;
+    const revenue = Number(item.lineTotal) || unitPrice * quantity;
+
+    totalProfit += (unitPrice - unitCost) * quantity;
+    const shopMetrics = shopSales.get(shopId) ?? { transactions: 0, sales: 0, profit: 0 };
+    shopMetrics.profit += (unitPrice - unitCost) * quantity;
+    shopSales.set(shopId, shopMetrics);
+
+    const productTotals = productTotalsByShop.get(shopId) ?? new Map();
+    const existing = productTotals.get(item.productName) ?? { quantity: 0, revenue: 0 };
+    existing.quantity += quantity;
+    existing.revenue += revenue;
+    productTotals.set(item.productName, existing);
+    productTotalsByShop.set(shopId, productTotals);
+  }
+
+  const shopSummaryRecords = shops.map((shop) => {
+    const inventoryRowsForShop = inventoryRows.filter((row) => row.shopId === shop.id);
+    const lowStockCount = inventoryRowsForShop.filter((row) => getStockStatus(row.quantity, row.reorderLevel, row.criticalLevel) === "LOW_STOCK").length;
+    const criticalStockCount = inventoryRowsForShop.filter((row) => getStockStatus(row.quantity, row.reorderLevel, row.criticalLevel) === "CRITICAL").length;
+    const outOfStockCount = inventoryRowsForShop.filter((row) => getStockStatus(row.quantity, row.reorderLevel, row.criticalLevel) === "OUT_OF_STOCK").length;
+    const inventoryValue = inventoryRowsForShop.reduce((sum, row) => sum + Number(row.costPrice) * Number(row.quantity), 0);
+    return {
+      shop,
+      lowStockCount,
+      criticalStockCount,
+      outOfStockCount,
+      inventoryValue,
+      totalProducts: inventoryRowsForShop.length,
+    };
+  });
+
+  const shopRankings = shops
+    .map((shop) => {
+      const metrics = shopSales.get(shop.id) ?? { transactions: 0, sales: 0, profit: 0 };
+      const stockSummaryForShop = shopSummaryRecords.find((entry) => entry.shop.id === shop.id);
+      const lowCount = stockSummaryForShop?.lowStockCount ?? 0;
+      const criticalCount = stockSummaryForShop?.criticalStockCount ?? 0;
+      const outCount = stockSummaryForShop?.outOfStockCount ?? 0;
+      return {
+        shopId: shop.id,
+        shopName: shop.name,
+        transactions: metrics.transactions,
+        sales: metrics.sales,
+        profit: metrics.profit,
+        expenses: shopExpenses.get(shop.id) ?? 0,
+        alerts: lowCount + criticalCount + outCount,
+      };
+    })
+    .sort((left, right) => right.sales - left.sales);
+
+  const bestSellersByShop = shops.map((shop) => {
+    const productTotals = productTotalsByShop.get(shop.id);
+    const products = productTotals
+      ? Array.from(productTotals.entries())
+          .map(([productName, totals]) => ({ productName, quantity: totals.quantity, revenue: totals.revenue }))
+          .sort((left, right) => right.quantity - left.quantity)
+          .slice(0, 5)
+      : [];
+    return {
+      shopName: shop.name,
+      products,
+    };
+  });
+
+  const stockSummary = shopSummaryRecords.map((summary) => ({
+    shopName: summary.shop.name,
+    totalProducts: summary.totalProducts,
+    lowStockCount: summary.lowStockCount,
+    criticalStockCount: summary.criticalStockCount,
+    outOfStockCount: summary.outOfStockCount,
+    inventoryValue: summary.inventoryValue,
+  }));
+
+  return {
+    totalSalesCount,
+    totalRevenue,
+    totalProfit,
+    totalExpenses,
+    totalNet: totalRevenue - totalExpenses,
+    shopRankings,
+    bestSellersByShop,
+    stockSummary,
+  } satisfies WeeklyReportSummary;
 }
 
 export async function generateInventoryReport(businessId: string, periodStart: Date, periodEnd: Date) {
@@ -80,6 +262,38 @@ export async function generateInventoryReport(businessId: string, periodStart: D
 
   if (!inAppEnabled && !pushEnabled && !emailEnabled) return report;
 
+  const emailPayload: { to: string; subject: string; html: string; attachments?: Array<{ filename: string; contentType: string; content: string }> } | undefined =
+    emailEnabled && (process.env.ADMIN_EMAIL ?? admin.email)
+      ? { to: process.env.ADMIN_EMAIL ?? admin.email, subject: `Weekly inventory snapshot: ${periodStart.toLocaleDateString("en-KE")} – ${periodEnd.toLocaleDateString("en-KE")}`, html }
+      : undefined;
+
+  if (emailPayload) {
+    const summary = await loadWeeklyReportSummary(businessId, periodStart, periodEnd);
+    const pdfData: WeeklyReportPdfData = {
+      businessName: business.name,
+      currency: business.currency,
+      periodTitle: `${periodStart.toLocaleDateString("en-KE")} – ${periodEnd.toLocaleDateString("en-KE")}`,
+      generatedAt: new Date().toLocaleString("en-KE"),
+      totalSalesCount: summary.totalSalesCount,
+      totalRevenue: summary.totalRevenue,
+      totalProfit: summary.totalProfit,
+      totalExpenses: summary.totalExpenses,
+      totalNet: summary.totalNet,
+      shopRankings: summary.shopRankings,
+      bestSellersByShop: summary.bestSellersByShop,
+      stockSummary: summary.stockSummary,
+    };
+    const pdfBuffer = await renderToBuffer(createElement(WeeklyInventoryReportPdf, { report: pdfData }) as Parameters<typeof renderToBuffer>[0]);
+    const pdfBase64 = Buffer.from(pdfBuffer).toString("base64");
+    emailPayload.attachments = [
+      {
+        filename: `weekly-inventory-${periodStart.toISOString().slice(0, 10)}.pdf`,
+        contentType: "application/pdf",
+        content: pdfBase64,
+      },
+    ];
+  }
+
   await queueNotification({
     businessId,
     userId: admin.id,
@@ -89,7 +303,7 @@ export async function generateInventoryReport(businessId: string, periodStart: D
     actionUrl: `/admin/reports/inventory/${report.id}`,
     inApp: inAppEnabled,
     push: pushEnabled,
-    email: emailEnabled && (process.env.ADMIN_EMAIL ?? admin.email) ? { to: process.env.ADMIN_EMAIL ?? admin.email, subject: "Weekly inventory snapshot", html } : undefined,
+    email: emailPayload,
   });
   return report;
 }

@@ -520,6 +520,8 @@ export interface EmailQueueDocument extends BaseDocument {
   htmlBody: string;
   textBody: string | null;
   type: string;
+  referenceType?: string | null;
+  referenceId?: string | null;
   attachments?: Array<{
     filename: string;
     contentType: string;

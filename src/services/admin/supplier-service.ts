@@ -313,6 +313,8 @@ export async function generateSupplierRestockRequest(admin: AdminContext, suppli
       to: supplier.email,
       subject: history.subject,
       html,
+      referenceType: "SUPPLIER_NOTIFICATION_HISTORY",
+      referenceId: history.id,
       attachments: [
         {
           filename: `restock-request-${history.referenceNumber}.pdf`,

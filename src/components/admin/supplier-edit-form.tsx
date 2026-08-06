@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { createSupplierAction, updateSupplierAction, deleteSupplierAction } from "@/actions/admin/supplier-actions";
+import { createSupplierAction, updateSupplierAction, deleteSupplierAction, generateSupplierRestockRequestAction } from "@/actions/admin/supplier-actions";
 
 type ShopOption = {
   id: string;
@@ -203,25 +203,46 @@ export function SupplierEditForm({ supplier, shops, products = [], selectedProdu
           {isPending ? "Saving..." : "Save"}
         </Button>
         {supplier && (
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={isPending}
-            onClick={() => {
-              startTransition(async () => {
-                const formData = new FormData();
-                formData.set("supplierId", supplier.id);
-                try {
-                  await deleteSupplierAction(formData);
-                  toast.success("Supplier deleted");
-                } catch (error) {
-                  toast.error(error instanceof Error ? error.message : "Unable to delete");
-                }
-              });
-            }}
-          >
-            Delete
-          </Button>
+          <>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isPending}
+              onClick={() => {
+                startTransition(async () => {
+                  const formData = new FormData();
+                  formData.set("supplierId", supplier.id);
+                  try {
+                    await generateSupplierRestockRequestAction(formData);
+                    toast.success("Supplier restock request sent");
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Unable to send restock request");
+                  }
+                });
+              }}
+            >
+              Send restock request
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isPending}
+              onClick={() => {
+                startTransition(async () => {
+                  const formData = new FormData();
+                  formData.set("supplierId", supplier.id);
+                  try {
+                    await deleteSupplierAction(formData);
+                    toast.success("Supplier deleted");
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Unable to delete");
+                  }
+                });
+              }}
+            >
+              Delete
+            </Button>
+          </>
         )}
       </div>
 

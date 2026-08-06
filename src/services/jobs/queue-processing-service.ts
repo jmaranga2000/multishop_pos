@@ -17,6 +17,12 @@ export async function processNotificationQueues() {
     try {
       await sendQueuedEmail(email);
       await db.emailQueue.update({ where: { id: email.id }, data: { status: "SENT", sentAt: new Date(), lastError: null } });
+      if (email.referenceType === "SUPPLIER_NOTIFICATION_HISTORY" && email.referenceId) {
+        await db.supplierNotificationHistory.update({
+          where: { id: email.referenceId },
+          data: { status: "SENT", sentAt: new Date(), failedAt: null, failureReason: null },
+        }).catch(() => null);
+      }
       emailSent += 1;
     } catch (error) {
       failed += 1;
@@ -28,6 +34,16 @@ export async function processNotificationQueues() {
           scheduledFor: new Date(Date.now() + 5 * 60_000),
         },
       });
+      if (email.referenceType === "SUPPLIER_NOTIFICATION_HISTORY" && email.referenceId) {
+        await db.supplierNotificationHistory.update({
+          where: { id: email.referenceId },
+          data: {
+            status: "FAILED",
+            failedAt: new Date(),
+            failureReason: error instanceof Error ? error.message : "Email failed",
+          },
+        }).catch(() => null);
+      }
     }
   }
 
