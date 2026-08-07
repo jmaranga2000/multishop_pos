@@ -5,7 +5,6 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { FingerprintRegisterControls } from "@/components/shop/fingerprint-register-controls";
 import { updateSalespersonAction } from "@/actions/admin/salesperson-actions";
 
 export type SalespersonEditFormProps = {
@@ -74,7 +73,9 @@ export function SalespersonEditForm({ salesperson, registers }: SalespersonEditF
         maxLength={6}
       />
       <input id="register-salesperson-id" type="hidden" name="salespersonId" value={salesperson.id} />
-      <FingerprintRegisterControls />
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+        Fingerprint enrollment is now done from the shop register-opening flow when the cashier selects themselves and taps “Set up on this device”.
+      </div>
       <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
         Shop: {salesperson.shopName ?? "Unknown shop"}
         {salesperson.registerName ? <><br />Counter: {salesperson.registerName}</> : null}

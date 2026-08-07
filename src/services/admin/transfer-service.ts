@@ -10,9 +10,13 @@ type CreateTransferInput = z.infer<typeof createTransferSchema>;
 type AdminContext = { id: string; email: string; businessId: string };
 
 export async function getTransferManagementData(businessId: string) {
-  const [shops, products, transfers] = await Promise.all([
+  const [shops, inventoryRows, transfers] = await Promise.all([
     db.shop.findMany({ where: { businessId, isActive: true }, orderBy: { name: "asc" } }),
-    db.product.findMany({ where: { businessId, status: "ACTIVE" }, orderBy: { name: "asc" } }),
+    db.shopInventory.findMany({
+      where: { shop: { businessId, isActive: true } },
+      include: { product: true },
+      orderBy: [{ shopId: "asc" }, { product: { name: "asc" } }],
+    }),
     db.stockTransfer.findMany({
       where: { sourceShop: { businessId } },
       include: { sourceShop: true, destinationShop: true, items: { include: { product: true } } },
@@ -20,7 +24,16 @@ export async function getTransferManagementData(businessId: string) {
       take: 100,
     }),
   ]);
-  return { shops, products, transfers };
+
+  const productsByShop = inventoryRows.reduce<Record<string, Array<{ id: string; name: string; sku: string }>>>((map, row) => {
+    if (!row.product) return map;
+    const products = map[row.shopId] ?? [];
+    products.push({ id: row.product.id, name: row.product.name, sku: row.product.sku });
+    map[row.shopId] = products;
+    return map;
+  }, {});
+
+  return { shops, productsByShop, transfers };
 }
 
 export async function createStockTransfer(admin: AdminContext, input: CreateTransferInput) {

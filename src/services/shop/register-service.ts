@@ -2,6 +2,7 @@ import argon2 from "argon2";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
 import { fromMinorUnits } from "@/lib/utils";
+import { consumeBiometricAuthentication } from "@/services/shop/biometric-service";
 import { writeAuditLog } from "@/services/shared/audit-service";
 import type { z } from "zod";
 import type { openRegisterSchema, closeRegisterSchema } from "@/validators/shop/register-validator";
@@ -411,15 +412,30 @@ export async function openRegisterSession(shopUser: ShopContext, input: OpenRegi
   const duplicate = await db.registerSession.findFirst({ where: { shopId: shopUser.shopId, idempotencyKey } });
   if (duplicate) throw new AppError("This opening request has already been processed.");
 
-  if (!input.salespersonId || !input.pin) {
-    throw new AppError("A valid salesperson ID and PIN are required to open the register.");
+  if (!input.salespersonId) {
+    throw new AppError("Please select the cashier before opening the register.");
   }
 
   const salesperson = await db.salespersonProfile.findFirst({
     where: { id: input.salespersonId, shopId: shopUser.shopId, isActive: true },
   });
   if (!salesperson) throw new AppError("Salesperson profile was not found.");
-  if (!(await argon2.verify(salesperson.pinHash, input.pin))) throw new AppError("The salesperson PIN is incorrect.");
+
+  const biometricVerified = input.biometricAuthToken
+    ? await consumeBiometricAuthentication({
+        authenticationToken: input.biometricAuthToken,
+        salespersonId: salesperson.id,
+        shopId: shopUser.shopId,
+      })
+    : false;
+
+  if (!input.pin && !biometricVerified) {
+    throw new AppError("A valid salesperson PIN or verified fingerprint is required to open the register.");
+  }
+
+  if (input.pin && !(await argon2.verify(salesperson.pinHash, input.pin))) {
+    throw new AppError("The salesperson PIN is incorrect.");
+  }
 
   const salespersonId = salesperson.id;
 
