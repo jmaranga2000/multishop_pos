@@ -123,6 +123,7 @@ export function PosShell({
   const [splitPaymentEnabled, setSplitPaymentEnabled] = useState(false);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("CASH");
   const [mpesaFlow, setMpesaFlow] = useState<MpesaFlow>(null);
+  const [showMpesaOverlay, setShowMpesaOverlay] = useState(false);
   const [mpesaPhone, setMpesaPhone] = useState("");
   const [mpesaStatus, setMpesaStatus] = useState("Ready");
   const [mpesaReference, setMpesaReference] = useState<string | null>(null);
@@ -517,6 +518,7 @@ export function PosShell({
     setNotes("");
     setSplitPaymentEnabled(false);
     setPaymentMode("CASH");
+    setShowMpesaOverlay(false);
     setMpesaFlow(null);
     setMpesaPhone("");
     setMpesaStatus("Ready");
@@ -532,6 +534,14 @@ export function PosShell({
     setTimeout(() => {
       searchInputRef.current?.focus();
     }, 0);
+  }
+
+  function closeMpesaOverlay() {
+    setShowMpesaOverlay(false);
+    setPaymentMode("CASH");
+    setMpesaFlow(null);
+    setMpesaStatus("Ready");
+    setMpesaError(null);
   }
 
   function buildReceiptNumber(localId: string) {
@@ -768,6 +778,10 @@ export function PosShell({
     }, 3000);
     return () => window.clearInterval(intervalId);
   }, [paymentMode, mpesaFlow, shopId, totalMinor]);
+
+  useEffect(() => {
+    setShowMpesaOverlay(paymentMode === "MPESA");
+  }, [paymentMode]);
 
   useEffect(() => {
     if (paymentMode === "MPESA" && !mpesaEnabled) {
@@ -1050,90 +1064,8 @@ export function PosShell({
             {paymentMode === "MPESA" ? (
               <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                  M-Pesa is visible here{!mpesaEnabled ? " but not configured yet." : "."} {mpesaEnabled ? "Choose a payment flow to continue." : "You can still explore the STK Push and Pay to Till screens, but actual payment requests will fail until M-Pesa is configured."}
+                  M-Pesa options are available in a floating panel. Choose STK Push or Pay to Till to continue.
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button type="button" variant={mpesaFlow === "STK_PUSH" ? "primary" : "secondary"} onClick={() => setMpesaFlow("STK_PUSH")}>Send STK Push</Button>
-                  <Button type="button" variant={mpesaFlow === "PAY_TO_TILL" ? "primary" : "secondary"} onClick={() => setMpesaFlow("PAY_TO_TILL")}>Customer Pays to Till</Button>
-                </div>
-                {mpesaFlow === "STK_PUSH" ? (
-                  <div className="mt-3 space-y-3">
-                    <div className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-700">
-                      <div className="font-semibold">M-Pesa STK Push</div>
-                      <div className="mt-1">Amount: {formatMoney(fromMinorUnits(totalMinor))}</div>
-                      <div className="mt-1">Payment status: {mpesaStatus}</div>
-                      {mpesaReference ? <div className="mt-1">Internal reference: {mpesaReference}</div> : null}
-                    </div>
-                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Customer phone number</label>
-                    <Input value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="0712 345 678" />
-                    <Button type="button" onClick={() => void startMpesaPayment("STK_PUSH")} isLoading={mpesaInFlight} disabled={mpesaInFlight || !cart.length} loadingText="Sending request...">Send payment request</Button>
-                    {mpesaError ? <p className="text-sm text-red-600">{mpesaError}</p> : null}
-                    <div className="flex flex-wrap gap-2">
-                      <Button type="button" variant="secondary" onClick={() => setMpesaStatus("Ready")}>Retry</Button>
-                      <Button type="button" variant="ghost" onClick={() => setMpesaFlow(null)}>Cancel waiting</Button>
-                    </div>
-                  </div>
-                ) : null}
-                {mpesaFlow === "PAY_TO_TILL" ? (
-                  <div className="mt-3 space-y-3">
-                    <div className="rounded-2xl border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
-                      <div className="font-semibold">Pay using M-Pesa</div>
-                      <ol className="mt-2 list-decimal space-y-1 pl-5">
-                        <li>Open M-Pesa</li>
-                        <li>Select Lipa na M-Pesa</li>
-                        <li>Select Buy Goods and Services</li>
-                        <li>Enter Till Number: {mpesaTillNumber || "Not configured"}</li>
-                        <li>Enter the exact amount: {formatMoney(fromMinorUnits(totalMinor))}</li>
-                        <li>Enter your M-Pesa PIN</li>
-                      </ol>
-                    </div>
-                    <div className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-700">
-                      <div>Shop: {shopName || "Current shop"}</div>
-                      <div>Till number: {mpesaTillNumber || "Not configured"}</div>
-                      <div>Amount: {formatMoney(fromMinorUnits(totalMinor))}</div>
-                      <div>Status: {mpesaStatus}</div>
-                      {mpesaReference ? <div>Internal reference: {mpesaReference}</div> : null}
-                    </div>
-                    <Input value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="Optional customer phone number" />
-                    <div className="flex flex-wrap gap-2">
-                      <Button type="button" onClick={() => void startMpesaPayment("PAY_TO_TILL")} isLoading={mpesaInFlight} disabled={mpesaInFlight || !cart.length} loadingText="Preparing payment...">Start waiting</Button>
-                      <Button type="button" variant="secondary" onClick={() => { void (async () => {
-                        if (!shopId) return;
-                        setManualConfirmationChecking(true);
-                        try {
-                          const response = await fetch(`/api/mpesa/manual-confirmation?shopId=${encodeURIComponent(shopId)}&expectedAmountMinor=${encodeURIComponent(totalMinor)}`);
-                          const payload = await response.json();
-                          if (!response.ok || !payload.ok) throw new Error(payload.error || "Unable to load recent M-Pesa payers");
-                          setManualConfirmationCandidates(payload.candidates ?? []);
-                        } catch (error) {
-                          setMpesaError(error instanceof Error ? error.message : "Unable to load recent M-Pesa payers");
-                        } finally {
-                          setManualConfirmationChecking(false);
-                        }
-                      })(); }} isLoading={manualConfirmationChecking} disabled={manualConfirmationChecking}>Refresh recent payers</Button>
-                      <Button type="button" variant="ghost" onClick={() => setMpesaFlow(null)}>Cancel waiting</Button>
-                    </div>
-                    {manualConfirmationCandidates.length ? (
-                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
-                        <div className="font-semibold">Recent payers from the last 5 minutes</div>
-                        <div className="mt-2 space-y-2">
-                          {manualConfirmationCandidates.map((candidate) => (
-                            <label key={`${candidate.name}-${candidate.phone}`} className="flex items-center gap-2 rounded-lg border border-emerald-100 bg-white p-2">
-                              <input type="radio" name="manual-confirmation-candidate" checked={manualConfirmationSelection === `${candidate.name}:${candidate.phone}`} onChange={() => setManualConfirmationSelection(`${candidate.name}:${candidate.phone}`)} />
-                              <div>
-                                <div className="font-semibold">{candidate.name}</div>
-                                <div className="text-xs text-slate-500">{candidate.phone}</div>
-                              </div>
-                            </label>
-                          ))}
-                        </div>
-                        <Button type="button" className="mt-3" onClick={() => void confirmManualMpesaPayment()} isLoading={mpesaInFlight} disabled={mpesaInFlight || !manualConfirmationSelection} loadingText="Confirming payment...">Confirm customer and complete sale</Button>
-                      </div>
-                    ) : null}
-                    {mpesaError ? <p className="text-sm text-red-600">{mpesaError}</p> : null}
-                    {manualConfirmationConfirmed ? <p className="text-sm font-semibold text-emerald-700">Customer confirmed and sale completed.</p> : null}
-                  </div>
-                ) : null}
               </div>
             ) : null}
             {paymentMode === "CASH" ? <Button onClick={() => void checkout()} isLoading={processing} disabled={!registerSessionId || !cart.length || processing} className="mt-3 w-full" size="lg" loadingText="Completing sale..."><Banknote className="h-5 w-5"/>Complete cash sale{pendingCount ? ` • ${pendingCount} pending` : ""}</Button> : null}
@@ -1141,6 +1073,113 @@ export function PosShell({
         </div>
       </Card>
     </div>
+    {showMpesaOverlay ? (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" onClick={closeMpesaOverlay} />
+        <div className="relative z-10 w-full max-w-3xl rounded-[32px] border border-slate-200 bg-white p-6 shadow-2xl">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">M-Pesa payment</p>
+              <h2 className="mt-2 text-2xl font-black text-slate-900">{mpesaFlow === null ? "Choose payment style" : mpesaFlow === "STK_PUSH" ? "M-Pesa STK Push" : "Pay to Till"}</h2>
+            </div>
+            <button type="button" className="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600 transition hover:border-slate-300 hover:text-slate-900" onClick={closeMpesaOverlay}>Close</button>
+          </div>
+          <p className="mt-3 text-sm text-slate-600">{!mpesaEnabled ? "M-Pesa is not configured. These flows will show the UI, but actual payment requests will fail until M-Pesa is enabled." : "Select a payment flow below to continue."}</p>
+          {mpesaFlow === null ? (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <button type="button" onClick={() => setMpesaFlow("STK_PUSH")} className="rounded-[28px] border border-slate-200 bg-sky-50 p-6 text-left shadow-sm transition hover:border-sky-300 hover:bg-sky-100">
+                <p className="text-xs uppercase tracking-[0.24em] text-sky-600">STK Push</p>
+                <p className="mt-3 text-xl font-black text-slate-900">Send payment request</p>
+                <p className="mt-2 text-sm text-slate-600">Customer receives an M-Pesa prompt on their phone.</p>
+              </button>
+              <button type="button" onClick={() => setMpesaFlow("PAY_TO_TILL")} className="rounded-[28px] border border-slate-200 bg-emerald-50 p-6 text-left shadow-sm transition hover:border-emerald-300 hover:bg-emerald-100">
+                <p className="text-xs uppercase tracking-[0.24em] text-emerald-600">Pay to Till</p>
+                <p className="mt-3 text-xl font-black text-slate-900">Customer pays at till</p>
+                <p className="mt-2 text-sm text-slate-600">Customer transfers payment using the till number.</p>
+              </button>
+            </div>
+          ) : null}
+          {mpesaFlow === "STK_PUSH" ? (
+            <div className="mt-6 space-y-4">
+              <div className="rounded-3xl border border-sky-200 bg-sky-50 p-4 text-slate-900">
+                <div className="font-semibold">STK Push details</div>
+                <div className="mt-2 text-sm">Amount: {formatMoney(fromMinorUnits(totalMinor))}</div>
+                <div className="mt-1 text-sm">Status: {mpesaStatus}</div>
+                {mpesaReference ? <div className="mt-1 text-sm">Reference: {mpesaReference}</div> : null}
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-slate-700">Customer phone number</label>
+                <Input value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="0712 345 678" className="bg-slate-100 border-slate-200 text-slate-900" />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {['1','2','3','4','5','6','7','8','9','C','0','←'].map((key) => (
+                  <button key={key} type="button" onClick={() => {
+                    if (key === 'C') return setMpesaPhone('');
+                    if (key === '←') return setMpesaPhone((current) => current.slice(0, -1));
+                    setMpesaPhone((current) => `${current}${key}`);
+                  }} className={`rounded-2xl py-4 text-lg font-black transition ${key === 'C' ? 'bg-amber-100 text-amber-900' : key === '←' ? 'bg-slate-100 text-slate-900' : 'bg-slate-100 text-slate-900 hover:bg-slate-200'}`}>
+                    {key}
+                  </button>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button type="button" onClick={() => void startMpesaPayment("STK_PUSH")} isLoading={mpesaInFlight} disabled={mpesaInFlight || !cart.length} loadingText="Sending request...">Send payment request</Button>
+                <Button type="button" variant="secondary" onClick={() => setMpesaFlow(null)}>Back</Button>
+              </div>
+              {mpesaError ? <p className="text-sm text-red-600">{mpesaError}</p> : null}
+            </div>
+          ) : null}
+          {mpesaFlow === "PAY_TO_TILL" ? (
+            <div className="mt-6 space-y-4">
+              <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
+                <div className="font-semibold">Pay to Till details</div>
+                <div className="mt-2 text-sm">Till number: {mpesaTillNumber || "Not configured"}</div>
+                <div className="mt-1 text-sm">Amount: {formatMoney(fromMinorUnits(totalMinor))}</div>
+                <div className="mt-1 text-sm">Status: {mpesaStatus}</div>
+                {mpesaReference ? <div className="mt-1 text-sm">Reference: {mpesaReference}</div> : null}
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-slate-700">Optional customer phone number</label>
+                <Input value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="0712 345 678" className="bg-slate-100 border-slate-200 text-slate-900" />
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+                <div className="font-semibold">Customer instructions</div>
+                <ol className="mt-2 list-decimal space-y-1 pl-5">
+                  <li>Open M-Pesa</li>
+                  <li>Select Lipa na M-Pesa</li>
+                  <li>Select Buy Goods and Services</li>
+                  <li>Enter till number: {mpesaTillNumber || 'Not configured'}</li>
+                  <li>Enter amount: {formatMoney(fromMinorUnits(totalMinor))}</li>
+                  <li>Use M-Pesa PIN to complete payment</li>
+                </ol>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button type="button" onClick={() => void startMpesaPayment("PAY_TO_TILL")} isLoading={mpesaInFlight} disabled={mpesaInFlight || !cart.length} loadingText="Waiting...">Start confirmation</Button>
+                <Button type="button" variant="secondary" onClick={() => setMpesaFlow(null)}>Back</Button>
+              </div>
+              {manualConfirmationCandidates.length ? (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-slate-900">
+                  <div className="font-semibold">Recent payers</div>
+                  <div className="mt-3 space-y-2">
+                    {manualConfirmationCandidates.map((candidate) => (
+                      <label key={`${candidate.name}-${candidate.phone}`} className="flex cursor-pointer items-center gap-3 rounded-2xl border border-emerald-100 bg-white p-3">
+                        <input type="radio" name="manual-confirmation-candidate" checked={manualConfirmationSelection === `${candidate.name}:${candidate.phone}`} onChange={() => setManualConfirmationSelection(`${candidate.name}:${candidate.phone}`)} className="h-4 w-4 text-emerald-700" />
+                        <div>
+                          <div className="font-semibold">{candidate.name}</div>
+                          <div className="text-xs text-slate-500">{candidate.phone}</div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                  <Button type="button" className="mt-3" onClick={() => void confirmManualMpesaPayment()} isLoading={mpesaInFlight} disabled={mpesaInFlight || !manualConfirmationSelection} loadingText="Confirming...">Confirm payment</Button>
+                </div>
+              ) : null}
+              {mpesaError ? <p className="text-sm text-red-600">{mpesaError}</p> : null}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    ) : null}
     {unitModalOpen && unitModalEntry ? (
       <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="unit-modal-title" aria-describedby="unit-modal-description">
         <div className="absolute inset-0 bg-black opacity-40" onClick={cancelUnitSelection} />
