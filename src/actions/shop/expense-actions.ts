@@ -1,5 +1,6 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireShop } from "@/lib/rbac";
 import { createShopExpense } from "@/services/shop/expense-service";
@@ -10,4 +11,5 @@ export async function createExpenseAction(formData: FormData) {
   const input = createExpenseSchema.parse(Object.fromEntries(formData));
   await createShopExpense(shopUser, input);
   revalidatePath("/shop/expenses");
+  redirect("/shop/expenses?success=Expense+submitted");
 }

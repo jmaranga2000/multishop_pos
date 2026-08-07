@@ -135,7 +135,7 @@ export async function getAdminDashboardData(businessId: string) {
         },
       },
     ]).toArray(),
-    database.collection("shopInventory").find(
+    database.collection("shopInventories").find(
       { shopId: { $in: shopIds } },
       {
         projection: {

@@ -13,6 +13,7 @@ export async function reviewExpenseAction(formData: FormData) {
   await reviewExpense(admin, input);
   revalidatePath("/admin/expenses");
   revalidatePath("/admin/dashboard");
+  redirect("/admin/expenses");
 }
 
 export async function createExpenseCategoryAction(formData: FormData) {

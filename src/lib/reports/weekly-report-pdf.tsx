@@ -168,6 +168,19 @@ const styles = StyleSheet.create({
   small: {
     width: "10%",
   },
+  bestSellerHeader: {
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 8,
+    padding: 8,
+    backgroundColor: "#1e40af",
+  },
+  bestSellerHeaderText: {
+    fontSize: 9,
+    fontWeight: 700,
+    color: "#f8fafc",
+  },
   bestSellerRow: {
     display: "flex",
     flexDirection: "row",
@@ -177,7 +190,7 @@ const styles = StyleSheet.create({
     borderBottom: "1 solid #e2e8f0",
   },
   bestSellerShop: {
-    width: "28%",
+    width: "52%",
     fontSize: 9,
     fontWeight: 700,
   },
@@ -332,16 +345,16 @@ export function WeeklyInventoryReportPdf({ report }: { report: WeeklyReportPdfDa
             <View key={`${shop.shopName}-${shopIndex}`} style={{ marginBottom: 10 }}>
               <Text style={styles.bestSellerShop}>{shop.shopName}</Text>
               <View style={styles.table}>
-                <View style={styles.tableHeader}>
-                  <Text style={[styles.tableHeaderText, styles.wide]}>Product</Text>
-                  <Text style={[styles.tableHeaderText, styles.normal]}>Qty sold</Text>
-                  <Text style={[styles.tableHeaderText, styles.normal]}>Revenue</Text>
+                <View style={styles.bestSellerHeader}>
+                  <Text style={[styles.bestSellerHeaderText, { width: "52%" }]}>Product</Text>
+                  <Text style={[styles.bestSellerHeaderText, { width: "24%" }]}>Qty sold</Text>
+                  <Text style={[styles.bestSellerHeaderText, { width: "24%" }]}>Revenue</Text>
                 </View>
                 {shop.products.map((product, index) => (
                   <View key={`${product.productName}-${index}`} style={index % 2 === 1 ? [styles.bestSellerRow, styles.tableRowAlt] : styles.bestSellerRow}>
-                    <Text style={[styles.bestSellerCell, { width: "52%" }]}>{product.productName}</Text>
-                    <Text style={[styles.bestSellerCell, { width: "24%" }]}>{formatCount(product.quantity)}</Text>
-                    <Text style={[styles.bestSellerCell, { width: "24%" }]}>{formatCurrency(product.revenue, report.currency)}</Text>
+                    <Text style={styles.bestSellerShop}>{product.productName}</Text>
+                    <Text style={styles.bestSellerCell}>{formatCount(product.quantity)}</Text>
+                    <Text style={styles.bestSellerCell}>{formatCurrency(product.revenue, report.currency)}</Text>
                   </View>
                 ))}
                 {shop.products.length === 0 ? (
