@@ -118,6 +118,7 @@ export function PosShell({
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraScanning, setCameraScanning] = useState(false);
   const [cameraScanProgress, setCameraScanProgress] = useState(0);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const [hardwareScanBuffer, setHardwareScanBuffer] = useState("");
   const hardwareScanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [splitPaymentEnabled, setSplitPaymentEnabled] = useState(false);
@@ -413,6 +414,7 @@ export function PosShell({
       setCameraActive(false);
       setCameraScanning(false);
       setCameraScanProgress(0);
+      setCameraError(null);
       return;
     }
     try {
@@ -486,13 +488,14 @@ export function PosShell({
     } catch (error) {
       const errorMessage = error instanceof DOMException ? error.name : "Unknown error";
       if (errorMessage === "NotAllowedError") {
+        setCameraError("Camera permission denied. Please enable camera access in your browser settings.");
         toast.error("Camera permission denied. Please enable camera access.");
       } else if (errorMessage === "NotFoundError") {
+        setCameraError("No camera device found.");
         toast.error("No camera device found.");
       } else {
-        toast.error("Unable to access the camera");
+        setCameraError("Unable to access the camera.");
       }
-      setCameraActive(false);
       setCameraScanning(false);
     }
   }
@@ -938,6 +941,11 @@ export function PosShell({
                   </div>
                 ) : null}
               </div>
+              {cameraError ? (
+                <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  {cameraError}
+                </div>
+              ) : null}
               <Button type="button" variant="secondary" onClick={() => void startCameraScan()} className="w-full">
                 {cameraScanning ? "Stop scanning" : "Retry scan"}
               </Button>
@@ -1077,106 +1085,7 @@ export function PosShell({
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" onClick={closeMpesaOverlay} />
         <div className="relative z-10 w-full max-w-3xl rounded-[32px] border border-slate-200 bg-white p-6 shadow-2xl">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">M-Pesa payment</p>
-              <h2 className="mt-2 text-2xl font-black text-slate-900">{mpesaFlow === null ? "Choose payment style" : mpesaFlow === "STK_PUSH" ? "M-Pesa STK Push" : "Pay to Till"}</h2>
-            </div>
-            <button type="button" className="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600 transition hover:border-slate-300 hover:text-slate-900" onClick={closeMpesaOverlay}>Close</button>
-          </div>
-          <p className="mt-3 text-sm text-slate-600">{!mpesaEnabled ? "M-Pesa is not configured. These flows will show the UI, but actual payment requests will fail until M-Pesa is enabled." : "Select a payment flow below to continue."}</p>
-          {mpesaFlow === null ? (
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              <button type="button" onClick={() => setMpesaFlow("STK_PUSH")} className="rounded-[28px] border border-slate-200 bg-sky-50 p-6 text-left shadow-sm transition hover:border-sky-300 hover:bg-sky-100">
-                <p className="text-xs uppercase tracking-[0.24em] text-sky-600">STK Push</p>
-                <p className="mt-3 text-xl font-black text-slate-900">Send payment request</p>
-                <p className="mt-2 text-sm text-slate-600">Customer receives an M-Pesa prompt on their phone.</p>
-              </button>
-              <button type="button" onClick={() => setMpesaFlow("PAY_TO_TILL")} className="rounded-[28px] border border-slate-200 bg-emerald-50 p-6 text-left shadow-sm transition hover:border-emerald-300 hover:bg-emerald-100">
-                <p className="text-xs uppercase tracking-[0.24em] text-emerald-600">Pay to Till</p>
-                <p className="mt-3 text-xl font-black text-slate-900">Customer pays at till</p>
-                <p className="mt-2 text-sm text-slate-600">Customer transfers payment using the till number.</p>
-              </button>
-            </div>
-          ) : null}
-          {mpesaFlow === "STK_PUSH" ? (
-            <div className="mt-6 space-y-4">
-              <div className="rounded-3xl border border-sky-200 bg-sky-50 p-4 text-slate-900">
-                <div className="font-semibold">STK Push details</div>
-                <div className="mt-2 text-sm">Amount: {formatMoney(fromMinorUnits(totalMinor))}</div>
-                <div className="mt-1 text-sm">Status: {mpesaStatus}</div>
-                {mpesaReference ? <div className="mt-1 text-sm">Reference: {mpesaReference}</div> : null}
-              </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-slate-700">Customer phone number</label>
-                <Input value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="0712 345 678" className="bg-slate-100 border-slate-200 text-slate-900" />
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {['1','2','3','4','5','6','7','8','9','C','0','←'].map((key) => (
-                  <button key={key} type="button" onClick={() => {
-                    if (key === 'C') return setMpesaPhone('');
-                    if (key === '←') return setMpesaPhone((current) => current.slice(0, -1));
-                    setMpesaPhone((current) => `${current}${key}`);
-                  }} className={`rounded-2xl py-4 text-lg font-black transition ${key === 'C' ? 'bg-amber-100 text-amber-900' : key === '←' ? 'bg-slate-100 text-slate-900' : 'bg-slate-100 text-slate-900 hover:bg-slate-200'}`}>
-                    {key}
-                  </button>
-                ))}
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Button type="button" onClick={() => void startMpesaPayment("STK_PUSH")} isLoading={mpesaInFlight} disabled={mpesaInFlight || !cart.length} loadingText="Sending request...">Send payment request</Button>
-                <Button type="button" variant="secondary" onClick={() => setMpesaFlow(null)}>Back</Button>
-              </div>
-              {mpesaError ? <p className="text-sm text-red-600">{mpesaError}</p> : null}
-            </div>
-          ) : null}
-          {mpesaFlow === "PAY_TO_TILL" ? (
-            <div className="mt-6 space-y-4">
-              <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
-                <div className="font-semibold">Pay to Till details</div>
-                <div className="mt-2 text-sm">Till number: {mpesaTillNumber || "Not configured"}</div>
-                <div className="mt-1 text-sm">Amount: {formatMoney(fromMinorUnits(totalMinor))}</div>
-                <div className="mt-1 text-sm">Status: {mpesaStatus}</div>
-                {mpesaReference ? <div className="mt-1 text-sm">Reference: {mpesaReference}</div> : null}
-              </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-slate-700">Optional customer phone number</label>
-                <Input value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="0712 345 678" className="bg-slate-100 border-slate-200 text-slate-900" />
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-                <div className="font-semibold">Customer instructions</div>
-                <ol className="mt-2 list-decimal space-y-1 pl-5">
-                  <li>Open M-Pesa</li>
-                  <li>Select Lipa na M-Pesa</li>
-                  <li>Select Buy Goods and Services</li>
-                  <li>Enter till number: {mpesaTillNumber || 'Not configured'}</li>
-                  <li>Enter amount: {formatMoney(fromMinorUnits(totalMinor))}</li>
-                  <li>Use M-Pesa PIN to complete payment</li>
-                </ol>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Button type="button" onClick={() => void startMpesaPayment("PAY_TO_TILL")} isLoading={mpesaInFlight} disabled={mpesaInFlight || !cart.length} loadingText="Waiting...">Start confirmation</Button>
-                <Button type="button" variant="secondary" onClick={() => setMpesaFlow(null)}>Back</Button>
-              </div>
-              {manualConfirmationCandidates.length ? (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-slate-900">
-                  <div className="font-semibold">Recent payers</div>
-                  <div className="mt-3 space-y-2">
-                    {manualConfirmationCandidates.map((candidate) => (
-                      <label key={`${candidate.name}-${candidate.phone}`} className="flex cursor-pointer items-center gap-3 rounded-2xl border border-emerald-100 bg-white p-3">
-                        <input type="radio" name="manual-confirmation-candidate" checked={manualConfirmationSelection === `${candidate.name}:${candidate.phone}`} onChange={() => setManualConfirmationSelection(`${candidate.name}:${candidate.phone}`)} className="h-4 w-4 text-emerald-700" />
-                        <div>
-                          <div className="font-semibold">{candidate.name}</div>
-                          <div className="text-xs text-slate-500">{candidate.phone}</div>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                  <Button type="button" className="mt-3" onClick={() => void confirmManualMpesaPayment()} isLoading={mpesaInFlight} disabled={mpesaInFlight || !manualConfirmationSelection} loadingText="Confirming...">Confirm payment</Button>
-                </div>
-              ) : null}
-              {mpesaError ? <p className="text-sm text-red-600">{mpesaError}</p> : null}
-            </div>
-          ) : null}
+          <div className="text-sm text-slate-600">M-Pesa overlay placeholder</div>
         </div>
       </div>
     ) : null}
