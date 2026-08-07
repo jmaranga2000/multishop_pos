@@ -5,6 +5,8 @@ import type {
   ProductDocument,
   ProductPricingUnitDocument,
   SalespersonProfileDocument,
+  SalespersonBiometricCredentialDocument,
+  SalespersonBiometricChallengeDocument,
   UnitDocument,
 } from "./model.types";
 
@@ -15,6 +17,26 @@ export const SalespersonProfileModel = defineModel<SalespersonProfileDocument>({
   indexes: [
     index({ shopId: 1, code: 1 }, { unique: true }),
     index({ shopId: 1, isActive: 1 }),
+  ],
+});
+
+export const SalespersonBiometricCredentialModel = defineModel<SalespersonBiometricCredentialDocument>({
+  collection: "salespersonBiometricCredentials",
+  required: ["salespersonId", "credentialId", "publicKey", "counter"],
+  defaults: { transports: [], deviceType: null, backedUp: false, lastUsedAt: null },
+  indexes: [
+    index({ credentialId: 1 }, { unique: true }),
+    index({ salespersonId: 1, createdAt: 1 }),
+  ],
+});
+
+export const SalespersonBiometricChallengeModel = defineModel<SalespersonBiometricChallengeDocument>({
+  collection: "salespersonBiometricChallenges",
+  required: ["salespersonId", "shopId", "purpose", "challenge", "expiresAt"],
+  enums: { purpose: ["REGISTRATION", "AUTHENTICATION"] },
+  indexes: [
+    index({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
+    index({ salespersonId: 1, purpose: 1, expiresAt: 1 }),
   ],
 });
 
@@ -66,6 +88,8 @@ export const ProductPricingUnitModel = defineModel<ProductPricingUnitDocument>({
 
 export const catalogModels = {
   salespersonProfile: SalespersonProfileModel,
+  salespersonBiometricCredential: SalespersonBiometricCredentialModel,
+  salespersonBiometricChallenge: SalespersonBiometricChallengeModel,
   category: CategoryModel,
   brand: BrandModel,
   unit: UnitModel,

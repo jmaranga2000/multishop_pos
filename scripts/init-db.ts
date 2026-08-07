@@ -7,9 +7,9 @@ async function main() {
   if (!process.env.MONGODB_URI) {
     throw new Error("MONGODB_URI is required to initialize MongoDB.");
   }
-  const { connectToMongoDB, disconnectFromMongoDB } = await import("../src/lib/mongodb");
+  const { initializeMongoModels, disconnectFromMongoDB } = await import("../src/lib/mongodb");
   try {
-    await connectToMongoDB();
+    await initializeMongoModels();
     console.log("MongoDB collections, validation rules, and indexes are ready.");
   } finally {
     await disconnectFromMongoDB();

@@ -13,10 +13,13 @@ export type SalespersonEditFormProps = {
     name: string;
     code: string;
     shopName?: string | null;
+    registerId?: string | null;
+    registerName?: string | null;
   };
+  registers: Array<{ id: string; name: string; shopName?: string | null }>;
 };
 
-export function SalespersonEditForm({ salesperson }: SalespersonEditFormProps) {
+export function SalespersonEditForm({ salesperson, registers }: SalespersonEditFormProps) {
   const [values, setValues] = useState({
     name: salesperson.name,
     code: salesperson.code,
@@ -52,6 +55,12 @@ export function SalespersonEditForm({ salesperson }: SalespersonEditFormProps) {
       <input type="hidden" name="salespersonId" value={salesperson.id} />
       <Input name="name" value={values.name} onChange={(event) => updateField("name", event.target.value)} placeholder="Full name" required />
       <Input name="code" value={values.code} onChange={(event) => updateField("code", event.target.value)} placeholder="Short code" required />
+      <select name="registerId" defaultValue={salesperson.registerId ?? ""} className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm">
+        <option value="">No specific counter</option>
+        {registers.map((register) => (
+          <option key={register.id} value={register.id}>{register.shopName ?? "Shop"} • {register.name}</option>
+        ))}
+      </select>
       <Input
         name="pin"
         type="password"
@@ -64,6 +73,7 @@ export function SalespersonEditForm({ salesperson }: SalespersonEditFormProps) {
       />
       <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
         Shop: {salesperson.shopName ?? "Unknown shop"}
+        {salesperson.registerName ? <><br />Counter: {salesperson.registerName}</> : null}
       </div>
       <div className="flex gap-2">
         <Button className="w-full" variant={dirty ? "primary" : "secondary"} isLoading={isPending} disabled={!dirty || isPending} loadingText="Saving changes...">

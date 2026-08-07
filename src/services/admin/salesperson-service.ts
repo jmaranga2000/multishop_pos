@@ -10,21 +10,26 @@ type ToggleSalespersonInput = z.infer<typeof toggleSalespersonSchema>;
 type UpdateSalespersonInput = z.infer<typeof updateSalespersonSchema>;
 
 export async function getSalespersonManagementData(businessId: string) {
-  const [shops, salespeople] = await Promise.all([
+  const [shops, salespeople, registers] = await Promise.all([
     db.shop.findMany({ where: { businessId, isActive: true }, orderBy: { name: "asc" } }),
     db.salespersonProfile.findMany({
       where: { shop: { businessId } },
-      include: { shop: true, _count: { select: { sales: true, sessions: true } } },
+      include: { shop: true, register: true, _count: { select: { sales: true, sessions: true } } },
+      orderBy: [{ shop: { name: "asc" } }, { name: "asc" }],
+    }),
+    db.register.findMany({
+      where: { shop: { businessId } },
+      include: { shop: true },
       orderBy: [{ shop: { name: "asc" } }, { name: "asc" }],
     }),
   ]);
-  return { shops, salespeople };
+  return { shops, salespeople, registers };
 }
 
 export async function getAdminSalespersonById(businessId: string, id: string) {
   return db.salespersonProfile.findFirst({
     where: { id, shop: { businessId } },
-    include: { shop: true, _count: { select: { sales: true, sessions: true } } },
+    include: { shop: true, register: true, _count: { select: { sales: true, sessions: true } } },
   });
 }
 
@@ -32,7 +37,13 @@ export async function createSalesperson(admin: { id: string; businessId: string 
   const shop = await db.shop.findFirst({ where: { id: input.shopId, businessId: admin.businessId } });
   if (!shop) throw new AppError("Shop was not found.");
   const profile = await db.salespersonProfile.create({
-    data: { shopId: shop.id, name: input.name, code: input.code, pinHash: await argon2.hash(input.pin) },
+    data: {
+      shopId: shop.id,
+      name: input.name,
+      code: input.code,
+      registerId: input.registerId ?? null,
+      pinHash: await argon2.hash(input.pin),
+    },
   });
   await writeAuditLog(db, {
     userId: admin.id,
@@ -57,6 +68,7 @@ export async function updateSalesperson(admin: { id: string; businessId: string 
     data: {
       name: input.name,
       code: input.code,
+      registerId: input.registerId ?? profile.registerId ?? null,
       ...(input.pin ? { pinHash: await argon2.hash(input.pin) } : {}),
     },
   });

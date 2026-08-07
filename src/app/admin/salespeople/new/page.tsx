@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function NewSalespersonPage() {
   await requireAdmin();
-  const { shops } = await getSalespersonManagementData((await requireAdmin()).businessId);
+  const { shops, registers } = await getSalespersonManagementData((await requireAdmin()).businessId);
 
   return (
     <>
@@ -33,6 +33,12 @@ export default async function NewSalespersonPage() {
             </select>
             <Input name="name" placeholder="Full name" required />
             <Input name="code" placeholder="Short code, e.g. MARY01" required />
+            <select name="registerId" className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm">
+              <option value="">No specific counter</option>
+              {registers.map((register) => (
+                <option key={register.id} value={register.id}>{register.shop?.name ?? "Shop"} • {register.name}</option>
+              ))}
+            </select>
             <Input name="pin" type="password" inputMode="numeric" pattern="[0-9]{4,6}" placeholder="4–6 digit PIN" required />
             <Button className="w-full">Create profile</Button>
           </form>

@@ -82,7 +82,14 @@ export async function createShopWithAccount(admin: { id: string; businessId: str
         },
       });
     }
-    await tx.register.create({ data: { shopId: shop.id, name: "Main counter", code: "MAIN" } });
+    const counterNames = Array.from(new Set((input.counters ?? ["Main counter"]).map((name) => name.trim()).filter(Boolean)));
+    const resolvedCounterNames = counterNames.length ? counterNames : ["Main counter"];
+
+    for (const [index, counterName] of resolvedCounterNames.entries()) {
+      const normalizedCode = counterName.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "COUNTER";
+      const code = `${normalizedCode.slice(0, 20)}${index > 0 ? `-${index + 1}` : ""}`;
+      await tx.register.create({ data: { shopId: shop.id, name: counterName, code } });
+    }
     await writeAuditLog(tx, {
       userId: admin.id,
       shopId: shop.id,

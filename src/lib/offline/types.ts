@@ -5,6 +5,8 @@ export type OfflineProduct = {
   barcode: string | null;
   categoryName: string | null;
   imageUrl: string | null;
+  /** Percentage included in the selling price, e.g. 16 for Kenya VAT. */
+  taxRate: number;
   status: "ACTIVE" | "INACTIVE";
   unitId?: string | null;
   unitName?: string | null;

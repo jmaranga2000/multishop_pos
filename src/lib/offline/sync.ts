@@ -59,6 +59,7 @@ export async function createLocalSale(input: {
     quantity: number;
     unitPriceMinor: number;
     unitCostMinor: number;
+    taxRate?: number;
   }>;
 }) {
   if (!navigator.onLine && input.paymentMethod !== "CASH") throw new Error("Only cash sales can be completed while offline.");
@@ -68,7 +69,12 @@ export async function createLocalSale(input: {
   const localId = crypto.randomUUID();
   const idempotencyKey = `sale:${input.shopId}:${localId}`;
   const deviceId = getOrCreateDeviceId();
-  const subtotalMinor = input.items.reduce((sum, item) => sum + item.quantity * item.unitPriceMinor, 0);
+  const subtotalMinor = input.items.reduce((sum, item) => sum + Math.round(item.quantity * item.unitPriceMinor), 0);
+  const taxMinor = input.items.reduce((sum, item) => {
+    const lineTotalMinor = Math.round(item.quantity * item.unitPriceMinor);
+    const taxRate = Math.max(0, Number(item.taxRate ?? 0));
+    return sum + (taxRate > 0 ? Math.round(lineTotalMinor * taxRate / (100 + taxRate)) : 0);
+  }, 0);
   const totalMinor = subtotalMinor;
   const occurredAt = new Date().toISOString();
   const sale: OfflineSale = {
@@ -76,7 +82,7 @@ export async function createLocalSale(input: {
     salespersonId: input.salespersonId ?? null,
     registerSessionId: input.registerSessionId ?? null,
     customerName: input.customerName ?? null,
-    subtotalMinor, discountMinor: 0, taxMinor: 0, totalMinor,
+    subtotalMinor, discountMinor: 0, taxMinor, totalMinor,
     amountPaidMinor: input.amountPaidMinor,
     changeDueMinor: Math.max(0, input.amountPaidMinor - totalMinor),
     paymentMethod: input.paymentMethod,

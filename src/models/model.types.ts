@@ -97,10 +97,32 @@ export interface UserDocument extends BaseDocument {
 
 export interface SalespersonProfileDocument extends BaseDocument {
   shopId: string;
+  registerId?: string | null;
   name: string;
   pinHash: string;
   code: string;
   isActive: boolean;
+}
+
+export interface SalespersonBiometricCredentialDocument extends BaseDocument {
+  salespersonId: string;
+  credentialId: string;
+  publicKey: string;
+  counter: number;
+  transports?: string[] | null;
+  deviceType?: string | null;
+  backedUp?: boolean | null;
+  lastUsedAt?: Date | null;
+}
+
+export interface SalespersonBiometricChallengeDocument extends BaseDocument {
+  salespersonId: string;
+  shopId: string;
+  purpose: "REGISTRATION" | "AUTHENTICATION";
+  challenge: string;
+  expiresAt: Date;
+  verifiedAt?: Date | null;
+  usedAt?: Date | null;
 }
 
 export interface CategoryDocument extends BaseDocument {

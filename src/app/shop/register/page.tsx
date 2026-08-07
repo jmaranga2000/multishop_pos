@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FingerprintRegisterControls } from "@/components/shop/fingerprint-register-controls";
 
 export const dynamic = "force-dynamic";
 
@@ -119,15 +120,17 @@ export default async function RegisterPage() {
                 </div>
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-slate-700">Cashier</label>
-                  <select name="salespersonId" required className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm">
+                  <select id="register-salesperson-id" name="salespersonId" required className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm">
                     <option value="">Select cashier</option>
                     {salespeople.map((salesperson) => <option key={salesperson.id} value={salesperson.id}>{salesperson.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">Cashier PIN</label>
-                  <Input name="pin" type="password" inputMode="numeric" autoComplete="one-time-code" placeholder="Enter cashier PIN" required className="mt-0" maxLength={6} />
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">Cashier PIN (or fingerprint)</label>
+                  <Input id="register-pin" name="pin" type="password" inputMode="numeric" autoComplete="one-time-code" placeholder="Enter cashier PIN" className="mt-0" maxLength={6} />
+                  <p className="mt-1 text-xs text-slate-500">Required only if fingerprint is not used.</p>
                 </div>
+                <FingerprintRegisterControls />
                 <div className="rounded-2xl border border-slate-200 p-3">
                   <div className="flex items-center gap-2">
                     <Wallet className="h-4 w-4 text-slate-500" />

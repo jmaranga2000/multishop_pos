@@ -4,6 +4,7 @@ import { AppError } from "@/lib/errors/app-error";
 import { assertMpesaConfigured, getMpesaEnvConfig } from "@/lib/mpesa-env";
 import { fromMinorUnits } from "@/lib/utils";
 import { evaluateMpesaPaymentMatch } from "./mpesa-match";
+import { summarizeRecentPayers } from "./mpesa-confirmation";
 
 type PaymentMode = "STK_PUSH" | "PAY_TO_TILL";
 
@@ -19,6 +20,31 @@ type StartMpesaPaymentInput = {
   clientReference?: string | null;
   idempotencyKey?: string | null;
 };
+
+function getPayloadValue(payload: Record<string, unknown>, ...keys: string[]) {
+  for (const key of keys) {
+    const value = payload[key];
+    if (value !== undefined && value !== null) return value;
+  }
+  return undefined;
+}
+
+function getPayloadString(payload: Record<string, unknown>, ...keys: string[]) {
+  const value = getPayloadValue(payload, ...keys);
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  return "";
+}
+
+function getPayloadNumber(payload: Record<string, unknown>, ...keys: string[]) {
+  const value = getPayloadValue(payload, ...keys);
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
 
 function normalizePhone(value?: string | null) {
   if (!value) return null;
@@ -89,7 +115,7 @@ export async function startMpesaPayment(input: StartMpesaPaymentInput) {
 
 export async function handleMpesaCallback(payload: Record<string, unknown>, shopId?: string | null) {
   const config = getMpesaEnvConfig();
-  const transactionId = String((payload as any)?.TransactionID ?? payload?.transactionId ?? "").trim();
+  const transactionId = getPayloadString(payload, "TransactionID", "transactionId").trim();
   if (!transactionId) throw new AppError("Missing M-Pesa transaction ID.", "MISSING_TRANSACTION_ID", 400);
 
   const existing = await db.mpesaCallbackEvent.findUnique({ where: { transactionId } });
@@ -97,9 +123,9 @@ export async function handleMpesaCallback(payload: Record<string, unknown>, shop
     return { duplicate: true, eventId: existing.id, processingStatus: existing.processingStatus };
   }
 
-  const incomingAmountMinor = Number((payload as any)?.TransAmount ?? payload?.transactionAmount ?? 0) * 100;
-  const incomingPhone = String((payload as any)?.MSISDN ?? payload?.customerPhone ?? "");
-  const incomingTillNumber = String((payload as any)?.BillRefNumber ?? payload?.tillNumber ?? "");
+  const incomingAmountMinor = getPayloadNumber(payload, "TransAmount", "transactionAmount") * 100;
+  const incomingPhone = getPayloadString(payload, "MSISDN", "customerPhone");
+  const incomingTillNumber = getPayloadString(payload, "BillRefNumber", "tillNumber");
   const pendingPayments = await db.mpesaPayment.findMany({
     where: {
       shopId: shopId ?? undefined,
@@ -129,16 +155,16 @@ export async function handleMpesaCallback(payload: Record<string, unknown>, shop
     data: {
       shopId: shopId ?? "",
       transactionId,
-      transactionType: String((payload as any)?.TransactionType ?? payload?.transactionType ?? ""),
-      transactionTime: String((payload as any)?.TransTime ?? payload?.transactionTime ?? ""),
-      transactionAmount: String((payload as any)?.TransAmount ?? payload?.transactionAmount ?? ""),
-      businessShortCode: String((payload as any)?.BusinessShortCode ?? payload?.businessShortcode ?? config.businessShortcode ?? ""),
+      transactionType: getPayloadString(payload, "TransactionType", "transactionType"),
+      transactionTime: getPayloadString(payload, "TransTime", "transactionTime"),
+      transactionAmount: getPayloadString(payload, "TransAmount", "transactionAmount"),
+      businessShortCode: (getPayloadString(payload, "BusinessShortCode", "businessShortcode") || config.businessShortcode) ?? "",
       tillNumber: incomingTillNumber,
       customerPhone: incomingPhone,
-      customerName: String((payload as any)?.FirstName ?? payload?.customerName ?? ""),
+      customerName: getPayloadString(payload, "FirstName", "customerName"),
       billReference: incomingTillNumber,
-      invoiceNumber: String((payload as any)?.InvoiceNumber ?? payload?.invoiceNumber ?? ""),
-      organizationBalance: String((payload as any)?.OrgAccountBalance ?? payload?.organizationBalance ?? ""),
+      invoiceNumber: getPayloadString(payload, "InvoiceNumber", "invoiceNumber"),
+      organizationBalance: getPayloadString(payload, "OrgAccountBalance", "organizationBalance"),
       callbackPayload: payload,
       processingStatus: decision.kind === "match" ? "PROCESSED" : decision.kind === "ambiguous" ? "FAILED" : "FAILED",
       matchedPaymentId: primaryCandidate?.id ?? null,
@@ -207,4 +233,25 @@ export async function getPendingMpesaPayments(shopId: string) {
 
 export async function normalizeMpesaPhone(value?: string | null) {
   return normalizePhone(value);
+}
+
+export async function getRecentMpesaConfirmationCandidates(input: { shopId: string; expectedAmountMinor: number }) {
+  const recentEvents = await db.mpesaCallbackEvent.findMany({
+    where: { shopId: input.shopId },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: {
+      customerName: true,
+      customerPhone: true,
+      transactionAmount: true,
+      createdAt: true,
+    },
+  });
+
+  return summarizeRecentPayers(recentEvents.map((event) => ({
+    customerName: event.customerName,
+    customerPhone: event.customerPhone,
+    transactionAmount: event.transactionAmount,
+    createdAt: event.createdAt,
+  })), input.expectedAmountMinor);
 }

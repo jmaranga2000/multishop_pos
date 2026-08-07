@@ -1,18 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { LockKeyhole, ShieldCheck } from "lucide-react";
+import { Fingerprint, LockKeyhole, ShieldCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { unlockShopPortalAction } from "@/actions/shop/register-actions";
-import { toast } from "sonner";
+import { authenticateSalespersonFingerprint, canUseBiometrics } from "@/lib/biometric-client";
 
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+
+type UnlockResult = { success: boolean; error?: string };
 
 export function ShopPortalLockGuard({ salespersonId, salespersonName }: { salespersonId?: string | null; salespersonName?: string | null }) {
   const [locked, setLocked] = useState(false);
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [fingerprintSupported, setFingerprintSupported] = useState(false);
+  const [fingerprintPending, setFingerprintPending] = useState(false);
   const [isPending, startTransition] = useTransition();
   const timeoutRef = useRef<number | null>(null);
 
@@ -23,6 +27,21 @@ export function ShopPortalLockGuard({ salespersonId, salespersonName }: { salesp
       setLocked(true);
     }, IDLE_TIMEOUT_MS);
   };
+
+  const finishUnlock = (result: UnlockResult) => {
+    if (result.success) {
+      setLocked(false);
+      setPin("");
+      setError(null);
+      resetTimer();
+      return;
+    }
+    setError(result.error ?? "The salesperson PIN is incorrect.");
+  };
+
+  useEffect(() => {
+    setFingerprintSupported(canUseBiometrics());
+  }, []);
 
   useEffect(() => {
     if (!salespersonId) return undefined;
@@ -49,19 +68,36 @@ export function ShopPortalLockGuard({ salespersonId, salespersonName }: { salesp
     const formData = new FormData(event.currentTarget);
     startTransition(async () => {
       try {
-        const result = await unlockShopPortalAction(formData);
-        if (result.success) {
-          setLocked(false);
-          setPin("");
-          setError(null);
-          resetTimer();
-          return;
-        }
-        setError(result.error ?? "The salesperson PIN is incorrect.");
+        finishUnlock(await unlockShopPortalAction(formData));
       } catch (caughtError) {
         setError(caughtError instanceof Error ? caughtError.message : "Unable to unlock the portal.");
       }
     });
+  }
+
+  async function unlockWithFingerprint() {
+    if (!salespersonId) return;
+
+    setError(null);
+    setFingerprintPending(true);
+    try {
+      const biometricAuthToken = await authenticateSalespersonFingerprint(salespersonId);
+      const formData = new FormData();
+      formData.set("salespersonId", salespersonId);
+      formData.set("biometricAuthToken", biometricAuthToken);
+      startTransition(async () => {
+        try {
+          finishUnlock(await unlockShopPortalAction(formData));
+        } catch (caughtError) {
+          setError(caughtError instanceof Error ? caughtError.message : "Unable to unlock the portal.");
+        } finally {
+          setFingerprintPending(false);
+        }
+      });
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Fingerprint could not be verified.");
+      setFingerprintPending(false);
+    }
   }
 
   if (!salespersonId) return null;
@@ -77,7 +113,7 @@ export function ShopPortalLockGuard({ salespersonId, salespersonName }: { salesp
               </div>
               <div>
                 <h2 className="text-lg font-extrabold text-slate-900">Portal sleep mode</h2>
-                <p className="text-sm text-slate-500">This shop device was idle for 5 minutes. Enter the salesperson PIN to continue.</p>
+                <p className="text-sm text-slate-500">This shop device was idle for 5 minutes. Verify the salesperson to continue.</p>
               </div>
             </div>
             <form onSubmit={onUnlockSubmit} className="space-y-3">
@@ -87,7 +123,7 @@ export function ShopPortalLockGuard({ salespersonId, salespersonName }: { salesp
                 <p className="rounded-xl bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800">{salespersonName ?? "Salesperson"}</p>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">4–6 digit PIN</label>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">4-6 digit PIN</label>
                 <Input
                   name="pin"
                   type="password"
@@ -104,7 +140,10 @@ export function ShopPortalLockGuard({ salespersonId, salespersonName }: { salesp
                 />
               </div>
               {error ? <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
-              <Button className="w-full" isLoading={isPending} disabled={isPending} loadingText="Unlocking..."><ShieldCheck className="h-4 w-4" />Resume portal</Button>
+              <Button className="w-full" isLoading={isPending} disabled={isPending || fingerprintPending} loadingText="Unlocking..."><ShieldCheck className="h-4 w-4" />Resume with PIN</Button>
+              {fingerprintSupported ? (
+                <Button type="button" variant="secondary" className="w-full" onClick={unlockWithFingerprint} disabled={isPending || fingerprintPending} isLoading={fingerprintPending} loadingText="Verifying..."><Fingerprint className="h-4 w-4" />Resume with fingerprint</Button>
+              ) : null}
             </form>
           </div>
         </div>

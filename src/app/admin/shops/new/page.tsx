@@ -31,6 +31,11 @@ export default async function NewShopPage() {
             <PasswordInput name="password" minLength={8} placeholder="Temporary password" required />
             <Input name="phone" placeholder="Phone (optional)" />
             <textarea name="address" placeholder="Physical address" className="min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-blue-500" />
+            <label className="block text-sm font-semibold text-slate-700">
+              Counters / registers
+              <textarea name="counters" placeholder="Main counter&#10;Counter 1&#10;Counter 3" className="mt-2 min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-blue-500" />
+            </label>
+            <p className="text-xs text-slate-500">Add one counter name per line. Leaving this blank creates a default “Main counter”.</p>
             <Button className="w-full">Create shop and account</Button>
           </form>
         </CardContent>

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import QRCode from "qrcode";
 import { useMemo, useState, useRef, useEffect } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Banknote, Camera, CreditCard, Minus, PackageX, Plus, ScanLine, Search, ShoppingCart, Trash2, WifiOff } from "lucide-react";
@@ -38,6 +39,7 @@ type CartLine = {
   quantity: number;
   unitPriceMinor: number;
   unitCostMinor: number;
+  taxRate: number;
   available: number;
 };
 
@@ -65,6 +67,19 @@ type ReceiptSettings = {
   thankYouMessage?: string | null;
 };
 
+async function addReceiptQrCode(data: ThermalReceiptData) {
+  const payload = [
+    "MULTISHOP POS RECEIPT",
+    `Receipt: ${data.receiptNumber}`,
+    `Date: ${data.occurredAt}`,
+    `Total (VAT inclusive): KES ${(data.grandTotalMinor / 100).toFixed(2)}`,
+  ].join("\n");
+  try {
+    return { ...data, qrCodeDataUrl: await QRCode.toDataURL(payload, { errorCorrectionLevel: "M", margin: 1, width: 160 }) };
+  } catch {
+    return data;
+  }
+}
 export function PosShell({
   barcodeScanningEnabled = true,
   mpesaEnabled = false,
@@ -101,6 +116,10 @@ export function PosShell({
   const [notes, setNotes] = useState("");
   const [barcodeInput, setBarcodeInput] = useState("");
   const [cameraActive, setCameraActive] = useState(false);
+  const [cameraScanning, setCameraScanning] = useState(false);
+  const [cameraScanProgress, setCameraScanProgress] = useState(0);
+  const [hardwareScanBuffer, setHardwareScanBuffer] = useState("");
+  const hardwareScanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [splitPaymentEnabled, setSplitPaymentEnabled] = useState(false);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("CASH");
   const [mpesaFlow, setMpesaFlow] = useState<MpesaFlow>(null);
@@ -109,6 +128,10 @@ export function PosShell({
   const [mpesaReference, setMpesaReference] = useState<string | null>(null);
   const [mpesaInFlight, setMpesaInFlight] = useState(false);
   const [mpesaError, setMpesaError] = useState<string | null>(null);
+  const [manualConfirmationCandidates, setManualConfirmationCandidates] = useState<Array<{ name: string; phone: string; amountMinor: number }>>([]);
+  const [manualConfirmationSelection, setManualConfirmationSelection] = useState<string | null>(null);
+  const [manualConfirmationChecking, setManualConfirmationChecking] = useState(false);
+  const [manualConfirmationConfirmed, setManualConfirmationConfirmed] = useState(false);
   const [completedSale, setCompletedSale] = useState<ThermalReceiptData | null>(null);
   const [completedSaleLocalId, setCompletedSaleLocalId] = useState<string | null>(null);
   const [receiptSettings, setReceiptSettings] = useState<ReceiptSettings | null>(null);
@@ -218,6 +241,7 @@ export function PosShell({
           quantity: 1,
           unitPriceMinor: pricingOption.sellingPriceMinor,
           unitCostMinor: pricingOption.costPriceMinor,
+          taxRate: Number(product.taxRate ?? 0),
           available: entry.projectedQuantity,
         },
       ];
@@ -253,6 +277,7 @@ export function PosShell({
           quantity: 1,
           unitPriceMinor: pricingOption.sellingPriceMinor,
           unitCostMinor: pricingOption.costPriceMinor,
+          taxRate: Number(product.taxRate ?? 0),
           available: entry.projectedQuantity,
         },
       ];
@@ -300,6 +325,53 @@ export function PosShell({
     };
   }, []);
 
+  useEffect(() => {
+    if (!barcodeScanningEnabled) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement;
+      const isInputField = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
+      const isBarcodeField = target === searchInputRef.current || (barcodeInput !== "" && !cameraActive);
+
+      if (isInputField && !isBarcodeField) return;
+      if (event.key === "Escape") {
+        if (cameraActive) {
+          setCameraActive(false);
+          streamRef.current?.getTracks().forEach((track) => track.stop());
+        }
+        setHardwareScanBuffer("");
+        if (hardwareScanTimeoutRef.current) clearTimeout(hardwareScanTimeoutRef.current);
+        return;
+      }
+
+      if (event.key === "Enter") {
+        if (hardwareScanBuffer.trim()) {
+          event.preventDefault();
+          void handleBarcodeScan(hardwareScanBuffer.trim());
+          setHardwareScanBuffer("");
+          if (hardwareScanTimeoutRef.current) clearTimeout(hardwareScanTimeoutRef.current);
+        }
+        return;
+      }
+
+      if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        event.preventDefault();
+        setHardwareScanBuffer((prev) => prev + event.key);
+
+        if (hardwareScanTimeoutRef.current) clearTimeout(hardwareScanTimeoutRef.current);
+        hardwareScanTimeoutRef.current = setTimeout(() => {
+          setHardwareScanBuffer("");
+        }, 2000);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      if (hardwareScanTimeoutRef.current) clearTimeout(hardwareScanTimeoutRef.current);
+    };
+  }, [barcodeScanningEnabled, cameraActive, barcodeInput]);
+
   async function handleBarcodeScan(code: string) {
     const normalized = code.trim();
     if (!normalized) return;
@@ -338,33 +410,70 @@ export function PosShell({
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
       setCameraActive(false);
+      setCameraScanning(false);
+      setCameraScanProgress(0);
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } });
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
-      const detector = new detectorCtor({ formats: ["ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e", "qr_code"] });
+      const detector = new detectorCtor({ formats: ["ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e", "qr_code", "data_matrix", "aztec"] });
       setCameraActive(true);
+      setCameraScanning(true);
+      setCameraScanProgress(0);
+      let scanAttempts = 0;
+      const maxAttempts = 60;
+
       const detectLoop = () => {
-        if (!cameraActive || !videoRef.current || !streamRef.current) return;
-        void detector.detect(videoRef.current).then((barcodes: Array<{ rawValue?: string }>) => {
-          const value = barcodes[0]?.rawValue?.trim();
-          if (value) {
-            void handleBarcodeScan(value);
-            setCameraActive(false);
-            streamRef.current?.getTracks().forEach((track) => track.stop());
-            streamRef.current = null;
+        scanAttempts += 1;
+        setCameraScanProgress((scanAttempts / maxAttempts) * 100);
+
+        if (!cameraActive || !videoRef.current || !streamRef.current || scanAttempts > maxAttempts) {
+          if (scanAttempts > maxAttempts) {
+            toast.info("Camera scan timeout - try again");
           }
-        }).catch(() => undefined);
+          setCameraActive(false);
+          setCameraScanning(false);
+          setCameraScanProgress(0);
+          streamRef.current?.getTracks().forEach((track) => track.stop());
+          streamRef.current = null;
+          return;
+        }
+
+        void detector.detect(videoRef.current!).then((barcodes: Array<{ rawValue?: string }>) => {
+          if (barcodes.length > 0) {
+            const value = barcodes[0]?.rawValue?.trim();
+            if (value) {
+              toast.success(`Barcode detected: ${value}`);
+              void handleBarcodeScan(value);
+              setCameraActive(false);
+              setCameraScanning(false);
+              setCameraScanProgress(0);
+              streamRef.current?.getTracks().forEach((track) => track.stop());
+              streamRef.current = null;
+            }
+          }
+        }).catch(() => {
+          // Silently continue if detection fails
+        });
       };
-      const intervalId = window.setInterval(detectLoop, 1200);
-      window.setTimeout(() => window.clearInterval(intervalId), 20_000);
-    } catch {
-      toast.error("Unable to access the camera");
+
+      const intervalId = window.setInterval(detectLoop, 500);
+    } catch (error) {
+      const errorMessage = error instanceof DOMException ? error.name : "Unknown error";
+      if (errorMessage === "NotAllowedError") {
+        toast.error("Camera permission denied. Please enable camera access.");
+      } else if (errorMessage === "NotFoundError") {
+        toast.error("No camera device found.");
+      } else {
+        toast.error("Unable to access the camera");
+      }
+      setCameraActive(false);
+      setCameraScanning(false);
     }
   }
 
@@ -394,6 +503,10 @@ export function PosShell({
     setMpesaStatus("Ready");
     setMpesaReference(null);
     setMpesaError(null);
+    setManualConfirmationCandidates([]);
+    setManualConfirmationSelection(null);
+    setManualConfirmationChecking(false);
+    setManualConfirmationConfirmed(false);
     setCompletedSale(null);
     setCompletedSaleLocalId(null);
     setSaleLifecycleStatus("LOCAL_ONLY");
@@ -434,6 +547,7 @@ export function PosShell({
           quantity: item.quantity,
           unitPriceMinor: item.unitPriceMinor,
           unitCostMinor: item.unitCostMinor,
+          taxRate: item.taxRate,
         })),
       });
       const receiptNumber = sale.receiptNumber ?? buildReceiptNumber(sale.localId);
@@ -466,7 +580,7 @@ export function PosShell({
         returnPolicy: receiptSettings?.returnPolicy ?? "Returns accepted within 7 days with original receipt.",
         thankYouMessage: receiptSettings?.thankYouMessage ?? "Thank you for shopping with us.",
       };
-      setCompletedSale(receiptData);
+      setCompletedSale(await addReceiptQrCode(receiptData));
       setCompletedSaleLocalId(sale.localId);
       setSaleLifecycleStatus(online ? "PENDING_SYNC" : "LOCAL_ONLY");
       setCart([]);
@@ -546,6 +660,10 @@ export function PosShell({
     if (!cart.length || mpesaInFlight) return;
     setMpesaInFlight(true);
     setMpesaError(null);
+    setManualConfirmationCandidates([]);
+    setManualConfirmationSelection(null);
+    setManualConfirmationChecking(false);
+    setManualConfirmationConfirmed(false);
     setMpesaStatus(mode === "STK_PUSH" ? "Sending request" : "Waiting for customer PIN");
     try {
       const response = await fetch("/api/mpesa/start", {
@@ -567,6 +685,7 @@ export function PosShell({
             quantity: item.quantity,
             unitPriceMinor: item.unitPriceMinor,
             unitCostMinor: item.unitCostMinor,
+          taxRate: item.taxRate,
           })),
         }),
       });
@@ -574,6 +693,23 @@ export function PosShell({
       if (!response.ok || !payload.ok) throw new Error(payload.error || "Unable to create the M-Pesa payment request");
       setMpesaReference(payload.internalReference ?? null);
       setMpesaStatus(mode === "STK_PUSH" ? "Request sent" : "Waiting for Till payment");
+      if (mode === "PAY_TO_TILL") {
+        setMpesaStatus("Waiting for customer confirmation");
+        void (async () => {
+          if (!shopId) return;
+          setManualConfirmationChecking(true);
+          try {
+            const response = await fetch(`/api/mpesa/manual-confirmation?shopId=${encodeURIComponent(shopId)}&expectedAmountMinor=${encodeURIComponent(totalMinor)}`);
+            const payload = await response.json();
+            if (!response.ok || !payload.ok) throw new Error(payload.error || "Unable to load recent M-Pesa payers");
+            setManualConfirmationCandidates(payload.candidates ?? []);
+          } catch (error) {
+            setMpesaError(error instanceof Error ? error.message : "Unable to load recent M-Pesa payers");
+          } finally {
+            setManualConfirmationChecking(false);
+          }
+        })();
+      }
       toast.success(mode === "STK_PUSH" ? "STK Push request prepared" : "Till payment waiting started");
     } catch (error) {
       setMpesaStatus("Payment failed");
@@ -581,6 +717,107 @@ export function PosShell({
       toast.error(error instanceof Error ? error.message : "Unable to start M-Pesa payment");
     } finally {
       setMpesaInFlight(false);
+    }
+  }
+
+  useEffect(() => {
+    if (paymentMode !== "MPESA" || mpesaFlow !== "PAY_TO_TILL") return;
+
+    async function pollManualConfirmationCandidatesLocal() {
+      if (!shopId) return;
+      setManualConfirmationChecking(true);
+      try {
+        const response = await fetch(`/api/mpesa/manual-confirmation?shopId=${encodeURIComponent(shopId)}&expectedAmountMinor=${encodeURIComponent(totalMinor)}`);
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Unable to load recent M-Pesa payers");
+        setManualConfirmationCandidates(payload.candidates ?? []);
+        if ((payload.candidates ?? []).length) {
+          setMpesaStatus("Reviewing recent customer names");
+        }
+      } catch (error) {
+        setMpesaError(error instanceof Error ? error.message : "Unable to load recent M-Pesa payers");
+      } finally {
+        setManualConfirmationChecking(false);
+      }
+    }
+
+    const intervalId = window.setInterval(() => {
+      void pollManualConfirmationCandidatesLocal();
+    }, 3000);
+    return () => window.clearInterval(intervalId);
+  }, [paymentMode, mpesaFlow, shopId, totalMinor]);
+
+  async function confirmManualMpesaPayment() {
+    if (!manualConfirmationSelection || !cart.length) return;
+    setMpesaInFlight(true);
+    setManualConfirmationChecking(true);
+    try {
+      const sale = await createLocalSale({
+        shopId,
+        registerSessionId,
+        paymentMethod: "MPESA",
+        amountPaidMinor: totalMinor,
+        paymentReference: `MPESA:${manualConfirmationSelection}`,
+        items: cart.map((item) => ({
+          productId: item.productId,
+          productName: item.name,
+          sku: item.sku,
+          unitId: item.unitId,
+          unitName: item.unitName,
+          unitSymbol: item.unitSymbol,
+          quantity: item.quantity,
+          unitPriceMinor: item.unitPriceMinor,
+          unitCostMinor: item.unitCostMinor,
+          taxRate: item.taxRate,
+        })),
+      });
+      const receiptNumber = sale.receiptNumber ?? buildReceiptNumber(sale.localId);
+      const receiptData: ThermalReceiptData = {
+        businessName: receiptSettings?.businessName ?? receiptSettings?.shopName ?? (shopName || "MultiShop POS"),
+        shopLocation: receiptSettings?.shopLocation ?? null,
+        shopContact: receiptSettings?.shopContact ?? null,
+        taxInfo: receiptSettings?.taxInfo ?? null,
+        receiptNumber,
+        occurredAt: sale.occurredAt,
+        cashierName: receiptSettings?.cashierName ?? "Current cashier",
+        customerName: customerName || "Walk-in customer",
+        items: cart.map((item) => ({
+          name: item.name,
+          quantity: item.quantity,
+          unitName: item.unitName,
+          unitSymbol: item.unitSymbol,
+          unitPriceMinor: item.unitPriceMinor,
+          lineTotalMinor: Math.round(item.quantity * item.unitPriceMinor),
+        })),
+        subtotalMinor: totalMinor,
+        discountMinor,
+        taxMinor: 0,
+        grandTotalMinor: totalMinor - discountMinor,
+        paymentMethod: "M-Pesa",
+        amountPaidMinor: totalMinor,
+        changeDueMinor: 0,
+        paymentReference: sale.paymentReference ?? null,
+        receiptFooter: receiptSettings?.receiptFooter ?? null,
+        returnPolicy: receiptSettings?.returnPolicy ?? "Returns accepted within 7 days with original receipt.",
+        thankYouMessage: receiptSettings?.thankYouMessage ?? "Thank you for shopping with us.",
+      };
+      setCompletedSale(await addReceiptQrCode(receiptData));
+      setCompletedSaleLocalId(sale.localId);
+      setSaleLifecycleStatus(online ? "PENDING_SYNC" : "LOCAL_ONLY");
+      setCart([]);
+      setAmountReceived(String(fromMinorUnits(totalMinor)));
+      setSplitPaymentEnabled(false);
+      setManualConfirmationConfirmed(true);
+      setMpesaStatus("Payment confirmed");
+      setMpesaReference(`Confirmed:${manualConfirmationSelection}`);
+      toast.success("M-Pesa payment confirmed and sale completed");
+    } catch (error) {
+      setMpesaStatus("Confirmation failed");
+      setMpesaError(error instanceof Error ? error.message : "Unable to confirm the M-Pesa payment");
+      toast.error(error instanceof Error ? error.message : "Unable to confirm the M-Pesa payment");
+    } finally {
+      setMpesaInFlight(false);
+      setManualConfirmationChecking(false);
     }
   }
 
@@ -628,12 +865,14 @@ export function PosShell({
             <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3">
               <div className="flex-1 min-w-[220px]">
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Barcode scanner</label>
-                <Input value={barcodeInput} onChange={(e) => setBarcodeInput(e.target.value)} onKeyDown={(event) => {
+                <Input value={barcodeInput || hardwareScanBuffer} onChange={(e) => setBarcodeInput(e.target.value)} onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
-                    void handleBarcodeScan(barcodeInput);
+                    void handleBarcodeScan(barcodeInput || hardwareScanBuffer);
+                    setBarcodeInput("");
+                    setHardwareScanBuffer("");
                   }
-                }} placeholder="Scan barcode or enter code" />
+                }} placeholder="Scan barcode, type code, or use camera" autoComplete="off" />
               </div>
               <Button type="button" variant="secondary" onClick={() => void handleBarcodeScan(barcodeInput)}>
                 <ScanLine className="mr-2 h-4 w-4" />
@@ -641,7 +880,27 @@ export function PosShell({
               </Button>
             </div>
           ) : null}
-          {cameraActive ? <video ref={videoRef} className="mt-3 h-40 w-full rounded-2xl object-cover" /> : null}
+          {cameraActive ? (
+            <div className="mt-3 space-y-2">
+              <div className="relative overflow-hidden rounded-2xl bg-black">
+                <video ref={videoRef} className="h-64 w-full object-cover" autoPlay playsInline />
+                {cameraScanning ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-20">
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="h-12 w-12 animate-spin rounded-full border-4 border-white border-t-transparent" />
+                      <p className="text-sm font-semibold text-white">Scanning for barcode...</p>
+                      <div className="w-32 overflow-hidden rounded-full bg-gray-700">
+                        <div className="h-1 bg-green-500 transition-all" style={{ width: `${cameraScanProgress}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+              <Button type="button" variant="secondary" onClick={() => void startCameraScan()} className="w-full">
+                {cameraScanning ? "Stop scanning" : "Retry scan"}
+              </Button>
+            </div>
+          ) : null}
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1">{categories.map((item) => <button key={item} onClick={() => setCategory(item)} className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold ${category === item ? "bg-[#173b89] text-white" : "bg-slate-100 text-slate-600"}`}>{item}</button>)}</div>
         </Card>
         {frequentProducts.length ? (
@@ -813,10 +1072,41 @@ export function PosShell({
                     <Input value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="Optional customer phone number" />
                     <div className="flex flex-wrap gap-2">
                       <Button type="button" onClick={() => void startMpesaPayment("PAY_TO_TILL")} isLoading={mpesaInFlight} disabled={mpesaInFlight || !cart.length} loadingText="Preparing payment...">Start waiting</Button>
-                      <Button type="button" variant="secondary" onClick={() => setMpesaStatus("Checking payment status")}>Check payment</Button>
+                      <Button type="button" variant="secondary" onClick={() => { void (async () => {
+                        if (!shopId) return;
+                        setManualConfirmationChecking(true);
+                        try {
+                          const response = await fetch(`/api/mpesa/manual-confirmation?shopId=${encodeURIComponent(shopId)}&expectedAmountMinor=${encodeURIComponent(totalMinor)}`);
+                          const payload = await response.json();
+                          if (!response.ok || !payload.ok) throw new Error(payload.error || "Unable to load recent M-Pesa payers");
+                          setManualConfirmationCandidates(payload.candidates ?? []);
+                        } catch (error) {
+                          setMpesaError(error instanceof Error ? error.message : "Unable to load recent M-Pesa payers");
+                        } finally {
+                          setManualConfirmationChecking(false);
+                        }
+                      })(); }} isLoading={manualConfirmationChecking} disabled={manualConfirmationChecking}>Refresh recent payers</Button>
                       <Button type="button" variant="ghost" onClick={() => setMpesaFlow(null)}>Cancel waiting</Button>
                     </div>
+                    {manualConfirmationCandidates.length ? (
+                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+                        <div className="font-semibold">Recent payers from the last 5 minutes</div>
+                        <div className="mt-2 space-y-2">
+                          {manualConfirmationCandidates.map((candidate) => (
+                            <label key={`${candidate.name}-${candidate.phone}`} className="flex items-center gap-2 rounded-lg border border-emerald-100 bg-white p-2">
+                              <input type="radio" name="manual-confirmation-candidate" checked={manualConfirmationSelection === `${candidate.name}:${candidate.phone}`} onChange={() => setManualConfirmationSelection(`${candidate.name}:${candidate.phone}`)} />
+                              <div>
+                                <div className="font-semibold">{candidate.name}</div>
+                                <div className="text-xs text-slate-500">{candidate.phone}</div>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                        <Button type="button" className="mt-3" onClick={() => void confirmManualMpesaPayment()} isLoading={mpesaInFlight} disabled={mpesaInFlight || !manualConfirmationSelection} loadingText="Confirming payment...">Confirm customer and complete sale</Button>
+                      </div>
+                    ) : null}
                     {mpesaError ? <p className="text-sm text-red-600">{mpesaError}</p> : null}
+                    {manualConfirmationConfirmed ? <p className="text-sm font-semibold text-emerald-700">Customer confirmed and sale completed.</p> : null}
                   </div>
                 ) : null}
               </div>

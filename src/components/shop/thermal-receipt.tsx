@@ -1,4 +1,4 @@
-import { Document, Page, StyleSheet, Text, View, pdf } from "@react-pdf/renderer";
+import { Document, Image, Page, StyleSheet, Text, View, pdf } from "@react-pdf/renderer";
 
 export type ThermalReceiptData = {
   businessName: string;
@@ -28,6 +28,7 @@ export type ThermalReceiptData = {
   receiptFooter?: string | null;
   returnPolicy?: string | null;
   thankYouMessage?: string | null;
+  qrCodeDataUrl?: string | null;
 };
 
 function formatAmount(value: number) {
@@ -74,14 +75,16 @@ export function ThermalReceipt({ data }: { data: ThermalReceiptData }) {
         ))}
       </div>
       <div className="mt-3 border-t border-dashed border-slate-300 pt-2 text-[10px]">
-        <div className="flex items-center justify-between"><span>Subtotal</span><span>{formatAmount(data.subtotalMinor)}</span></div>
+        <p className="mb-1 text-slate-500">All unit selling prices are VAT inclusive.</p>
+        <div className="flex items-center justify-between"><span>Items total (VAT incl.)</span><span>{formatAmount(data.subtotalMinor)}</span></div>
         {data.discountMinor > 0 ? <div className="flex items-center justify-between"><span>Discount</span><span>-{formatAmount(data.discountMinor)}</span></div> : null}
-        {data.taxMinor > 0 ? <div className="flex items-center justify-between"><span>Tax</span><span>{formatAmount(data.taxMinor)}</span></div> : null}
-        <div className="mt-1 flex items-center justify-between text-sm font-black"><span>Grand total</span><span>{formatAmount(data.grandTotalMinor)}</span></div>
+        {data.taxMinor > 0 ? <div className="flex items-center justify-between"><span>VAT included in total</span><span>{formatAmount(data.taxMinor)}</span></div> : null}
+        <div className="mt-1 flex items-center justify-between text-sm font-black"><span>Total (VAT inclusive)</span><span>{formatAmount(data.grandTotalMinor)}</span></div>
         <div className="mt-1 flex items-center justify-between"><span>Payment</span><span>{data.paymentMethod}</span></div>
         <div className="flex items-center justify-between"><span>Cash received</span><span>{formatAmount(data.amountPaidMinor)}</span></div>
         <div className="flex items-center justify-between"><span>Change</span><span>{formatAmount(data.changeDueMinor)}</span></div>
       </div>
+      {data.qrCodeDataUrl ? <div className="mt-3 border-t border-dashed border-slate-300 pt-2 text-center"><img src={data.qrCodeDataUrl} alt={`QR code for receipt ${data.receiptNumber}`} className="mx-auto h-28 w-28" /><div className="mt-1 text-[10px] text-slate-500">Scan for receipt details</div></div> : null}
       <div className="mt-3 border-t border-dashed border-slate-300 pt-2 text-center text-[10px] text-slate-500">
         {safeText(data.receiptFooter) ? <div className="mb-1">{data.receiptFooter}</div> : null}
         <div>{safeText(data.returnPolicy) || "Returns accepted within 7 days with original receipt."}</div>
@@ -115,14 +118,15 @@ export function buildThermalReceiptHtml(data: ThermalReceiptData) {
     ...data.items.map((item) => `<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;gap:8px;"><div style="flex:1;min-width:0;"><div style="font-weight:700;">${escapeHtml(item.name)}</div><div style="font-size:10px;color:#64748b;">${escapeHtml(`${item.quantity} × ${formatAmount(item.unitPriceMinor)}${item.unitName || item.unitSymbol ? ` / ${item.unitName ?? item.unitSymbol}` : ""}`)}</div></div><div style="font-weight:700;white-space:nowrap;">${escapeHtml(formatAmount(item.lineTotalMinor))}</div></div></div>`),
     `</div>`,
     `<div style="margin-top:10px;border-top:1px dashed #cbd5e1;padding-top:8px;font-size:10px;">`,
-    `<div style="display:flex;justify-content:space-between;gap:8px;"><span>Subtotal</span><span>${escapeHtml(formatAmount(data.subtotalMinor))}</span></div>`,
+    `<div style="display:flex;justify-content:space-between;gap:8px;"><span>Items total (VAT incl.)</span><span>${escapeHtml(formatAmount(data.subtotalMinor))}</span></div>`,
     data.discountMinor > 0 ? `<div style="display:flex;justify-content:space-between;gap:8px;"><span>Discount</span><span>-${escapeHtml(formatAmount(data.discountMinor))}</span></div>` : "",
-    data.taxMinor > 0 ? `<div style="display:flex;justify-content:space-between;gap:8px;"><span>Tax</span><span>${escapeHtml(formatAmount(data.taxMinor))}</span></div>` : "",
-    `<div style="display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:12px;font-weight:700;"><span>Grand total</span><span>${escapeHtml(formatAmount(data.grandTotalMinor))}</span></div>`,
+    data.taxMinor > 0 ? `<div style="display:flex;justify-content:space-between;gap:8px;"><span>VAT included in total</span><span>${escapeHtml(formatAmount(data.taxMinor))}</span></div>` : "",
+    `<div style="display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:12px;font-weight:700;"><span>Total (VAT inclusive)</span><span>${escapeHtml(formatAmount(data.grandTotalMinor))}</span></div>`,
     `<div style="display:flex;justify-content:space-between;gap:8px;"><span>Payment</span><span>${escapeHtml(data.paymentMethod)}</span></div>`,
     `<div style="display:flex;justify-content:space-between;gap:8px;"><span>Cash received</span><span>${escapeHtml(formatAmount(data.amountPaidMinor))}</span></div>`,
     `<div style="display:flex;justify-content:space-between;gap:8px;"><span>Change</span><span>${escapeHtml(formatAmount(data.changeDueMinor))}</span></div>`,
     `</div>`,
+    data.qrCodeDataUrl ? `<div style="margin-top:10px;border-top:1px dashed #cbd5e1;padding-top:8px;text-align:center;"><img src="${escapeHtml(data.qrCodeDataUrl)}" alt="Receipt QR code" style="width:112px;height:112px;" /><div style="margin-top:4px;font-size:10px;color:#64748b;">Scan for receipt details</div></div>` : "",
     `<div style="margin-top:10px;border-top:1px dashed #cbd5e1;padding-top:8px;text-align:center;font-size:10px;color:#64748b;">`,
     safeText(data.receiptFooter) ? `<div style="margin-bottom:4px;">${escapeHtml(safeText(data.receiptFooter))}</div>` : "",
     `<div>${escapeHtml(safeText(data.returnPolicy) || "Returns accepted within 7 days with original receipt.")}</div>`,
@@ -146,6 +150,7 @@ const styles = StyleSheet.create({
   itemName: { fontSize: 9, fontWeight: "bold" },
   itemMeta: { fontSize: 8, color: "#64748b" },
   totalRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 2 },
+  qrCode: { width: 72, height: 72, alignSelf: "center", marginTop: 10 },
   footer: { marginTop: 10, borderTopWidth: 1, borderTopColor: "#e2e8f0", borderStyle: "dashed", paddingTop: 6, textAlign: "center", fontSize: 8, color: "#64748b" },
 });
 
@@ -173,14 +178,15 @@ function ReceiptPdfDocument({ data }: { data: ThermalReceiptData }) {
             ))}
           </View>
           <View style={styles.section}>
-            <View style={styles.totalRow}><Text style={styles.label}>Subtotal</Text><Text style={styles.value}>{formatAmount(data.subtotalMinor)}</Text></View>
+            <View style={styles.totalRow}><Text style={styles.label}>Items total (VAT incl.)</Text><Text style={styles.value}>{formatAmount(data.subtotalMinor)}</Text></View>
             {data.discountMinor > 0 ? <View style={styles.totalRow}><Text style={styles.label}>Discount</Text><Text style={styles.value}>-{formatAmount(data.discountMinor)}</Text></View> : null}
-            {data.taxMinor > 0 ? <View style={styles.totalRow}><Text style={styles.label}>Tax</Text><Text style={styles.value}>{formatAmount(data.taxMinor)}</Text></View> : null}
-            <View style={styles.totalRow}><Text style={styles.label}>Grand total</Text><Text style={styles.value}>{formatAmount(data.grandTotalMinor)}</Text></View>
+            {data.taxMinor > 0 ? <View style={styles.totalRow}><Text style={styles.label}>VAT included in total</Text><Text style={styles.value}>{formatAmount(data.taxMinor)}</Text></View> : null}
+            <View style={styles.totalRow}><Text style={styles.label}>Total (VAT inclusive)</Text><Text style={styles.value}>{formatAmount(data.grandTotalMinor)}</Text></View>
             <View style={styles.totalRow}><Text style={styles.label}>Payment</Text><Text style={styles.value}>{data.paymentMethod}</Text></View>
             <View style={styles.totalRow}><Text style={styles.label}>Cash received</Text><Text style={styles.value}>{formatAmount(data.amountPaidMinor)}</Text></View>
             <View style={styles.totalRow}><Text style={styles.label}>Change</Text><Text style={styles.value}>{formatAmount(data.changeDueMinor)}</Text></View>
           </View>
+          {data.qrCodeDataUrl ? <View><Image src={data.qrCodeDataUrl} style={styles.qrCode} /><Text style={styles.subheading}>Scan for receipt details</Text></View> : null}
           <View style={styles.footer}>
             {safeText(data.receiptFooter) ? <Text>{data.receiptFooter}</Text> : null}
             <Text>{safeText(data.returnPolicy) || "Returns accepted within 7 days with original receipt."}</Text>

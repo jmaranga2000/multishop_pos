@@ -62,6 +62,9 @@ export const modelRelations: Record<string, Record<string, RelationDefinition>> 
   },
   salespersonProfile: {
     shop: relation("shop", "shopId", "id"),
+    register: relation("register", "registerId", "id"),
+    biometricCredentials: relation("salespersonBiometricCredential", "id", "salespersonId", true),
+    biometricChallenges: relation("salespersonBiometricChallenge", "id", "salespersonId", true),
     sales: relation("sale", "id", "salespersonId", true),
     sessions: relation("registerSession", "id", "salespersonId", true),
   },

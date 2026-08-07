@@ -10,6 +10,17 @@ export const createShopSchema = z.object({
   password: z.string().min(8).max(128),
   phone: z.string().trim().max(30).optional(),
   address: z.string().trim().max(500).optional(),
+  counters: z.preprocess((value) => {
+    if (typeof value === "string") {
+      const names = value.split(/\r?\n|,/).map((entry) => entry.trim()).filter(Boolean);
+      return names.length ? names : ["Main counter"];
+    }
+    if (Array.isArray(value)) {
+      const names = value.map((entry) => String(entry).trim()).filter(Boolean);
+      return names.length ? names : ["Main counter"];
+    }
+    return ["Main counter"];
+  }, z.array(z.string().trim().min(2).max(80)).default(["Main counter"])),
 });
 
 export const resetShopPasswordSchema = z.object({
