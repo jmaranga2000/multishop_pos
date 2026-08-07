@@ -78,7 +78,8 @@ export async function generateSupplierRestockRequestAction(formData: FormData) {
   const admin = await requireAdmin();
   const supplierId = formData.get("supplierId") as string;
   if (!supplierId) throw new Error("Supplier ID is required");
-  
+
   await generateSupplierRestockRequest(admin, supplierId);
   revalidatePath(`/admin/suppliers/${supplierId}`);
+  redirect(`/admin/suppliers/${supplierId}`);
 }

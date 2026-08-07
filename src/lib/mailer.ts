@@ -15,6 +15,8 @@ export async function sendQueuedEmail(message: {
   attachments?: Array<{ filename: string; contentType: string; content: string }>;
 }) {
   if (!process.env.SMTP_HOST || !process.env.SMTP_FROM_EMAIL) throw new Error("SMTP is not configured");
+  if (!message.recipient?.trim()) throw new Error("Email recipient is missing");
+  if (!message.subject?.trim()) throw new Error("Email subject is missing");
 
   await mailTransporter.sendMail({
     from: { name: process.env.SMTP_FROM_NAME ?? "MultiShop POS", address: process.env.SMTP_FROM_EMAIL },

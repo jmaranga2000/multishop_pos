@@ -26,6 +26,7 @@ export async function processNotificationQueues() {
       emailSent += 1;
     } catch (error) {
       failed += 1;
+      console.error(`Failed to send queued email ${email.id} to ${email.recipient}:`, error);
       await db.emailQueue.update({
         where: { id: email.id },
         data: {
@@ -75,6 +76,7 @@ export async function processNotificationQueues() {
       pushSent += 1;
     } catch (error) {
       failed += 1;
+      console.error(`Failed to process push queue ${push.id}:`, error);
       await db.pushNotificationQueue.update({
         where: { id: push.id },
         data: {
