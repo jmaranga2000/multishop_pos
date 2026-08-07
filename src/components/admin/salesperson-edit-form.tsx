@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { FingerprintRegisterControls } from "@/components/shop/fingerprint-register-controls";
 import { updateSalespersonAction } from "@/actions/admin/salesperson-actions";
 
 export type SalespersonEditFormProps = {
@@ -62,6 +63,7 @@ export function SalespersonEditForm({ salesperson, registers }: SalespersonEditF
         ))}
       </select>
       <Input
+        id="register-pin"
         name="pin"
         type="password"
         inputMode="numeric"
@@ -71,6 +73,8 @@ export function SalespersonEditForm({ salesperson, registers }: SalespersonEditF
         placeholder="New 4–6 digit PIN"
         maxLength={6}
       />
+      <input id="register-salesperson-id" type="hidden" name="salespersonId" value={salesperson.id} />
+      <FingerprintRegisterControls />
       <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
         Shop: {salesperson.shopName ?? "Unknown shop"}
         {salesperson.registerName ? <><br />Counter: {salesperson.registerName}</> : null}

@@ -426,43 +426,62 @@ export function PosShell({
       setCameraScanning(true);
       setCameraScanProgress(0);
       let scanAttempts = 0;
-      const maxAttempts = 60;
+      const maxAttempts = 90;
+      let stopped = false;
+      let intervalId: number | null = null;
 
-      const detectLoop = () => {
-        scanAttempts += 1;
-        setCameraScanProgress((scanAttempts / maxAttempts) * 100);
+      const stopScan = () => {
+        if (stopped) return;
+        stopped = true;
+        if (intervalId !== null) {
+          window.clearInterval(intervalId);
+        }
+        streamRef.current?.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+        if (videoRef.current) {
+          videoRef.current.srcObject = null;
+        }
+        setCameraActive(false);
+        setCameraScanning(false);
+        setCameraScanProgress(0);
+      };
 
-        if (!cameraActive || !videoRef.current || !streamRef.current || scanAttempts > maxAttempts) {
-          if (scanAttempts > maxAttempts) {
-            toast.info("Camera scan timeout - try again");
-          }
-          setCameraActive(false);
-          setCameraScanning(false);
-          setCameraScanProgress(0);
-          streamRef.current?.getTracks().forEach((track) => track.stop());
-          streamRef.current = null;
+      const detectLoop = async () => {
+        if (!streamRef.current || !videoRef.current) {
+          stopScan();
           return;
         }
 
-        void detector.detect(videoRef.current!).then((barcodes: Array<{ rawValue?: string }>) => {
+        if (videoRef.current.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+          return;
+        }
+
+        scanAttempts += 1;
+        setCameraScanProgress(Math.min(100, (scanAttempts / maxAttempts) * 100));
+
+        if (scanAttempts > maxAttempts) {
+          toast.info("Camera scan timed out. Try again.");
+          stopScan();
+          return;
+        }
+
+        try {
+          const barcodes = await detector.detect(videoRef.current);
           if (barcodes.length > 0) {
             const value = barcodes[0]?.rawValue?.trim();
             if (value) {
               toast.success(`Barcode detected: ${value}`);
-              void handleBarcodeScan(value);
-              setCameraActive(false);
-              setCameraScanning(false);
-              setCameraScanProgress(0);
-              streamRef.current?.getTracks().forEach((track) => track.stop());
-              streamRef.current = null;
+              await handleBarcodeScan(value);
+              stopScan();
+              return;
             }
           }
-        }).catch(() => {
-          // Silently continue if detection fails
-        });
+        } catch {
+          // Continue scanning silently.
+        }
       };
 
-      const intervalId = window.setInterval(detectLoop, 500);
+      intervalId = window.setInterval(detectLoop, 500);
     } catch (error) {
       const errorMessage = error instanceof DOMException ? error.name : "Unknown error";
       if (errorMessage === "NotAllowedError") {
@@ -666,6 +685,9 @@ export function PosShell({
     setManualConfirmationConfirmed(false);
     setMpesaStatus(mode === "STK_PUSH" ? "Sending request" : "Waiting for customer PIN");
     try {
+      if (!mpesaEnabled) {
+        throw new Error("M-Pesa is not configured. Enable it in settings to use payment features.");
+      }
       const response = await fetch("/api/mpesa/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -746,6 +768,12 @@ export function PosShell({
     }, 3000);
     return () => window.clearInterval(intervalId);
   }, [paymentMode, mpesaFlow, shopId, totalMinor]);
+
+  useEffect(() => {
+    if (paymentMode === "MPESA" && !mpesaEnabled) {
+      toast.info("M-Pesa is not configured. Enable it in settings to use payment features.");
+    }
+  }, [paymentMode, mpesaEnabled]);
 
   async function confirmManualMpesaPayment() {
     if (!manualConfirmationSelection || !cart.length) return;
@@ -1021,16 +1049,13 @@ export function PosShell({
             {!online ? <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Offline mode only allows cash. M-Pesa and card payments remain unavailable until the connection is restored.</div> : null}
             {paymentMode === "MPESA" ? (
               <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
-                {!mpesaEnabled ? (
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                    M-Pesa is visible here but not configured yet. It will become functional once M-Pesa is enabled in settings.
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {mpesaStkEnabled ? <Button type="button" variant={mpesaFlow === "STK_PUSH" ? "primary" : "secondary"} onClick={() => setMpesaFlow("STK_PUSH")}>Send STK Push</Button> : null}
-                    {mpesaPayToTillEnabled ? <Button type="button" variant={mpesaFlow === "PAY_TO_TILL" ? "primary" : "secondary"} onClick={() => setMpesaFlow("PAY_TO_TILL")}>Customer Pays to Till</Button> : null}
-                  </div>
-                )}
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                  M-Pesa is visible here{!mpesaEnabled ? " but not configured yet." : "."} {mpesaEnabled ? "Choose a payment flow to continue." : "You can still explore the STK Push and Pay to Till screens, but actual payment requests will fail until M-Pesa is configured."}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button type="button" variant={mpesaFlow === "STK_PUSH" ? "primary" : "secondary"} onClick={() => setMpesaFlow("STK_PUSH")}>Send STK Push</Button>
+                  <Button type="button" variant={mpesaFlow === "PAY_TO_TILL" ? "primary" : "secondary"} onClick={() => setMpesaFlow("PAY_TO_TILL")}>Customer Pays to Till</Button>
+                </div>
                 {mpesaFlow === "STK_PUSH" ? (
                   <div className="mt-3 space-y-3">
                     <div className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-700">

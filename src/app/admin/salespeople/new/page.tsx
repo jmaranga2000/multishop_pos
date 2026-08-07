@@ -40,6 +40,9 @@ export default async function NewSalespersonPage() {
               ))}
             </select>
             <Input name="pin" type="password" inputMode="numeric" pattern="[0-9]{4,6}" placeholder="4–6 digit PIN" required />
+            <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
+              After creating the salesperson, open their profile to enroll fingerprint authentication from the edit form.
+            </div>
             <Button className="w-full">Create profile</Button>
           </form>
         </CardContent>
