@@ -200,31 +200,45 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     border: "1 solid #e2e8f0",
   },
-  intelligenceRow: {
+  stockIntelligenceGrid: {
     display: "flex",
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 4,
-    marginBottom: 6,
+    justifyContent: "space-between",
+    alignItems: "stretch",
+    gap: 8,
   },
-  intelligenceChip: {
-    padding: 4,
+  stockIntelligenceColumn: {
+    flex: 1,
+    minHeight: 90,
     borderRadius: 8,
+    border: "1 solid #e2e8f0",
+    padding: 8,
+  },
+  stockIntelligenceTitle: {
     fontSize: 8,
     fontWeight: 700,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 6,
+    textAlign: "center",
     color: "#111827",
+  },
+  stockIntelligenceList: {
+    fontSize: 8,
+    lineHeight: 1.5,
+    color: "#1f2937",
   },
   intensityPurple: {
     backgroundColor: "#ddd6fe",
   },
   intensityRed: {
-    backgroundColor: "#fecaca",
+    backgroundColor: "#fee2e2",
   },
   intensityYellow: {
     backgroundColor: "#fef3c7",
   },
   intensityGreen: {
-    backgroundColor: "#bbf7d0",
+    backgroundColor: "#dcfce7",
   },
   intelligenceBody: {
     fontSize: 8,
@@ -368,24 +382,24 @@ export function WeeklyInventoryReportPdf({ report }: { report: WeeklyReportPdfDa
           {report.stockIntelligenceByShop.map((shop, shopIndex) => (
             <View key={`${shop.shopName}-${shopIndex}`} style={styles.stockIntelligenceCard}>
               <Text style={styles.bestSellerShop}>{shop.shopName}</Text>
-              <View style={styles.intelligenceRow}>
-                <Text style={[styles.intelligenceChip, styles.intensityRed]}>Out of stock ({shop.outOfStock.length})</Text>
-                <Text style={[styles.intelligenceChip, styles.intensityRed]}>Critical ({shop.criticalStock.length})</Text>
-                <Text style={[styles.intelligenceChip, styles.intensityYellow]}>Low ({shop.lowStock.length})</Text>
-                <Text style={[styles.intelligenceChip, styles.intensityGreen]}>Healthy ({shop.healthyStock.length})</Text>
+              <View style={styles.stockIntelligenceGrid}>
+                <View style={[styles.stockIntelligenceColumn, styles.intensityRed]}>
+                  <Text style={styles.stockIntelligenceTitle}>Out of stock ({shop.outOfStock.length})</Text>
+                  <Text style={styles.stockIntelligenceList}>{shop.outOfStock.length > 0 ? shop.outOfStock.join("\n") : "None"}</Text>
+                </View>
+                <View style={[styles.stockIntelligenceColumn, styles.intensityRed]}>
+                  <Text style={styles.stockIntelligenceTitle}>Critical ({shop.criticalStock.length})</Text>
+                  <Text style={styles.stockIntelligenceList}>{shop.criticalStock.length > 0 ? shop.criticalStock.join("\n") : "None"}</Text>
+                </View>
+                <View style={[styles.stockIntelligenceColumn, styles.intensityYellow]}>
+                  <Text style={styles.stockIntelligenceTitle}>Low ({shop.lowStock.length})</Text>
+                  <Text style={styles.stockIntelligenceList}>{shop.lowStock.length > 0 ? shop.lowStock.join("\n") : "None"}</Text>
+                </View>
+                <View style={[styles.stockIntelligenceColumn, styles.intensityGreen]}>
+                  <Text style={styles.stockIntelligenceTitle}>Healthy ({shop.healthyStock.length})</Text>
+                  <Text style={styles.stockIntelligenceList}>{shop.healthyStock.length > 0 ? shop.healthyStock.join("\n") : "None"}</Text>
+                </View>
               </View>
-              <Text style={styles.intelligenceBody}>
-                {shop.outOfStock.length > 0 ? `Out of stock: ${shop.outOfStock.join(", ")}` : "Out of stock: none"}
-              </Text>
-              <Text style={styles.intelligenceBody}>
-                {shop.criticalStock.length > 0 ? `Critical stock: ${shop.criticalStock.join(", ")}` : "Critical stock: none"}
-              </Text>
-              <Text style={styles.intelligenceBody}>
-                {shop.lowStock.length > 0 ? `Low stock: ${shop.lowStock.join(", ")}` : "Low stock: none"}
-              </Text>
-              <Text style={styles.intelligenceBody}>
-                {shop.healthyStock.length > 0 ? `Healthy stock: ${shop.healthyStock.join(", ")}` : "Healthy stock: none"}
-              </Text>
             </View>
           ))}
         </View>
