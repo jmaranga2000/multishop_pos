@@ -57,7 +57,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ rep
     totalNet: summary.totalNet,
     shopRankings: summary.shopRankings,
     bestSellersByShop: summary.bestSellersByShop,
-    stockSummary,
+    worstSellersAcrossShops: summary.worstSellersAcrossShops,
+    stockSummary: summary.stockSummary,
+    stockIntelligenceByShop: summary.stockIntelligenceByShop,
   };
 
   const buffer = await renderToBuffer(createElement(WeeklyInventoryReportPdf, { report: pdfData }) as Parameters<typeof renderToBuffer>[0]);

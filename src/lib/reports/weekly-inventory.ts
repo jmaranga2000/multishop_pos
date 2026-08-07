@@ -34,6 +34,7 @@ export type WeeklyReportSummary = {
     shopName: string;
     products: Array<{ productName: string; quantity: number; revenue: number }>;
   }>;
+  worstSellersAcrossShops: Array<{ productName: string; quantity: number; revenue: number }>;
   stockSummary: Array<{
     shopName: string;
     totalProducts: number;
@@ -41,6 +42,13 @@ export type WeeklyReportSummary = {
     criticalStockCount: number;
     outOfStockCount: number;
     inventoryValue: number;
+  }>;
+  stockIntelligenceByShop: Array<{
+    shopName: string;
+    outOfStock: string[];
+    criticalStock: string[];
+    lowStock: string[];
+    healthyStock: string[];
   }>;
 };
 
@@ -64,9 +72,18 @@ export async function loadWeeklyReportSummary(businessId: string, periodStart: D
       .toArray(),
     database
       .collection("shopInventory")
-      .find({ shopId: { $in: shopIds } }, { projection: { _id: 0, shopId: 1, quantity: 1, reorderLevel: 1, criticalLevel: 1, costPrice: 1 } })
+      .find({ shopId: { $in: shopIds } }, { projection: { _id: 0, shopId: 1, productId: 1, quantity: 1, reorderLevel: 1, criticalLevel: 1, costPrice: 1 } })
       .toArray(),
   ]);
+
+  const productIds = Array.from(new Set(inventoryRows.map((row) => row.productId)));
+  const products = productIds.length
+    ? await database
+        .collection("products")
+        .find({ id: { $in: productIds } }, { projection: { _id: 0, id: 1, name: 1 } })
+        .toArray()
+    : [];
+  const productById = new Map(products.map((product) => [product.id, product.name]));
 
   const saleIds = sales.map((sale) => sale.id);
   const saleItems = saleIds.length
@@ -128,14 +145,43 @@ export async function loadWeeklyReportSummary(businessId: string, periodStart: D
     const lowStockCount = inventoryRowsForShop.filter((row) => getStockStatus(row.quantity, row.reorderLevel, row.criticalLevel) === "LOW_STOCK").length;
     const criticalStockCount = inventoryRowsForShop.filter((row) => getStockStatus(row.quantity, row.reorderLevel, row.criticalLevel) === "CRITICAL").length;
     const outOfStockCount = inventoryRowsForShop.filter((row) => getStockStatus(row.quantity, row.reorderLevel, row.criticalLevel) === "OUT_OF_STOCK").length;
+    const healthyCount = inventoryRowsForShop.length - lowStockCount - criticalStockCount - outOfStockCount;
     const inventoryValue = inventoryRowsForShop.reduce((sum, row) => sum + Number(row.costPrice) * Number(row.quantity), 0);
     return {
       shop,
       lowStockCount,
       criticalStockCount,
       outOfStockCount,
+      healthyCount,
       inventoryValue,
       totalProducts: inventoryRowsForShop.length,
+    };
+  });
+
+  const stockIntelligenceByShop = shopSummaryRecords.map((summary) => {
+    const inventoryRowsForShop = inventoryRows.filter((row) => row.shopId === summary.shop.id);
+    const outOfStock = inventoryRowsForShop
+      .filter((row) => getStockStatus(row.quantity, row.reorderLevel, row.criticalLevel) === "OUT_OF_STOCK")
+      .map((row) => productById.get(row.productId) ?? "Unknown product")
+      .slice(0, 6);
+    const criticalStock = inventoryRowsForShop
+      .filter((row) => getStockStatus(row.quantity, row.reorderLevel, row.criticalLevel) === "CRITICAL")
+      .map((row) => row.productName ?? "Unknown product")
+      .slice(0, 6);
+    const lowStock = inventoryRowsForShop
+      .filter((row) => getStockStatus(row.quantity, row.reorderLevel, row.criticalLevel) === "LOW_STOCK")
+      .map((row) => row.productName ?? "Unknown product")
+      .slice(0, 6);
+    const healthyStock = inventoryRowsForShop
+      .filter((row) => getStockStatus(row.quantity, row.reorderLevel, row.criticalLevel) === "IN_STOCK")
+      .map((row) => row.productName ?? "Unknown product")
+      .slice(0, 6);
+    return {
+      shopName: summary.shop.name,
+      outOfStock,
+      criticalStock,
+      lowStock,
+      healthyStock,
     };
   });
 
@@ -172,6 +218,22 @@ export async function loadWeeklyReportSummary(businessId: string, periodStart: D
     };
   });
 
+  const worstSellersAcrossShops = Array.from(
+    Array.from(productTotalsByShop.values()).reduce((map, productTotals) => {
+      for (const [productName, totals] of productTotals.entries()) {
+        const existing = map.get(productName) ?? { quantity: 0, revenue: 0 };
+        existing.quantity += totals.quantity;
+        existing.revenue += totals.revenue;
+        map.set(productName, existing);
+      }
+      return map;
+    }, new Map<string, { quantity: number; revenue: number }>())
+      .entries(),
+  )
+    .map(([productName, totals]) => ({ productName, quantity: totals.quantity, revenue: totals.revenue }))
+    .sort((left, right) => left.quantity - right.quantity)
+    .slice(0, 5);
+
   const stockSummary = shopSummaryRecords.map((summary) => ({
     shopName: summary.shop.name,
     totalProducts: summary.totalProducts,
@@ -189,7 +251,9 @@ export async function loadWeeklyReportSummary(businessId: string, periodStart: D
     totalNet: totalRevenue - totalExpenses,
     shopRankings,
     bestSellersByShop,
+    worstSellersAcrossShops,
     stockSummary,
+    stockIntelligenceByShop,
   } satisfies WeeklyReportSummary;
 }
 
@@ -281,7 +345,9 @@ export async function generateInventoryReport(businessId: string, periodStart: D
       totalNet: summary.totalNet,
       shopRankings: summary.shopRankings,
       bestSellersByShop: summary.bestSellersByShop,
+      worstSellersAcrossShops: summary.worstSellersAcrossShops,
       stockSummary: summary.stockSummary,
+      stockIntelligenceByShop: summary.stockIntelligenceByShop,
     };
     const pdfBuffer = await renderToBuffer(createElement(WeeklyInventoryReportPdf, { report: pdfData }) as Parameters<typeof renderToBuffer>[0]);
     const pdfBase64 = Buffer.from(pdfBuffer).toString("base64");

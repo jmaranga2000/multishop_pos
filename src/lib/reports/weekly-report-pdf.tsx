@@ -24,6 +24,20 @@ type StockSummaryRow = {
   inventoryValue: number;
 };
 
+type WorstSeller = {
+  productName: string;
+  quantity: number;
+  revenue: number;
+};
+
+type StockIntelligence = {
+  shopName: string;
+  outOfStock: string[];
+  criticalStock: string[];
+  lowStock: string[];
+  healthyStock: string[];
+};
+
 export type WeeklyReportPdfData = {
   businessName: string;
   currency: string;
@@ -36,7 +50,9 @@ export type WeeklyReportPdfData = {
   totalNet: number;
   shopRankings: RankingRow[];
   bestSellersByShop: Array<{ shopName: string; products: BestSeller[] }>;
+  worstSellersAcrossShops: WorstSeller[];
   stockSummary: StockSummaryRow[];
+  stockIntelligenceByShop: StockIntelligence[];
 };
 
 const styles = StyleSheet.create({
@@ -177,6 +193,44 @@ const styles = StyleSheet.create({
     color: "#0f172a",
     backgroundColor: "#e0f2fe",
   },
+  stockIntelligenceCard: {
+    marginBottom: 10,
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: "#ffffff",
+    border: "1 solid #e2e8f0",
+  },
+  intelligenceRow: {
+    display: "flex",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 4,
+    marginBottom: 6,
+  },
+  intelligenceChip: {
+    padding: 4,
+    borderRadius: 8,
+    fontSize: 8,
+    fontWeight: 700,
+    color: "#111827",
+  },
+  intensityPurple: {
+    backgroundColor: "#ddd6fe",
+  },
+  intensityRed: {
+    backgroundColor: "#fecaca",
+  },
+  intensityYellow: {
+    backgroundColor: "#fef3c7",
+  },
+  intensityGreen: {
+    backgroundColor: "#bbf7d0",
+  },
+  intelligenceBody: {
+    fontSize: 8,
+    color: "#475569",
+    lineHeight: 1.3,
+  },
 });
 
 function formatCurrency(value: number, currency: string) {
@@ -282,6 +336,56 @@ export function WeeklyInventoryReportPdf({ report }: { report: WeeklyReportPdfDa
                   </View>
                 ) : null}
               </View>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Worst selling products across shops</Text>
+          <View style={styles.table}>
+            <View style={styles.tableHeader}>
+              <Text style={[styles.tableHeaderText, styles.wide]}>Product</Text>
+              <Text style={[styles.tableHeaderText, styles.normal]}>Qty sold</Text>
+              <Text style={[styles.tableHeaderText, styles.normal]}>Revenue</Text>
+            </View>
+            {report.worstSellersAcrossShops.map((product, index) => (
+              <View key={`${product.productName}-${index}`} style={index % 2 === 1 ? [styles.tableRow, styles.tableRowAlt] : styles.tableRow}>
+                <Text style={[styles.cell, styles.wide]}>{product.productName}</Text>
+                <Text style={[styles.cell, styles.normal]}>{formatCount(product.quantity)}</Text>
+                <Text style={[styles.cell, styles.normal]}>{formatCurrency(product.revenue, report.currency)}</Text>
+              </View>
+            ))}
+            {report.worstSellersAcrossShops.length === 0 ? (
+              <View style={styles.tableRow}>
+                <Text style={styles.cell}>No sales data available to rank worst sellers.</Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Stock intelligence by shop</Text>
+          {report.stockIntelligenceByShop.map((shop, shopIndex) => (
+            <View key={`${shop.shopName}-${shopIndex}`} style={styles.stockIntelligenceCard}>
+              <Text style={styles.bestSellerShop}>{shop.shopName}</Text>
+              <View style={styles.intelligenceRow}>
+                <Text style={[styles.intelligenceChip, styles.intensityRed]}>Out of stock ({shop.outOfStock.length})</Text>
+                <Text style={[styles.intelligenceChip, styles.intensityRed]}>Critical ({shop.criticalStock.length})</Text>
+                <Text style={[styles.intelligenceChip, styles.intensityYellow]}>Low ({shop.lowStock.length})</Text>
+                <Text style={[styles.intelligenceChip, styles.intensityGreen]}>Healthy ({shop.healthyStock.length})</Text>
+              </View>
+              <Text style={styles.intelligenceBody}>
+                {shop.outOfStock.length > 0 ? `Out of stock: ${shop.outOfStock.join(", ")}` : "Out of stock: none"}
+              </Text>
+              <Text style={styles.intelligenceBody}>
+                {shop.criticalStock.length > 0 ? `Critical stock: ${shop.criticalStock.join(", ")}` : "Critical stock: none"}
+              </Text>
+              <Text style={styles.intelligenceBody}>
+                {shop.lowStock.length > 0 ? `Low stock: ${shop.lowStock.join(", ")}` : "Low stock: none"}
+              </Text>
+              <Text style={styles.intelligenceBody}>
+                {shop.healthyStock.length > 0 ? `Healthy stock: ${shop.healthyStock.join(", ")}` : "Healthy stock: none"}
+              </Text>
             </View>
           ))}
         </View>
