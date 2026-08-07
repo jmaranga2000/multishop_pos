@@ -3,7 +3,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/rbac";
 import { getInventoryReportDetail } from "@/services/admin/report-service";
-import { WeeklyInventoryReportPdf } from "@/lib/reports/weekly-report-pdf";
+import { WeeklyInventoryReportPdf, type WeeklyReportPdfData } from "@/lib/reports/weekly-report-pdf";
 import { loadWeeklyReportSummary } from "@/lib/reports/weekly-inventory";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ reportId: string }> }) {
@@ -13,7 +13,39 @@ export async function GET(_request: Request, { params }: { params: Promise<{ rep
   if (!report) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const summary = await loadWeeklyReportSummary(user.businessId, report.periodStart, report.periodEnd);
-  const pdfData = {
+  type StockSummaryRow = {
+    shopName: string;
+    totalProducts: number;
+    lowStockCount: number;
+    criticalStockCount: number;
+    outOfStockCount: number;
+    inventoryValue: number;
+  };
+
+  const stockSummary = Array.from(
+    report.items
+      .reduce((map: Map<string, StockSummaryRow>, item: { shop: { name: string }; stockStatus: string; costValue?: number | string | null }) => {
+        const shopName = item.shop.name;
+        const existing = map.get(shopName) ?? {
+          shopName,
+          totalProducts: 0,
+          lowStockCount: 0,
+          criticalStockCount: 0,
+          outOfStockCount: 0,
+          inventoryValue: 0,
+        };
+        existing.totalProducts += 1;
+        existing.lowStockCount += item.stockStatus === "LOW_STOCK" ? 1 : 0;
+        existing.criticalStockCount += item.stockStatus === "CRITICAL" ? 1 : 0;
+        existing.outOfStockCount += item.stockStatus === "OUT_OF_STOCK" ? 1 : 0;
+        existing.inventoryValue += Number(item.costValue ?? 0);
+        map.set(shopName, existing);
+        return map;
+      }, new Map<string, StockSummaryRow>())
+      .values(),
+  ) as StockSummaryRow[];
+
+  const pdfData: WeeklyReportPdfData = {
     businessName: report.business.name,
     currency: report.business.currency,
     periodTitle: `${report.periodStart.toLocaleDateString("en-KE")} – ${report.periodEnd.toLocaleDateString("en-KE")}`,
@@ -25,7 +57,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ rep
     totalNet: summary.totalNet,
     shopRankings: summary.shopRankings,
     bestSellersByShop: summary.bestSellersByShop,
-    stockSummary: summary.stockSummary,
+    stockSummary,
   };
 
   const buffer = await renderToBuffer(createElement(WeeklyInventoryReportPdf, { report: pdfData }) as Parameters<typeof renderToBuffer>[0]);
