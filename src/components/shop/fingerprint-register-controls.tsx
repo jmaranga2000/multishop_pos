@@ -11,13 +11,13 @@ import {
 } from "@/lib/biometric-client";
 
 function selectedCashier() {
-  const salesperson = document.getElementById("register-salesperson-id") as HTMLSelectElement | null;
+  const salesperson = document.querySelector<HTMLInputElement | HTMLSelectElement>("#register-salesperson-id, [name='salespersonId']");
   if (!salesperson?.value) throw new Error("Choose the cashier first.");
   return salesperson.value;
 }
 
 function enteredPin() {
-  const pin = document.getElementById("register-pin") as HTMLInputElement | null;
+  const pin = document.querySelector<HTMLInputElement>("#register-pin, [name='pin']");
   if (!pin?.value) throw new Error("Enter the cashier PIN to set up fingerprint.");
   return pin.value;
 }
