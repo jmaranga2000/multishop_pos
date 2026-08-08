@@ -109,6 +109,7 @@ export function PosShell({
   const [unitModalEntry, setUnitModalEntry] = useState<InventoryEntry | null>(null);
   const [unitModalSelected, setUnitModalSelected] = useState<string | null>(null);
   const firstUnitRadioRef = useRef<HTMLInputElement | null>(null);
+  const mpesaFlowButtonRef = useRef<HTMLButtonElement | null>(null);
   const [processing, setProcessing] = useState(false);
   const [amountReceived, setAmountReceived] = useState("");
   const [customerName, setCustomerName] = useState("Walk-in customer");
@@ -312,6 +313,21 @@ export function PosShell({
       return () => window.removeEventListener("keydown", onKey);
     }
   }, [unitModalOpen]);
+
+  useEffect(() => {
+    if (mpesaOverlayOpen && mpesaFlow === null) {
+      setTimeout(() => {
+        mpesaFlowButtonRef.current?.focus();
+      }, 0);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (mpesaOverlayOpen && e.key === "Escape") {
+        setMpesaOverlayOpen(false);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mpesaOverlayOpen, mpesaFlow]);
 
   useEffect(() => {
     let active = true;
@@ -1083,7 +1099,7 @@ export function PosShell({
           {mpesaFlow === null ? (
             <>
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                <button type="button" onClick={() => setMpesaFlow("STK_PUSH")} className={`w-full rounded-3xl border px-5 py-4 text-left text-sm font-bold ${mpesaFlow === "STK_PUSH" ? "border-sky-500 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"}`}>
+                <button ref={mpesaFlowButtonRef} type="button" onClick={() => setMpesaFlow("STK_PUSH")} className={`w-full rounded-3xl border px-5 py-4 text-left text-sm font-bold ${mpesaFlow === "STK_PUSH" ? "border-sky-500 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"}`}>
                   <div className="mb-3 text-xs uppercase tracking-wide text-slate-500">STK Push</div>
                   <div className="text-base font-semibold text-slate-900">Send payment request to customer</div>
                   <div className="mt-3 text-xs text-slate-500">{mpesaStkEnabled ? "Configured" : "Not configured"}</div>
