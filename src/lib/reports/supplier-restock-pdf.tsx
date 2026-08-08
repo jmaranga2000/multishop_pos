@@ -10,11 +10,8 @@ type SupplierRestockPdfProps = {
   referenceNumber: string;
   products: Array<{
     productName: string;
-    sku: string;
     currentQuantity: number;
-    targetQuantity: number;
     quantityNeeded: number;
-    status: string;
     unit: string;
   }>;
   generatedAt: string;
@@ -88,21 +85,15 @@ export function SupplierRestockPdf({
         <View style={styles.table}>
           <View style={styles.tableHeader}>
             <Text style={styles.tableHeaderCell}>Product</Text>
-            <Text style={styles.tableHeaderCell}>SKU</Text>
-            <Text style={styles.tableHeaderCell}>Current stock</Text>
-            <Text style={styles.tableHeaderCell}>Target</Text>
             <Text style={styles.tableHeaderCell}>Needed</Text>
-            <Text style={styles.tableHeaderCell}>Status</Text>
+            <Text style={styles.tableHeaderCell}>Stock</Text>
             <Text style={styles.tableHeaderCell}>Unit</Text>
           </View>
           {products.map((product, index) => (
             <View key={`${product.productName}-${index}`} style={styles.tableRow}>
               <Text style={styles.tableCell}>{product.productName}</Text>
-              <Text style={styles.tableCell}>{product.sku}</Text>
-              <Text style={styles.tableCell}>{product.currentQuantity}</Text>
-              <Text style={styles.tableCell}>{product.targetQuantity}</Text>
               <Text style={styles.tableCell}>{product.quantityNeeded}</Text>
-              <Text style={styles.tableCell}>{product.status}</Text>
+              <Text style={styles.tableCell}>{product.currentQuantity}</Text>
               <Text style={styles.tableCell}>{product.unit}</Text>
             </View>
           ))}

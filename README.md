@@ -111,17 +111,18 @@ The password has no source-code default and must be supplied through the environ
 
 ## Scheduled jobs
 
-Call the protected endpoints with:
+QStash invokes the protected job endpoints with signed requests. Configure the QStash variables in `.env.local`, then create or update the schedules with:
 
-```http
-Authorization: Bearer <CRON_SECRET>
+```bash
+npm run qstash:schedules:upsert
 ```
 
-Recommended Africa/Nairobi schedules:
+The default Africa/Nairobi schedules are:
 
 ```text
-POST /api/jobs/process-queues      every 5 minutes
-POST /api/jobs/weekly-inventory    Friday at 21:00
+POST /api/jobs/process-queues      every minute
+POST /api/jobs/daily-shop-summary  daily at 21:00
+POST /api/jobs/weekly-inventory    Monday at 08:00
 ```
 
 ## Verification

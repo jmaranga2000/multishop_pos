@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import QRCode from "qrcode";
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Banknote, Camera, CreditCard, Minus, PackageX, Plus, ScanLine, Search, ShoppingCart, Trash2, WifiOff } from "lucide-react";
 import { MdPhoneAndroid } from "react-icons/md";
@@ -124,7 +124,6 @@ export function PosShell({
   const [splitPaymentEnabled, setSplitPaymentEnabled] = useState(false);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("CASH");
   const [mpesaFlow, setMpesaFlow] = useState<MpesaFlow>(null);
-  const [showMpesaOverlay, setShowMpesaOverlay] = useState(false);
   const [mpesaPhone, setMpesaPhone] = useState("");
   const [mpesaStatus, setMpesaStatus] = useState("Ready");
   const [mpesaReference, setMpesaReference] = useState<string | null>(null);
@@ -189,7 +188,7 @@ export function PosShell({
     }));
   }
 
-  function getPricingOption(entry: InventoryEntry): PricingOption {
+  const getPricingOption = useCallback((entry: InventoryEntry): PricingOption => {
     const product = entry.product!;
     const selectedUnitId = selectedUnits[product.id];
     if (product.pricingOptions?.length) {
@@ -203,9 +202,9 @@ export function PosShell({
       costPriceMinor: entry.costPriceMinor,
       sellingPriceMinor: entry.sellingPriceMinor,
     };
-  }
+  }, [selectedUnits]);
 
-  function add(entry: InventoryEntry, options?: { fromBarcode?: boolean }) {
+  const add = useCallback((entry: InventoryEntry, options?: { fromBarcode?: boolean }) => {
     const product = entry.product!;
     if (entry.projectedQuantity <= 0 || !entry.isAvailable) {
       toast.error(`${product.name} is out of stock`);
@@ -249,15 +248,20 @@ export function PosShell({
       ];
     });
     toast.success(`${product.name} added to cart`);
-  }
+  }, [getPricingOption, selectedUnits]);
 
-  function confirmUnitSelection() {
-    if (!unitModalEntry) return setUnitModalOpen(false);
+  const confirmUnitSelection = useCallback(() => {
+    if (!unitModalEntry) {
+      setUnitModalOpen(false);
+      return;
+    }
     const entry = unitModalEntry;
     const product = entry.product!;
     const selectedId = unitModalSelected;
     const pricingOption = product.pricingOptions?.find((o) => o.unitId === selectedId) ?? getPricingOption(entry);
-    if (product.id && selectedId) setSelectedUnits((cur) => ({ ...cur, [product.id]: selectedId }));
+    if (product.id && selectedId) {
+      setSelectedUnits((cur) => ({ ...cur, [product.id]: selectedId }));
+    }
     setCart((current) => {
       const existing = current.find((item) => item.productId === product.id && item.unitId === pricingOption.unitId);
       if (existing) {
@@ -287,7 +291,7 @@ export function PosShell({
     toast.success(`${product.name} added to cart`);
     setUnitModalOpen(false);
     setUnitModalEntry(null);
-  }
+  }, [getPricingOption, unitModalEntry, unitModalSelected]);
 
   function cancelUnitSelection() {
     setUnitModalOpen(false);
@@ -326,6 +330,33 @@ export function PosShell({
       streamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, []);
+
+  const handleBarcodeScan = useCallback(async (code: string) => {
+    const normalized = code.trim();
+    if (!normalized) return;
+    const match = products.find((entry) => entry.product?.barcode?.trim().toLowerCase() === normalized.toLowerCase());
+    if (!match?.product) {
+      toast.error("Unknown barcode");
+      return;
+    }
+    if (match.product.status !== "ACTIVE") {
+      toast.error(`${match.product.name} is not active`);
+      return;
+    }
+    if (!match.isAvailable || match.projectedQuantity <= 0) {
+      toast.warning(`${match.product.name} is out of stock`);
+      return;
+    }
+    const existingLine = cart.find((item) => item.productId === match.product!.id);
+    if (existingLine) {
+      if (existingLine.quantity >= match.projectedQuantity) {
+        toast.warning(`Only ${match.projectedQuantity} units are projected to be available`);
+        return;
+      }
+    }
+    add(match, { fromBarcode: true });
+    setBarcodeInput("");
+  }, [cart, products, add]);
 
   useEffect(() => {
     if (!barcodeScanningEnabled) return;
@@ -372,34 +403,7 @@ export function PosShell({
       window.removeEventListener("keydown", handleKeyDown);
       if (hardwareScanTimeoutRef.current) clearTimeout(hardwareScanTimeoutRef.current);
     };
-  }, [barcodeScanningEnabled, cameraActive, barcodeInput]);
-
-  async function handleBarcodeScan(code: string) {
-    const normalized = code.trim();
-    if (!normalized) return;
-    const match = products.find((entry) => entry.product?.barcode?.trim().toLowerCase() === normalized.toLowerCase());
-    if (!match?.product) {
-      toast.error("Unknown barcode");
-      return;
-    }
-    if (match.product.status !== "ACTIVE") {
-      toast.error(`${match.product.name} is not active`);
-      return;
-    }
-    if (!match.isAvailable || match.projectedQuantity <= 0) {
-      toast.warning(`${match.product.name} is out of stock`);
-      return;
-    }
-    const existingLine = cart.find((item) => item.productId === match.product!.id);
-    if (existingLine) {
-      if (existingLine.quantity >= match.projectedQuantity) {
-        toast.warning(`Only ${match.projectedQuantity} units are projected to be available`);
-        return;
-      }
-    }
-    add(match, { fromBarcode: true });
-    setBarcodeInput("");
-  }
+  }, [barcodeScanningEnabled, cameraActive, barcodeInput, hardwareScanBuffer, handleBarcodeScan]);
 
   async function startCameraScan() {
     if (!barcodeScanningEnabled) return;
@@ -521,30 +525,19 @@ export function PosShell({
     setNotes("");
     setSplitPaymentEnabled(false);
     setPaymentMode("CASH");
-    setShowMpesaOverlay(false);
     setMpesaFlow(null);
     setMpesaPhone("");
     setMpesaStatus("Ready");
-    setMpesaReference(null);
     setMpesaError(null);
     setManualConfirmationCandidates([]);
     setManualConfirmationSelection(null);
     setManualConfirmationChecking(false);
-    setManualConfirmationConfirmed(false);
     setCompletedSale(null);
     setCompletedSaleLocalId(null);
     setSaleLifecycleStatus("LOCAL_ONLY");
     setTimeout(() => {
       searchInputRef.current?.focus();
     }, 0);
-  }
-
-  function closeMpesaOverlay() {
-    setShowMpesaOverlay(false);
-    setPaymentMode("CASH");
-    setMpesaFlow(null);
-    setMpesaStatus("Ready");
-    setMpesaError(null);
   }
 
   function buildReceiptNumber(localId: string) {
@@ -690,6 +683,7 @@ export function PosShell({
 
   async function startMpesaPayment(mode: "STK_PUSH" | "PAY_TO_TILL") {
     if (!cart.length || mpesaInFlight) return;
+    setMpesaFlow(mode);
     setMpesaInFlight(true);
     setMpesaError(null);
     setManualConfirmationCandidates([]);
@@ -720,7 +714,7 @@ export function PosShell({
             quantity: item.quantity,
             unitPriceMinor: item.unitPriceMinor,
             unitCostMinor: item.unitCostMinor,
-          taxRate: item.taxRate,
+            taxRate: item.taxRate,
           })),
         }),
       });
@@ -747,9 +741,10 @@ export function PosShell({
       }
       toast.success(mode === "STK_PUSH" ? "STK Push request prepared" : "Till payment waiting started");
     } catch (error) {
-      setMpesaStatus("Payment failed");
+        setMpesaStatus("Payment failed");
       setMpesaError(error instanceof Error ? error.message : "Unable to start M-Pesa payment");
       toast.error(error instanceof Error ? error.message : "Unable to start M-Pesa payment");
+      setMpesaFlow(null);
     } finally {
       setMpesaInFlight(false);
     }
@@ -781,10 +776,6 @@ export function PosShell({
     }, 3000);
     return () => window.clearInterval(intervalId);
   }, [paymentMode, mpesaFlow, shopId, totalMinor]);
-
-  useEffect(() => {
-    setShowMpesaOverlay(paymentMode === "MPESA");
-  }, [paymentMode]);
 
   useEffect(() => {
     if (paymentMode === "MPESA" && !mpesaEnabled) {
@@ -1071,9 +1062,56 @@ export function PosShell({
             {!online ? <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Offline mode only allows cash. M-Pesa and card payments remain unavailable until the connection is restored.</div> : null}
             {paymentMode === "MPESA" ? (
               <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                  M-Pesa options are available in a floating panel. Choose STK Push or Pay to Till to continue.
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <button type="button" onClick={() => startMpesaPayment("STK_PUSH")} className={`w-full rounded-2xl border px-4 py-3 text-sm font-bold ${paymentMode === "MPESA" && mpesaFlow === "STK_PUSH" ? "border-sky-500 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"}`}>
+                    <div className="mb-2 text-xs uppercase tracking-wide text-slate-500">STK Push</div>
+                    <div className="text-sm font-semibold">Enter phone number and send push</div>
+                    <div className="mt-3 text-xs text-slate-500">{mpesaStkEnabled ? "Configured" : "Not configured"}</div>
+                  </button>
+                  <button type="button" onClick={() => startMpesaPayment("PAY_TO_TILL")} className={`w-full rounded-2xl border px-4 py-3 text-sm font-bold ${paymentMode === "MPESA" && mpesaFlow === "PAY_TO_TILL" ? "border-sky-500 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"}`}>
+                    <div className="mb-2 text-xs uppercase tracking-wide text-slate-500">Pay to Till</div>
+                    <div className="text-sm font-semibold">Manual/confirm till payment</div>
+                    <div className="mt-3 text-xs text-slate-500">{mpesaPayToTillEnabled && mpesaTillNumber ? "Configured" : "Not configured"}</div>
+                  </button>
                 </div>
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">M-Pesa number</label>
+                  <Input type="tel" inputMode="tel" value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="Enter customer phone number" />
+                  <p className="mt-2 text-xs text-slate-500">Use this field for STK Push and Pay to Till.</p>
+                </div>
+                <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3 text-sm text-slate-700">
+                  <span className="font-semibold">Status:</span> {mpesaStatus}
+                </div>
+                {mpesaError ? <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{mpesaError}</div> : null}
+                {mpesaReference ? <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">Reference: {mpesaReference}</div> : null}
+                {mpesaFlow === "PAY_TO_TILL" && manualConfirmationCandidates.length ? (
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">Recent payers</p>
+                        <p className="text-xs text-slate-500">Select the payer to confirm the manual payment.</p>
+                      </div>
+                      <Button type="button" variant="secondary" disabled={!manualConfirmationSelection || mpesaInFlight || manualConfirmationChecking} onClick={() => void confirmManualMpesaPayment()}>
+                        {manualConfirmationChecking ? "Confirming..." : "Confirm payment"}
+                      </Button>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {manualConfirmationCandidates.map((candidate) => (
+                        <label key={`${candidate.phone}-${candidate.amountMinor}`} className="flex items-center justify-between rounded-2xl border p-3">
+                          <div className="flex items-center gap-3">
+                            <input type="radio" name="manualConfirmationCandidate" value={`${candidate.phone}-${candidate.amountMinor}`} checked={manualConfirmationSelection === `${candidate.phone}-${candidate.amountMinor}`} onChange={() => setManualConfirmationSelection(`${candidate.phone}-${candidate.amountMinor}`)} className="h-4 w-4" />
+                            <div>
+                              <div className="font-semibold">{candidate.name}</div>
+                              <div className="text-xs text-slate-500">{candidate.phone}</div>
+                            </div>
+                          </div>
+                          <div className="text-sm font-black text-slate-900">{formatMoney(fromMinorUnits(candidate.amountMinor))}</div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {manualConfirmationConfirmed ? <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">Manual M-Pesa payment confirmed.</div> : null}
               </div>
             ) : null}
             {paymentMode === "CASH" ? <Button onClick={() => void checkout()} isLoading={processing} disabled={!registerSessionId || !cart.length || processing} className="mt-3 w-full" size="lg" loadingText="Completing sale..."><Banknote className="h-5 w-5"/>Complete cash sale{pendingCount ? ` • ${pendingCount} pending` : ""}</Button> : null}
@@ -1081,14 +1119,6 @@ export function PosShell({
         </div>
       </Card>
     </div>
-    {showMpesaOverlay ? (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" onClick={closeMpesaOverlay} />
-        <div className="relative z-10 w-full max-w-3xl rounded-[32px] border border-slate-200 bg-white p-6 shadow-2xl">
-          <div className="text-sm text-slate-600">M-Pesa overlay placeholder</div>
-        </div>
-      </div>
-    ) : null}
     {unitModalOpen && unitModalEntry ? (
       <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="unit-modal-title" aria-describedby="unit-modal-description">
         <div className="absolute inset-0 bg-black opacity-40" onClick={cancelUnitSelection} />

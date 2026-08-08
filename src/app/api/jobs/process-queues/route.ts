@@ -1,12 +1,19 @@
+import { verifySignatureAppRouter } from "@upstash/qstash/nextjs";
 import { NextResponse } from "next/server";
+import { getQStashVerificationUrl } from "@/lib/qstash";
 import { processNotificationQueues } from "@/services/jobs/queue-processing-service";
 
-function authorized(request: Request) {
-  return request.headers.get("authorization") === `Bearer ${process.env.CRON_SECRET}`;
+export const runtime = "nodejs";
+
+async function handler() {
+  try {
+    return NextResponse.json(await processNotificationQueues());
+  } catch (error) {
+    console.error("QStash notification queue processing failed:", error);
+    return NextResponse.json({ error: "Notification queue processing failed." }, { status: 500 });
+  }
 }
 
-export async function POST(request: Request) {
-  if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const result = await processNotificationQueues();
-  return NextResponse.json(result);
-}
+export const POST = verifySignatureAppRouter(handler, {
+  url: getQStashVerificationUrl("/api/jobs/process-queues"),
+});

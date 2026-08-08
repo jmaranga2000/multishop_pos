@@ -1,16 +1,19 @@
+import { verifySignatureAppRouter } from "@upstash/qstash/nextjs";
 import { NextResponse } from "next/server";
+import { getQStashVerificationUrl } from "@/lib/qstash";
 import { runWeeklyInventoryJob } from "@/services/jobs/weekly-inventory-job-service";
 
-function authorized(request: Request) {
-  return request.headers.get("authorization") === `Bearer ${process.env.CRON_SECRET}`;
-}
+export const runtime = "nodejs";
 
-export async function POST(request: Request) {
-  if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+async function handler() {
   try {
-    const result = await runWeeklyInventoryJob();
-    return NextResponse.json(result);
-  } catch {
-    return NextResponse.json({ error: "Report generation failed" }, { status: 500 });
+    return NextResponse.json(await runWeeklyInventoryJob());
+  } catch (error) {
+    console.error("QStash weekly inventory job failed:", error);
+    return NextResponse.json({ error: "Report generation failed." }, { status: 500 });
   }
 }
+
+export const POST = verifySignatureAppRouter(handler, {
+  url: getQStashVerificationUrl("/api/jobs/weekly-inventory"),
+});

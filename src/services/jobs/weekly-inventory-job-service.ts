@@ -2,6 +2,8 @@ import { db } from "@/lib/db";
 import { buildShopPerformanceHtml, queueNotification } from "@/lib/notifications/service";
 import { generateInventoryReport, previousWeekRange } from "@/lib/reports/weekly-inventory";
 
+const NAIROBI_UTC_OFFSET_MS = 3 * 60 * 60 * 1_000;
+
 function getNairobiDateParts(date = new Date()) {
   const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Africa/Nairobi",
@@ -56,8 +58,8 @@ export async function runDailyShopPerformanceSummary() {
   const log = await db.scheduledJobLog.create({ data: { jobType: "DAILY_SHOP_SUMMARY", status: "RUNNING" } });
   const nowInNairobi = new Date();
   const parts = getNairobiDateParts(nowInNairobi);
-  const todayStart = new Date(Date.UTC(parts.year, parts.month - 1, parts.day, 0, 0, 0));
-  const todayEnd = new Date(Date.UTC(parts.year, parts.month - 1, parts.day, 23, 59, 59, 999));
+  const todayStart = new Date(Date.UTC(parts.year, parts.month - 1, parts.day, 0, 0, 0) - NAIROBI_UTC_OFFSET_MS);
+  const todayEnd = nowInNairobi;
   try {
     const businesses = await db.business.findMany({ include: { shops: true } });
     let processed = 0;

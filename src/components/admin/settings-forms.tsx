@@ -190,7 +190,7 @@ export function AdminSettingsStatusCard() {
       <CardContent className="space-y-3">
         <div className="flex justify-between rounded-xl bg-slate-50 p-3"><span className="text-sm font-semibold">SMTP</span><Badge tone={process.env.SMTP_HOST ? "success" : "warning"}>{process.env.SMTP_HOST ? "Configured" : "Not configured"}</Badge></div>
         <div className="flex justify-between rounded-xl bg-slate-50 p-3"><span className="text-sm font-semibold">Web Push / VAPID</span><Badge tone={process.env.VAPID_PRIVATE_KEY ? "success" : "warning"}>{process.env.VAPID_PRIVATE_KEY ? "Configured" : "Not configured"}</Badge></div>
-        <div className="flex justify-between rounded-xl bg-slate-50 p-3"><span className="text-sm font-semibold">Cron protection</span><Badge tone={process.env.CRON_SECRET ? "success" : "warning"}>{process.env.CRON_SECRET ? "Configured" : "Not configured"}</Badge></div>
+        <div className="flex justify-between rounded-xl bg-slate-50 p-3"><span className="text-sm font-semibold">QStash job protection</span><Badge tone="success">Signed requests</Badge></div>
       </CardContent>
     </Card>
   );

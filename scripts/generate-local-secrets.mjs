@@ -26,10 +26,9 @@ const vapidCurve = createECDH("prime256v1");
 vapidCurve.generateKeys();
 setValue("AUTH_SECRET", randomBytes(48).toString("base64url"));
 setValue("NEXTAUTH_SECRET", randomBytes(48).toString("base64url"));
-setValue("CRON_SECRET", randomBytes(48).toString("base64url"));
 setValue("NEXT_PUBLIC_VAPID_PUBLIC_KEY", vapidCurve.getPublicKey().toString("base64url"));
 setValue("VAPID_PRIVATE_KEY", vapidCurve.getPrivateKey().toString("base64url"));
 setValue("VAPID_SUBJECT", "mailto:jmaranga35@gmail.com");
 
 await fs.writeFile(target, contents, { encoding: "utf8", mode: 0o600 });
-console.log("Generated fresh local authentication, cron, and VAPID secrets in .env.local.");
+console.log("Generated fresh local authentication and VAPID secrets in .env.local.");
