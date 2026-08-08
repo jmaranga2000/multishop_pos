@@ -4,7 +4,7 @@ import Image from "next/image";
 import QRCode from "qrcode";
 import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Banknote, Camera, CreditCard, Minus, PackageX, Plus, ScanLine, Search, ShoppingCart, Trash2, WifiOff } from "lucide-react";
+import { Banknote, Camera, CreditCard, Minus, PackageX, Plus, ScanLine, Search, ShoppingCart, Trash2, WifiOff, X } from "lucide-react";
 import { MdPhoneAndroid } from "react-icons/md";
 import { toast } from "sonner";
 import { offlineDb } from "@/lib/offline/db";
@@ -123,6 +123,7 @@ export function PosShell({
   const hardwareScanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [splitPaymentEnabled, setSplitPaymentEnabled] = useState(false);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("CASH");
+  const [mpesaOverlayOpen, setMpesaOverlayOpen] = useState(false);
   const [mpesaFlow, setMpesaFlow] = useState<MpesaFlow>(null);
   const [mpesaPhone, setMpesaPhone] = useState("");
   const [mpesaStatus, setMpesaStatus] = useState("Ready");
@@ -1055,70 +1056,104 @@ export function PosShell({
             </div>
             <label className="mt-3 flex items-center gap-2 text-sm text-slate-600"><input className="h-4 w-4 rounded border-slate-300" type="checkbox" checked={splitPaymentEnabled} onChange={(e) => setSplitPaymentEnabled(e.target.checked)} />Allow split payment</label>
             <div className="mt-3 grid grid-cols-3 gap-2">
-              <button onClick={() => setPaymentMode("CASH")} className={`w-full rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CASH" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600"}`}><Banknote className="mx-auto mb-1 h-5 w-5"/>Cash</button>
-              <button onClick={() => setPaymentMode("MPESA")} disabled={!online} className={`w-full rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "MPESA" ? "border-sky-200 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"} ${!online ? "opacity-50" : ""}`}><MdPhoneAndroid className="mx-auto mb-1 h-5 w-5"/>M-Pesa</button>
-              <button onClick={() => setPaymentMode("CARD")} disabled={!online} className={`w-full rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CARD" ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-600"} ${!online ? "opacity-50" : ""}`}><CreditCard className="mx-auto mb-1 h-5 w-5"/>Card</button>
+              <button onClick={() => { setPaymentMode("CASH"); setMpesaOverlayOpen(false); }} className={`w-full rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CASH" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600"}`}><Banknote className="mx-auto mb-1 h-5 w-5"/>Cash</button>
+              <button onClick={() => { setPaymentMode("MPESA"); setMpesaOverlayOpen(true); }} disabled={!online} className={`w-full rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "MPESA" ? "border-sky-200 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"} ${!online ? "opacity-50" : ""}`}><MdPhoneAndroid className="mx-auto mb-1 h-5 w-5"/>M-Pesa</button>
+              <button onClick={() => { setPaymentMode("CARD"); setMpesaOverlayOpen(false); }} disabled={!online} className={`w-full rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CARD" ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-600"} ${!online ? "opacity-50" : ""}`}><CreditCard className="mx-auto mb-1 h-5 w-5"/>Card</button>
             </div>
             {!online ? <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Offline mode only allows cash. M-Pesa and card payments remain unavailable until the connection is restored.</div> : null}
-            {paymentMode === "MPESA" ? (
-              <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <button type="button" onClick={() => startMpesaPayment("STK_PUSH")} className={`w-full rounded-2xl border px-4 py-3 text-sm font-bold ${paymentMode === "MPESA" && mpesaFlow === "STK_PUSH" ? "border-sky-500 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"}`}>
-                    <div className="mb-2 text-xs uppercase tracking-wide text-slate-500">STK Push</div>
-                    <div className="text-sm font-semibold">Enter phone number and send push</div>
-                    <div className="mt-3 text-xs text-slate-500">{mpesaStkEnabled ? "Configured" : "Not configured"}</div>
-                  </button>
-                  <button type="button" onClick={() => startMpesaPayment("PAY_TO_TILL")} className={`w-full rounded-2xl border px-4 py-3 text-sm font-bold ${paymentMode === "MPESA" && mpesaFlow === "PAY_TO_TILL" ? "border-sky-500 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"}`}>
-                    <div className="mb-2 text-xs uppercase tracking-wide text-slate-500">Pay to Till</div>
-                    <div className="text-sm font-semibold">Manual/confirm till payment</div>
-                    <div className="mt-3 text-xs text-slate-500">{mpesaPayToTillEnabled && mpesaTillNumber ? "Configured" : "Not configured"}</div>
-                  </button>
-                </div>
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">M-Pesa number</label>
-                  <Input type="tel" inputMode="tel" value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="Enter customer phone number" />
-                  <p className="mt-2 text-xs text-slate-500">Use this field for STK Push and Pay to Till.</p>
-                </div>
-                <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3 text-sm text-slate-700">
-                  <span className="font-semibold">Status:</span> {mpesaStatus}
-                </div>
-                {mpesaError ? <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{mpesaError}</div> : null}
-                {mpesaReference ? <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">Reference: {mpesaReference}</div> : null}
-                {mpesaFlow === "PAY_TO_TILL" && manualConfirmationCandidates.length ? (
-                  <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">Recent payers</p>
-                        <p className="text-xs text-slate-500">Select the payer to confirm the manual payment.</p>
-                      </div>
-                      <Button type="button" variant="secondary" disabled={!manualConfirmationSelection || mpesaInFlight || manualConfirmationChecking} onClick={() => void confirmManualMpesaPayment()}>
-                        {manualConfirmationChecking ? "Confirming..." : "Confirm payment"}
-                      </Button>
-                    </div>
-                    <div className="mt-3 space-y-2">
-                      {manualConfirmationCandidates.map((candidate) => (
-                        <label key={`${candidate.phone}-${candidate.amountMinor}`} className="flex items-center justify-between rounded-2xl border p-3">
-                          <div className="flex items-center gap-3">
-                            <input type="radio" name="manualConfirmationCandidate" value={`${candidate.phone}-${candidate.amountMinor}`} checked={manualConfirmationSelection === `${candidate.phone}-${candidate.amountMinor}`} onChange={() => setManualConfirmationSelection(`${candidate.phone}-${candidate.amountMinor}`)} className="h-4 w-4" />
-                            <div>
-                              <div className="font-semibold">{candidate.name}</div>
-                              <div className="text-xs text-slate-500">{candidate.phone}</div>
-                            </div>
-                          </div>
-                          <div className="text-sm font-black text-slate-900">{formatMoney(fromMinorUnits(candidate.amountMinor))}</div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-                {manualConfirmationConfirmed ? <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">Manual M-Pesa payment confirmed.</div> : null}
-              </div>
-            ) : null}
             {paymentMode === "CASH" ? <Button onClick={() => void checkout()} isLoading={processing} disabled={!registerSessionId || !cart.length || processing} className="mt-3 w-full" size="lg" loadingText="Completing sale..."><Banknote className="h-5 w-5"/>Complete cash sale{pendingCount ? ` • ${pendingCount} pending` : ""}</Button> : null}
           </div>
         </div>
       </Card>
     </div>
+    {mpesaOverlayOpen ? (
+      <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
+        <div className="absolute inset-0 bg-slate-950/40" onClick={() => setMpesaOverlayOpen(false)} />
+        <div className="relative z-10 w-full max-w-2xl overflow-hidden rounded-[28px] border border-slate-200 bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-lg font-black text-slate-900">M-Pesa payment</p>
+              <p className="mt-1 text-sm text-slate-500">Choose a payment mode and complete the transaction without pushing checkout down.</p>
+            </div>
+            <button type="button" onClick={() => setMpesaOverlayOpen(false)} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-slate-600 transition hover:bg-slate-200">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <button type="button" onClick={() => startMpesaPayment("STK_PUSH")} className={`w-full rounded-3xl border px-5 py-4 text-left text-sm font-bold ${mpesaFlow === "STK_PUSH" ? "border-sky-500 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"}`}>
+              <div className="mb-3 text-xs uppercase tracking-wide text-slate-500">STK Push</div>
+              <div className="text-base font-semibold text-slate-900">Send payment request to customer</div>
+              <div className="mt-3 text-xs text-slate-500">{mpesaStkEnabled ? "Configured" : "Not configured"}</div>
+            </button>
+            <button type="button" onClick={() => startMpesaPayment("PAY_TO_TILL")} className={`w-full rounded-3xl border px-5 py-4 text-left text-sm font-bold ${mpesaFlow === "PAY_TO_TILL" ? "border-sky-500 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"}`}>
+              <div className="mb-3 text-xs uppercase tracking-wide text-slate-500">Pay to Till</div>
+              <div className="text-base font-semibold text-slate-900">Customer pays directly at till</div>
+              <div className="mt-3 text-xs text-slate-500">{mpesaPayToTillEnabled && mpesaTillNumber ? "Configured" : "Not configured"}</div>
+            </button>
+          </div>
+
+          <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Customer phone</label>
+            <Input type="tel" inputMode="tel" value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="Enter customer phone number" />
+            <p className="mt-2 text-xs text-slate-500">This number is used for STK Push and Pay to Till confirmation.</p>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-3xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+              <div className="font-semibold text-slate-900">Status</div>
+              <div className="mt-2">{mpesaStatus}</div>
+            </div>
+            {mpesaReference ? (
+              <div className="rounded-3xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+                <div className="font-semibold text-slate-900">Reference</div>
+                <div className="mt-2 break-all">{mpesaReference}</div>
+              </div>
+            ) : null}
+          </div>
+
+          {mpesaError ? (
+            <div className="mt-4 rounded-3xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              {mpesaError}
+            </div>
+          ) : null}
+
+          {mpesaFlow === "PAY_TO_TILL" && manualConfirmationCandidates.length ? (
+            <div className="mt-4 rounded-3xl border border-slate-200 bg-white p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Recent payers</p>
+                  <p className="text-xs text-slate-500">Select the customer to confirm the manual payment.</p>
+                </div>
+                <Button type="button" variant="secondary" disabled={!manualConfirmationSelection || mpesaInFlight || manualConfirmationChecking} onClick={() => void confirmManualMpesaPayment()}>
+                  {manualConfirmationChecking ? "Confirming..." : "Confirm payment"}
+                </Button>
+              </div>
+              <div className="mt-4 space-y-3">
+                {manualConfirmationCandidates.map((candidate) => (
+                  <label key={`${candidate.phone}-${candidate.amountMinor}`} className="flex items-center justify-between rounded-2xl border border-slate-200 p-3">
+                    <div className="flex items-center gap-3">
+                      <input type="radio" name="manualConfirmationCandidate" value={`${candidate.phone}-${candidate.amountMinor}`} checked={manualConfirmationSelection === `${candidate.phone}-${candidate.amountMinor}`} onChange={() => setManualConfirmationSelection(`${candidate.phone}-${candidate.amountMinor}`)} className="h-4 w-4" />
+                      <div>
+                        <div className="font-semibold text-slate-900">{candidate.name}</div>
+                        <div className="text-xs text-slate-500">{candidate.phone}</div>
+                      </div>
+                    </div>
+                    <div className="text-sm font-black text-slate-900">{formatMoney(fromMinorUnits(candidate.amountMinor))}</div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {manualConfirmationConfirmed ? (
+            <div className="mt-4 rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+              Manual M-Pesa payment confirmed.
+            </div>
+          ) : null}
+        </div>
+      </div>
+    ) : null}
     {unitModalOpen && unitModalEntry ? (
       <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="unit-modal-title" aria-describedby="unit-modal-description">
         <div className="absolute inset-0 bg-black opacity-40" onClick={cancelUnitSelection} />
