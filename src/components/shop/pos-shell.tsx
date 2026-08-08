@@ -1057,7 +1057,7 @@ export function PosShell({
             <label className="mt-3 flex items-center gap-2 text-sm text-slate-600"><input className="h-4 w-4 rounded border-slate-300" type="checkbox" checked={splitPaymentEnabled} onChange={(e) => setSplitPaymentEnabled(e.target.checked)} />Allow split payment</label>
             <div className="mt-3 grid grid-cols-3 gap-2">
               <button onClick={() => { setPaymentMode("CASH"); setMpesaOverlayOpen(false); }} className={`w-full rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CASH" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600"}`}><Banknote className="mx-auto mb-1 h-5 w-5"/>Cash</button>
-              <button onClick={() => { setPaymentMode("MPESA"); setMpesaOverlayOpen(true); }} disabled={!online} className={`w-full rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "MPESA" ? "border-sky-200 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"} ${!online ? "opacity-50" : ""}`}><MdPhoneAndroid className="mx-auto mb-1 h-5 w-5"/>M-Pesa</button>
+              <button onClick={() => { setPaymentMode("MPESA"); setMpesaOverlayOpen(true); setMpesaFlow(null); setMpesaStatus("Ready"); setMpesaError(null); setManualConfirmationCandidates([]); setManualConfirmationSelection(null); }} disabled={!online} className={`w-full rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "MPESA" ? "border-sky-200 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"} ${!online ? "opacity-50" : ""}`}><MdPhoneAndroid className="mx-auto mb-1 h-5 w-5"/>M-Pesa</button>
               <button onClick={() => { setPaymentMode("CARD"); setMpesaOverlayOpen(false); }} disabled={!online} className={`w-full rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CARD" ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-600"} ${!online ? "opacity-50" : ""}`}><CreditCard className="mx-auto mb-1 h-5 w-5"/>Card</button>
             </div>
             {!online ? <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Offline mode only allows cash. M-Pesa and card payments remain unavailable until the connection is restored.</div> : null}
@@ -1080,77 +1080,107 @@ export function PosShell({
             </button>
           </div>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <button type="button" onClick={() => startMpesaPayment("STK_PUSH")} className={`w-full rounded-3xl border px-5 py-4 text-left text-sm font-bold ${mpesaFlow === "STK_PUSH" ? "border-sky-500 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"}`}>
-              <div className="mb-3 text-xs uppercase tracking-wide text-slate-500">STK Push</div>
-              <div className="text-base font-semibold text-slate-900">Send payment request to customer</div>
-              <div className="mt-3 text-xs text-slate-500">{mpesaStkEnabled ? "Configured" : "Not configured"}</div>
-            </button>
-            <button type="button" onClick={() => startMpesaPayment("PAY_TO_TILL")} className={`w-full rounded-3xl border px-5 py-4 text-left text-sm font-bold ${mpesaFlow === "PAY_TO_TILL" ? "border-sky-500 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"}`}>
-              <div className="mb-3 text-xs uppercase tracking-wide text-slate-500">Pay to Till</div>
-              <div className="text-base font-semibold text-slate-900">Customer pays directly at till</div>
-              <div className="mt-3 text-xs text-slate-500">{mpesaPayToTillEnabled && mpesaTillNumber ? "Configured" : "Not configured"}</div>
-            </button>
-          </div>
-
-          <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-4">
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Customer phone</label>
-            <Input type="tel" inputMode="tel" value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="Enter customer phone number" />
-            <p className="mt-2 text-xs text-slate-500">This number is used for STK Push and Pay to Till confirmation.</p>
-          </div>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-3xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
-              <div className="font-semibold text-slate-900">Status</div>
-              <div className="mt-2">{mpesaStatus}</div>
-            </div>
-            {mpesaReference ? (
-              <div className="rounded-3xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
-                <div className="font-semibold text-slate-900">Reference</div>
-                <div className="mt-2 break-all">{mpesaReference}</div>
+          {mpesaFlow === null ? (
+            <>
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                <button type="button" onClick={() => setMpesaFlow("STK_PUSH")} className={`w-full rounded-3xl border px-5 py-4 text-left text-sm font-bold ${mpesaFlow === "STK_PUSH" ? "border-sky-500 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"}`}>
+                  <div className="mb-3 text-xs uppercase tracking-wide text-slate-500">STK Push</div>
+                  <div className="text-base font-semibold text-slate-900">Send payment request to customer</div>
+                  <div className="mt-3 text-xs text-slate-500">{mpesaStkEnabled ? "Configured" : "Not configured"}</div>
+                </button>
+                <button type="button" onClick={() => setMpesaFlow("PAY_TO_TILL")} className={`w-full rounded-3xl border px-5 py-4 text-left text-sm font-bold ${mpesaFlow === "PAY_TO_TILL" ? "border-sky-500 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"}`}>
+                  <div className="mb-3 text-xs uppercase tracking-wide text-slate-500">Pay to Till</div>
+                  <div className="text-base font-semibold text-slate-900">Customer pays directly at till</div>
+                  <div className="mt-3 text-xs text-slate-500">{mpesaPayToTillEnabled && mpesaTillNumber ? "Configured" : "Not configured"}</div>
+                </button>
               </div>
-            ) : null}
-          </div>
 
-          {mpesaError ? (
-            <div className="mt-4 rounded-3xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-              {mpesaError}
-            </div>
-          ) : null}
-
-          {mpesaFlow === "PAY_TO_TILL" && manualConfirmationCandidates.length ? (
-            <div className="mt-4 rounded-3xl border border-slate-200 bg-white p-4">
-              <div className="flex items-center justify-between gap-3">
+              <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                <p className="font-semibold text-slate-900">Choose your M-Pesa flow</p>
+                <p className="mt-2 text-slate-500">Select STK Push to send the customer a payment prompt, or choose Pay to Till if the customer will pay directly at the till.</p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="mt-6 flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">Recent payers</p>
-                  <p className="text-xs text-slate-500">Select the customer to confirm the manual payment.</p>
+                  <div className="text-xs uppercase tracking-wide text-slate-500">{mpesaFlow === "STK_PUSH" ? "STK Push" : "Pay to Till"}</div>
+                  <div className="mt-1 text-2xl font-semibold text-slate-900">{mpesaFlow === "STK_PUSH" ? "Send a prompt to the customer" : "Customer pays directly at till"}</div>
                 </div>
-                <Button type="button" variant="secondary" disabled={!manualConfirmationSelection || mpesaInFlight || manualConfirmationChecking} onClick={() => void confirmManualMpesaPayment()}>
-                  {manualConfirmationChecking ? "Confirming..." : "Confirm payment"}
+                <button type="button" onClick={() => { setMpesaFlow(null); setMpesaStatus("Ready"); setMpesaError(null); setManualConfirmationCandidates([]); setManualConfirmationSelection(null); }} className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                  Back
+                </button>
+              </div>
+
+              <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Customer phone</label>
+                <Input type="tel" inputMode="tel" value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="Enter customer phone number" />
+                <p className="mt-2 text-xs text-slate-500">This number is used for STK Push and Pay to Till confirmation.</p>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-3xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+                  <div className="font-semibold text-slate-900">Status</div>
+                  <div className="mt-2">{mpesaStatus}</div>
+                </div>
+                {mpesaReference ? (
+                  <div className="rounded-3xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+                    <div className="font-semibold text-slate-900">Reference</div>
+                    <div className="mt-2 break-all">{mpesaReference}</div>
+                  </div>
+                ) : null}
+              </div>
+
+              {mpesaError ? (
+                <div className="mt-4 rounded-3xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                  {mpesaError}
+                </div>
+              ) : null}
+
+              {mpesaFlow === "PAY_TO_TILL" && manualConfirmationCandidates.length ? (
+                <div className="mt-4 rounded-3xl border border-slate-200 bg-white p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">Recent payers</p>
+                      <p className="text-xs text-slate-500">Select the customer to confirm the manual payment.</p>
+                    </div>
+                    <Button type="button" variant="secondary" disabled={!manualConfirmationSelection || mpesaInFlight || manualConfirmationChecking} onClick={() => void confirmManualMpesaPayment()}>
+                      {manualConfirmationChecking ? "Confirming..." : "Confirm payment"}
+                    </Button>
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    {manualConfirmationCandidates.map((candidate) => (
+                      <label key={`${candidate.phone}-${candidate.amountMinor}`} className="flex items-center justify-between rounded-2xl border border-slate-200 p-3">
+                        <div className="flex items-center gap-3">
+                          <input type="radio" name="manualConfirmationCandidate" value={`${candidate.phone}-${candidate.amountMinor}`} checked={manualConfirmationSelection === `${candidate.phone}-${candidate.amountMinor}`} onChange={() => setManualConfirmationSelection(`${candidate.phone}-${candidate.amountMinor}`)} className="h-4 w-4" />
+                          <div>
+                            <div className="font-semibold text-slate-900">{candidate.name}</div>
+                            <div className="text-xs text-slate-500">{candidate.phone}</div>
+                          </div>
+                        </div>
+                        <div className="text-sm font-black text-slate-900">{formatMoney(fromMinorUnits(candidate.amountMinor))}</div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {manualConfirmationConfirmed ? (
+                <div className="mt-4 rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                  Manual M-Pesa payment confirmed.
+                </div>
+              ) : null}
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Button type="button" disabled={mpesaInFlight || (!mpesaPhone && mpesaFlow === "STK_PUSH")} onClick={() => { if (mpesaFlow) void startMpesaPayment(mpesaFlow); }} className="w-full sm:w-auto">
+                  {mpesaFlow === "STK_PUSH" ? "Start STK Push" : "Start Pay to Till"}
+                </Button>
+                <Button type="button" variant="secondary" className="w-full sm:w-auto" onClick={() => { setMpesaFlow(null); setMpesaStatus("Ready"); setMpesaError(null); setManualConfirmationCandidates([]); setManualConfirmationSelection(null); }}>
+                  Change payment type
                 </Button>
               </div>
-              <div className="mt-4 space-y-3">
-                {manualConfirmationCandidates.map((candidate) => (
-                  <label key={`${candidate.phone}-${candidate.amountMinor}`} className="flex items-center justify-between rounded-2xl border border-slate-200 p-3">
-                    <div className="flex items-center gap-3">
-                      <input type="radio" name="manualConfirmationCandidate" value={`${candidate.phone}-${candidate.amountMinor}`} checked={manualConfirmationSelection === `${candidate.phone}-${candidate.amountMinor}`} onChange={() => setManualConfirmationSelection(`${candidate.phone}-${candidate.amountMinor}`)} className="h-4 w-4" />
-                      <div>
-                        <div className="font-semibold text-slate-900">{candidate.name}</div>
-                        <div className="text-xs text-slate-500">{candidate.phone}</div>
-                      </div>
-                    </div>
-                    <div className="text-sm font-black text-slate-900">{formatMoney(fromMinorUnits(candidate.amountMinor))}</div>
-                  </label>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {manualConfirmationConfirmed ? (
-            <div className="mt-4 rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-              Manual M-Pesa payment confirmed.
-            </div>
-          ) : null}
+            </>
+          )}
         </div>
       </div>
     ) : null}
