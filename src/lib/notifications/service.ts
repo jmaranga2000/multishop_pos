@@ -124,6 +124,12 @@ export async function queueNotification(input: QueueNotificationInput) {
   }
 
   if (input.email) {
+    if (!input.email.to?.trim()) {
+      throw new Error("Email recipient is missing for queued notification");
+    }
+    if (input.email.referenceType === "SUPPLIER_NOTIFICATION_HISTORY") {
+      console.info(`Queueing supplier email to ${input.email.to} for ${input.email.referenceId}`);
+    }
     await db.emailQueue.create({
       data: {
         recipient: input.email.to,
@@ -131,8 +137,10 @@ export async function queueNotification(input: QueueNotificationInput) {
         htmlBody: input.email.html ?? `<h2>${escapeHtml(input.title)}</h2><p>${escapeHtml(input.message)}</p><p><a href="${absoluteUrl(input.actionUrl ?? "/admin/notifications")}">Open MultiShop POS</a></p>`,
         textBody: `${input.title}\n\n${input.message}`,
         type: input.type,
-        attachments: input.email.attachments,        referenceType: input.email.referenceType ?? null,
-        referenceId: input.email.referenceId ?? null,      },
+        attachments: input.email.attachments ?? undefined,
+        referenceType: input.email.referenceType ?? null,
+        referenceId: input.email.referenceId ?? null,
+      },
     });
   }
 }

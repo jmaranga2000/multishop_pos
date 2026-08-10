@@ -101,6 +101,9 @@ export async function processNotificationQueues() {
     emailProcessed += 1;
 
     try {
+      if (email.referenceType === "SUPPLIER_NOTIFICATION_HISTORY" && email.referenceId) {
+        console.info(`Processing queued supplier email ${email.id} for history ${email.referenceId} to ${email.recipient}`);
+      }
       await sendQueuedEmail(email);
       await db.emailQueue.update({ where: { id: email.id, status: "PROCESSING" }, data: { status: "SENT", sentAt: new Date(), lastError: null } });
       if (email.referenceType === "SUPPLIER_NOTIFICATION_HISTORY" && email.referenceId) {
@@ -113,6 +116,9 @@ export async function processNotificationQueues() {
     } catch (error) {
       failed += 1;
       console.error(`Failed to send queued email ${email.id} to ${email.recipient}:`, error);
+      if (email.referenceType === "SUPPLIER_NOTIFICATION_HISTORY" && email.referenceId) {
+        console.error(`Supplier email history ${email.referenceId} failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+      }
       await db.emailQueue.update({
         where: { id: email.id, status: "PROCESSING" },
         data: {

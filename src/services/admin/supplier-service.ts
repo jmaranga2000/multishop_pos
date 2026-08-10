@@ -298,6 +298,21 @@ export async function generateSupplierRestockRequest(admin: AdminContext, suppli
   const pdfBuffer = await renderToBuffer(pdfDoc as any);
   const pdfBase64 = Buffer.from(pdfBuffer).toString("base64");
 
+  if (!supplier.email?.trim()) {
+    console.error(`Supplier ${supplier.id} has no email address configured. Cannot send restock request.`);
+    await db.supplierNotificationHistory.update({
+      where: { id: history.id },
+      data: {
+        status: "FAILED",
+        failedAt: new Date(),
+        failureReason: "Supplier email address is missing.",
+      },
+    }).catch(() => null);
+    return history;
+  }
+
+  console.info(`Queueing supplier restock email to ${supplier.email} for supplier ${supplier.id}, history ${history.id}`);
+
   await queueNotification({
     businessId: admin.businessId,
     userId: admin.id,

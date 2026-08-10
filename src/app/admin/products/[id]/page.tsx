@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { ProductEditForm } from "@/components/admin/product-edit-form";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/utils";
+import { BarcodePrintPreview } from "@/components/admin/barcode-print-preview";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,11 @@ export default async function ProductDetailsPage({ params }: { params: Promise<{
                 <p className="text-sm">Inventory: {product._count.inventory} stock records</p>
               </div>
             </div>
+            {product.barcode ? (
+              <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <BarcodePrintPreview barcode={product.barcode} productName={product.name} sku={product.sku} />
+              </div>
+            ) : null}
                 {product.pricingUnits?.length ? (
                   <div className="mt-4">
                     <h3 className="font-bold">Pricing options</h3>

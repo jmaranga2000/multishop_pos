@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { createProductAction } from "@/actions/admin/product-actions";
 import { ProductPricingBuilder } from "@/components/admin/product-pricing-builder";
 import { ProductImageUploader } from "@/components/admin/product-image-uploader";
+import { BarcodePrintPreview } from "@/components/admin/barcode-print-preview";
 
 type ProductCreateFormProps = {
   categories: Array<{ id: string; name: string }>;
@@ -15,6 +16,8 @@ type ProductCreateFormProps = {
 };
 
 export function ProductCreateForm({ categories, brands, units }: ProductCreateFormProps) {
+  const [name, setName] = useState("");
+  const [barcode, setBarcode] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -34,9 +37,14 @@ export function ProductCreateForm({ categories, brands, units }: ProductCreateFo
 
   return (
     <form onSubmit={onSubmit} className="space-y-3">
-      <Input name="name" placeholder="Product name" required />
+      <Input name="name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Product name" required />
       <Input name="sku" placeholder="Unique SKU (auto-generated if blank)" />
-      <Input name="barcode" placeholder="Barcode (auto-generated if blank)" />
+      <Input name="barcode" value={barcode} onChange={(event) => setBarcode(event.target.value)} placeholder="Barcode (auto-generated if blank)" />
+      {barcode ? (
+        <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+          <BarcodePrintPreview barcode={barcode} productName={name || "New product"} />
+        </div>
+      ) : null}
       <ProductImageUploader value={imageUrl} onChange={setImageUrl} />
       <div className="flex items-center gap-2">
         <select name="categoryId" className="h-11 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm">

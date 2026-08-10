@@ -7,6 +7,7 @@ import { requireShop } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
 import { closeRegisterSession, openRegisterSession } from "@/services/shop/register-service";
+import { consumeBiometricAuthentication } from "@/services/shop/biometric-service";
 import { closeRegisterSchema, openRegisterSchema } from "@/validators/shop/register-validator";
 
 export async function openRegisterAction(formData: FormData) {
@@ -42,8 +43,8 @@ export async function unlockShopPortalAction(formData: FormData) {
   const salespersonId = String(formData.get("salespersonId") ?? "").trim();
   const pin = String(formData.get("pin") ?? "").trim();
 
-  if (!salespersonId || !pin) {
-    return { success: false, error: "A valid salesperson ID and PIN are required." };
+  if (!salespersonId) {
+    return { success: false, error: "A valid salesperson ID is required." };
   }
 
   const openSession = await db.registerSession.findFirst({
@@ -53,6 +54,23 @@ export async function unlockShopPortalAction(formData: FormData) {
 
   if (!openSession || !openSession.salesperson) {
     return { success: false, error: "No active salesperson session is available to unlock." };
+  }
+
+  const biometricAuthToken = String(formData.get("biometricAuthToken") ?? "").trim();
+  const biometricVerified = biometricAuthToken
+    ? await consumeBiometricAuthentication({
+        authenticationToken: biometricAuthToken,
+        salespersonId,
+        shopId: shopUser.shopId,
+      })
+    : false;
+
+  if (biometricVerified) {
+    return { success: true };
+  }
+
+  if (!pin) {
+    return { success: false, error: "A valid salesperson PIN or fingerprint is required." };
   }
 
   const validPin = await argon2.verify(openSession.salesperson.pinHash, pin);

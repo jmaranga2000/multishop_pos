@@ -33,6 +33,7 @@
     "dexie-react-hooks": "^1.1.7",
     "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",
+    "jsbarcode": "^3.12.3",
     "lucide-react": "^0.468.0",
     "mongoose": "^9.7.4",
     "next": "16.2.11",

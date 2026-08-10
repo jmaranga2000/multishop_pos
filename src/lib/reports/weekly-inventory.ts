@@ -71,7 +71,7 @@ export async function loadWeeklyReportSummary(businessId: string, periodStart: D
       .find({ shopId: { $in: shopIds }, status: "APPROVED", occurredAt: { $gte: periodStart, $lte: periodEnd } }, { projection: { _id: 0, shopId: 1, amount: 1 } })
       .toArray(),
     database
-      .collection("shopInventory")
+      .collection("shopInventories")
       .find({ shopId: { $in: shopIds } }, { projection: { _id: 0, shopId: 1, productId: 1, quantity: 1, reorderLevel: 1, criticalLevel: 1, costPrice: 1 } })
       .toArray(),
   ]);
@@ -166,15 +166,15 @@ export async function loadWeeklyReportSummary(businessId: string, periodStart: D
       .slice(0, 6);
     const criticalStock = inventoryRowsForShop
       .filter((row) => getStockStatus(row.quantity, row.reorderLevel, row.criticalLevel) === "CRITICAL")
-      .map((row) => row.productName ?? "Unknown product")
+      .map((row) => productById.get(row.productId) ?? "Unknown product")
       .slice(0, 6);
     const lowStock = inventoryRowsForShop
       .filter((row) => getStockStatus(row.quantity, row.reorderLevel, row.criticalLevel) === "LOW_STOCK")
-      .map((row) => row.productName ?? "Unknown product")
+      .map((row) => productById.get(row.productId) ?? "Unknown product")
       .slice(0, 6);
     const healthyStock = inventoryRowsForShop
       .filter((row) => getStockStatus(row.quantity, row.reorderLevel, row.criticalLevel) === "IN_STOCK")
-      .map((row) => row.productName ?? "Unknown product")
+      .map((row) => productById.get(row.productId) ?? "Unknown product")
       .slice(0, 6);
     return {
       shopName: summary.shop.name,
