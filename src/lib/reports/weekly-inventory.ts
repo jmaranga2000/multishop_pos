@@ -34,7 +34,7 @@ export type WeeklyReportSummary = {
     shopName: string;
     products: Array<{ productName: string; quantity: number; revenue: number }>;
   }>;
-  worstSellersAcrossShops: Array<{ productName: string; quantity: number; revenue: number }>;
+  worstSellersAcrossShops: Array<{ shopName: string; productName: string; quantity: number; revenue: number }>;
   stockSummary: Array<{
     shopName: string;
     totalProducts: number;
@@ -218,19 +218,17 @@ export async function loadWeeklyReportSummary(businessId: string, periodStart: D
     };
   });
 
-  const worstSellersAcrossShops = Array.from(
-    Array.from(productTotalsByShop.values()).reduce((map, productTotals) => {
-      for (const [productName, totals] of productTotals.entries()) {
-        const existing = map.get(productName) ?? { quantity: 0, revenue: 0 };
-        existing.quantity += totals.quantity;
-        existing.revenue += totals.revenue;
-        map.set(productName, existing);
-      }
-      return map;
-    }, new Map<string, { quantity: number; revenue: number }>())
-      .entries(),
-  )
-    .map(([productName, totals]) => ({ productName, quantity: totals.quantity, revenue: totals.revenue }))
+  const worstSellersAcrossShops = Array.from(productTotalsByShop.entries())
+    .flatMap(([shopId, productTotals]) => {
+      const shop = shops.find((shopEntry) => shopEntry.id === shopId);
+      const shopName = shop?.name ?? "Unknown shop";
+      return Array.from(productTotals.entries()).map(([productName, totals]) => ({
+        shopName,
+        productName,
+        quantity: totals.quantity,
+        revenue: totals.revenue,
+      }));
+    })
     .sort((left, right) => left.quantity - right.quantity)
     .slice(0, 5);
 

@@ -25,6 +25,7 @@ type StockSummaryRow = {
 };
 
 type WorstSeller = {
+  shopName: string;
   productName: string;
   quantity: number;
   revenue: number;
@@ -371,12 +372,14 @@ export function WeeklyInventoryReportPdf({ report }: { report: WeeklyReportPdfDa
           <Text style={styles.sectionTitle}>Worst selling products across shops</Text>
           <View style={styles.table}>
             <View style={styles.tableHeader}>
+              <Text style={[styles.tableHeaderText, styles.normal]}>Shop</Text>
               <Text style={[styles.tableHeaderText, styles.wide]}>Product</Text>
               <Text style={[styles.tableHeaderText, styles.normal]}>Qty sold</Text>
               <Text style={[styles.tableHeaderText, styles.normal]}>Revenue</Text>
             </View>
             {report.worstSellersAcrossShops.map((product, index) => (
-              <View key={`${product.productName}-${index}`} style={index % 2 === 1 ? [styles.tableRow, styles.tableRowAlt] : styles.tableRow}>
+              <View key={`${product.productName}-${product.shopName}-${index}`} style={index % 2 === 1 ? [styles.tableRow, styles.tableRowAlt] : styles.tableRow}>
+                <Text style={[styles.cell, styles.normal]}>{product.shopName}</Text>
                 <Text style={[styles.cell, styles.wide]}>{product.productName}</Text>
                 <Text style={[styles.cell, styles.normal]}>{formatCount(product.quantity)}</Text>
                 <Text style={[styles.cell, styles.normal]}>{formatCurrency(product.revenue, report.currency)}</Text>
