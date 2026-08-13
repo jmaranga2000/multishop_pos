@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { buildShopPerformanceHtml, queueNotification } from "@/lib/notifications/service";
 import { generateInventoryReport, previousWeekRange } from "@/lib/reports/weekly-inventory";
+import { buildDailySnapshotDataForShop, renderDailySnapshotPdfBuffer } from "@/lib/reports/daily-snapshot";
 
 const NAIROBI_UTC_OFFSET_MS = 3 * 60 * 60 * 1_000;
 
@@ -84,18 +85,31 @@ export async function runDailyShopPerformanceSummary() {
       const pushEnabled = preferences?.weeklyReportPush ?? true;
       const emailEnabled = preferences?.weeklyReportEmail ?? true;
       const html = buildShopPerformanceHtml(shopRows.length ? shopRows : [{ label: "No active shops", value: "KSh 0", description: "No sales captured today", tone: "slate" as const }]);
-      const totalSales = sales.reduce((sum, sale) => sum + Number(sale.total), 0);
-      await queueNotification({
-        businessId: business.id,
-        userId: admin.id,
-        type: "WEEKLY_REPORT",
-        title: "Daily shop performance summary",
-        message: `${business.name}: total sales for today are KSh ${totalSales.toLocaleString("en-KE")}.`,
-        actionUrl: "/admin/dashboard",
-        inApp: inAppEnabled,
-        push: pushEnabled,
-        email: emailEnabled && (admin.email || process.env.ADMIN_EMAIL) ? { to: admin.email || process.env.ADMIN_EMAIL!, subject: "Daily shop performance summary", html } : undefined,
-      });
+        const totalSales = sales.reduce((sum, sale) => sum + Number(sale.total), 0);
+        // Build per-shop PDF snapshots and queue separate notifications per shop (attached in email)
+        for (const shop of business.shops ?? []) {
+          try {
+            const snapshotData = await buildDailySnapshotDataForShop(business.id, shop.id, new Date());
+            const buffer = await renderDailySnapshotPdfBuffer(snapshotData);
+            const filename = `daily-snapshot-${shop.name.replace(/[^a-z0-9_-]/gi, "_")}-${new Date().toISOString().slice(0, 10)}.pdf`;
+            const attachments = [{ filename, contentType: "application/pdf", content: Buffer.from(buffer).toString("base64") }];
+
+            await queueNotification({
+              businessId: business.id,
+              userId: admin.id,
+              shopId: shop.id,
+              type: "WEEKLY_REPORT",
+              title: `Daily snapshot — ${shop.name}`,
+              message: `${business.name}: daily snapshot for ${shop.name}.`,
+              actionUrl: "/admin/dashboard",
+              inApp: inAppEnabled,
+              push: pushEnabled,
+              email: emailEnabled && (admin.email || process.env.ADMIN_EMAIL) ? { to: admin.email || process.env.ADMIN_EMAIL!, subject: `Daily snapshot — ${shop.name}`, html, attachments } : undefined,
+            });
+          } catch (err) {
+            console.error(`Failed to build/attach daily snapshot for shop ${shop.id}:`, err);
+          }
+        }
       processed += 1;
     }
     await db.scheduledJobLog.update({
