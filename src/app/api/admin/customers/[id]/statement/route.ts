@@ -79,8 +79,9 @@ export async function GET(
     );
   } catch (error) {
     console.error("[admin-customer-statement]", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: errorMessage },
       { status: 500 }
     );
   }

@@ -65,8 +65,10 @@ export default function AdminCustomerStatementPage() {
         const res = await fetch(
           `/api/admin/customers/${customerId}/statement`
         );
-        if (!res.ok) throw new Error("Failed to fetch statement");
         const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || `Failed to fetch statement (${res.status})`);
+        }
         setStatement(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
@@ -507,9 +509,52 @@ export default function AdminCustomerStatementPage() {
     }
   }
 
-  if (loading) return <div className="p-6">Loading statement...</div>;
-  if (error) return <div className="p-6 text-red-600">Error: {error}</div>;
-  if (!statement) return <div className="p-6">Statement not found</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="mx-auto max-w-4xl">
+          <Card className="p-6">Loading statement...</Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="mx-auto max-w-4xl">
+          <Link href="/admin/customers">
+            <Button variant="ghost" size="sm" className="mb-4">
+              <ChevronLeft className="h-4 w-4" />
+              Back to customers
+            </Button>
+          </Link>
+          <Card className="p-6 border-red-200 bg-red-50">
+            <p className="text-red-700 font-semibold mb-2">Unable to load statement</p>
+            <p className="text-red-600 text-sm">{error}</p>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (!statement) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="mx-auto max-w-4xl">
+          <Link href="/admin/customers">
+            <Button variant="ghost" size="sm" className="mb-4">
+              <ChevronLeft className="h-4 w-4" />
+              Back to customers
+            </Button>
+          </Link>
+          <Card className="p-6">
+            <p className="text-gray-600">Statement not found</p>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   const totalDebit = filteredEntries?.reduce((sum, e) => sum + e.debitMinor, 0) || 0;
   const totalCredit = filteredEntries?.reduce((sum, e) => sum + e.creditMinor, 0) || 0;
