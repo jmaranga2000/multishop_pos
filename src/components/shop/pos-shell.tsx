@@ -603,7 +603,11 @@ export function PosShell({
     setProcessing(true);
     try {
       // Build payments array
-      let payments: Array<{ method: string; amountMinor: number; reference: string | null }> = [];
+      let payments: Array<{
+        method: "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER" | "CREDIT";
+        amountMinor: number;
+        reference: string | null;
+      }> = [];
       let amountPaidMinorForSale = 0;
 
       if (splitPaymentEnabled) {
@@ -612,16 +616,20 @@ export function PosShell({
         const secondMethod = splitSecondMethod === "MPESA" ? "MPESA" : "CREDIT";
         payments = [
           {
-            method: "CASH",
+            method: "CASH" as const,
             amountMinor: cashAmount,
             reference: null,
           },
           {
-            method: secondMethod,
+            method: secondMethod as "MPESA" | "CREDIT",
             amountMinor: secondAmountMinor,
             reference: splitSecondMethod === "MPESA" ? (mpesaReference ?? null) : null,
           },
-        ].filter((p) => p.amountMinor > 0);
+        ].filter((p) => p.amountMinor > 0) as Array<{
+          method: "CASH" | "MPESA" | "CARD" | "CREDIT" | "BANK_TRANSFER";
+          amountMinor: number;
+          reference: string | null;
+        }>;
         amountPaidMinorForSale = payments.filter((p) => p.method !== "CREDIT").reduce((s, p) => s + p.amountMinor, 0);
       } else if (paymentMode === "CREDIT") {
         // Full sale on credit. Require a selected customer.
@@ -641,7 +649,12 @@ export function PosShell({
       } else {
         payments = [
           {
-            method: (paymentMode === "BANK" ? ("BANK_TRANSFER" as const) : paymentMode) as any,
+            method: (paymentMode === "BANK" ? "BANK_TRANSFER" : paymentMode) as
+              | "CASH"
+              | "MPESA"
+              | "CARD"
+              | "BANK_TRANSFER"
+              | "CREDIT",
             amountMinor: receivedMinor,
             reference: mpesaReference ?? null,
           },
@@ -692,7 +705,7 @@ export function PosShell({
 
       const totalPaidMinor = payments.reduce((sum, p) => sum + p.amountMinor, 0);
       const paymentMethod = payments.length === 1 ? payments[0].method : "SPLIT";
-      const normalizedPaymentMethod = paymentMethod === "BANK" ? "BANK_TRANSFER" : paymentMethod;
+      const normalizedPaymentMethod = paymentMethod;
 
       const sale = await createLocalSale({
         shopId,
