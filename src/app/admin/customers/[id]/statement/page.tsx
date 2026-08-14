@@ -55,6 +55,7 @@ export default function AdminCustomerStatementPage() {
   const [statement, setStatement] = useState<StatementData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
   const [filterType, setFilterType] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
@@ -103,6 +104,7 @@ export default function AdminCustomerStatementPage() {
 
   async function handleExportPDF() {
     if (!statement) return;
+    setExporting(true);
 
     const styles = StyleSheet.create({
       page: {
@@ -505,7 +507,10 @@ export default function AdminCustomerStatementPage() {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error("PDF export failed:", err);
-      alert("Failed to generate PDF. Please try again.");
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      alert(`Failed to generate PDF: ${errorMsg}`);
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -578,9 +583,10 @@ export default function AdminCustomerStatementPage() {
               onClick={handleExportPDF}
               variant="secondary"
               size="sm"
+              disabled={exporting}
             >
               <Download className="h-4 w-4 mr-2" />
-              Export PDF
+              {exporting ? "Generating PDF..." : "Export PDF"}
             </Button>
           </div>
         </div>
