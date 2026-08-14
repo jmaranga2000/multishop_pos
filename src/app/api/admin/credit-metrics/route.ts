@@ -1,17 +1,20 @@
 import { NextResponse } from "next/server";
-import { requireShop } from "@/lib/rbac";
-import { getCreditMetrics } from "@/services/shop/ledger-query-service";
+import { requireAdmin } from "@/lib/rbac";
 import { db } from "@/lib/db";
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const user = await requireShop();
+    const user = await requireAdmin();
 
-    const metrics = await getCreditMetrics(user.shopId);
+    const shopIds = await db.shop.findMany({
+      where: { businessId: user.businessId },
+      select: { id: true },
+    });
 
-    // Get top overdue customers
+    const shopIdList = shopIds.map((shop) => shop.id);
+    const metrics = await getCreditMetricsForBusiness(user.businessId);
     const customers = await db.customer.findMany({
-      where: { shopId: user.shopId },
+      where: { shopId: { in: shopIdList } },
       orderBy: { cachedOutstandingMinor: "desc" },
       take: 10,
     });
@@ -53,4 +56,55 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
+}
+
+async function getCreditMetricsForBusiness(businessId: string) {
+  const shops = await db.shop.findMany({
+    where: { businessId },
+    select: { id: true },
+  });
+
+  const shopIds = shops.map((shop) => shop.id);
+  const customers = await db.customer.findMany({
+    where: { shopId: { in: shopIds } },
+  });
+
+  let totalOutstanding = 0;
+  let totalOverdue = 0;
+  let customerCount = 0;
+  let overdueCustomerCount = 0;
+
+  for (const customer of customers) {
+    totalOutstanding += Number(customer.cachedOutstandingMinor ?? 0);
+    customerCount++;
+
+    if (
+      (customer.cachedOutstandingMinor ?? 0) > 0 &&
+      customer.lastTransactionAt &&
+      new Date().getTime() - customer.lastTransactionAt.getTime() > 30 * 24 * 60 * 60 * 1000
+    ) {
+      totalOverdue += Number(customer.cachedOutstandingMinor ?? 0);
+      overdueCustomerCount++;
+    }
+  }
+
+  const totalCreditLimit = customers.reduce(
+    (sum, customer) => sum + Number(customer.creditLimit ?? 0),
+    0
+  );
+
+  const utilizationRate =
+    totalCreditLimit > 0
+      ? ((totalOutstanding / totalCreditLimit) * 100).toFixed(2)
+      : "0.00";
+
+  return {
+    totalOutstanding,
+    totalOverdue,
+    totalCreditLimit,
+    utilizationRate,
+    customerCount,
+    overdueCustomerCount,
+    activeCredit: totalOutstanding > 0,
+  };
 }

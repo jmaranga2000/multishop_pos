@@ -17,7 +17,7 @@ export default function AdminCustomersPage() {
     async function load() {
       setLoading(true);
       try {
-        const res = await fetch(`/api/shop/customers?q=${encodeURIComponent(query)}`);
+        const res = await fetch(`/api/admin/customers?q=${encodeURIComponent(query)}`);
         if (!res.ok) throw new Error("Failed to fetch customers");
         const data = await res.json();
         if (!active) return;
