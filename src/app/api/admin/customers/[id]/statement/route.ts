@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/rbac";
+import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export async function GET(
@@ -7,7 +7,20 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const admin = await requireAdmin();
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized: Please log in" },
+        { status: 401 }
+      );
+    }
+    if (user.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Forbidden: Admin access required" },
+        { status: 403 }
+      );
+    }
+    const admin = user;
     const { id } = await params;
 
     // Get all shops for this business

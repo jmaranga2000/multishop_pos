@@ -88,7 +88,7 @@ export function CustomerSearchClient({ initialCustomers, initialQuery }: { initi
                   <Link href={`/admin/customers/${c.id}`}>
                     <Button size="sm">Edit</Button>
                   </Link>
-                  <Link href={`/shop/customers/${c.id}/statement`}>
+                  <Link href={`/admin/customers/${c.id}/statement`}>
                     <Button size="sm" variant="secondary">Statement</Button>
                   </Link>
                 </div>
