@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AppError } from "@/lib/errors/app-error";
+import { formatMoney, fromMinorUnits } from "@/lib/utils";
 
 interface CreditLimitOverrideModalProps {
   isOpen: boolean;
@@ -61,13 +62,13 @@ export function CreditLimitOverrideModal({
             This credit sale exceeds the customer's credit limit.
           </p>
           <p className="text-sm font-semibold text-yellow-900">
-            Sale Amount: ${(amountMinor / 100).toFixed(2)}
+            Sale Amount: {formatMoney(fromMinorUnits(amountMinor))}
           </p>
           <p className="text-sm font-semibold text-yellow-900">
-            Credit Limit: ${(creditLimitMinor / 100).toFixed(2)}
+            Credit Limit: {formatMoney(fromMinorUnits(creditLimitMinor))}
           </p>
           <p className="text-sm font-semibold text-red-600">
-            Exceeds limit by: ${(exceedByMinor / 100).toFixed(2)}
+            Exceeds limit by: {formatMoney(fromMinorUnits(exceedByMinor))}
           </p>
         </div>
 
