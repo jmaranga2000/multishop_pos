@@ -127,10 +127,10 @@ export function buildThermalReceiptHtml(data: ThermalReceiptData) {
     data.taxMinor > 0 ? `<div style="display:flex;justify-content:space-between;gap:8px;"><span>VAT included in total</span><span>${escapeHtml(formatAmount(data.taxMinor))}</span></div>` : "",
     `<div style="display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:12px;font-weight:700;"><span>Total (VAT inclusive)</span><span>${escapeHtml(formatAmount(data.grandTotalMinor))}</span></div>`,
     `<div style="display:flex;justify-content:space-between;gap:8px;"><span>Payment</span><span>${escapeHtml(data.paymentMethod)}</span></div>`,
-    ${data.creditAmountMinor && data.creditAmountMinor > 0 ? `<div style="display:flex;justify-content:space-between;gap:8px;"><span>Credit</span><span>${escapeHtml(formatAmount(data.creditAmountMinor))}</span></div>` : ""}
+    data.creditAmountMinor && data.creditAmountMinor > 0 ? `<div style="display:flex;justify-content:space-between;gap:8px;"><span>Credit</span><span>${escapeHtml(formatAmount(data.creditAmountMinor))}</span></div>` : "",
     `<div style="display:flex;justify-content:space-between;gap:8px;"><span>Cash received</span><span>${escapeHtml(formatAmount(data.amountPaidMinor))}</span></div>`,
     `<div style="display:flex;justify-content:space-between;gap:8px;"><span>Change</span><span>${escapeHtml(formatAmount(data.changeDueMinor))}</span></div>`,
-    ${typeof data.outstandingMinor === 'number' ? `<div style="display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:12px;font-weight:700;"><span>Outstanding</span><span>${escapeHtml(formatAmount(data.outstandingMinor))}</span></div>` : ""}
+    typeof data.outstandingMinor === 'number' ? `<div style="display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:12px;font-weight:700;"><span>Outstanding</span><span>${escapeHtml(formatAmount(data.outstandingMinor))}</span></div>` : "",
     `</div>`,
     data.qrCodeDataUrl ? `<div style="margin-top:10px;border-top:1px dashed #cbd5e1;padding-top:8px;text-align:center;"><img src="${escapeHtml(data.qrCodeDataUrl)}" alt="Receipt QR code" style="width:112px;height:112px;" /><div style="margin-top:4px;font-size:10px;color:#64748b;">Scan for receipt details</div></div>` : "",
     `<div style="margin-top:10px;border-top:1px dashed #cbd5e1;padding-top:8px;text-align:center;font-size:10px;color:#64748b;">`,
