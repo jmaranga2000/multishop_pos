@@ -35,7 +35,7 @@ export const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, Bu
     children,
     disabled,
     onClick,
-    ...buttonProps
+    ...restProps
   },
   ref,
 ) {
@@ -95,6 +95,8 @@ export const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, Bu
     else if (ref) ref.current = node;
   };
 
+  const { isLoading: _customIsLoading, loadingText: _customLoadingText, autoLoading: _customAutoLoading, ...domProps } = restProps as Record<string, unknown>;
+
   if (href) {
     return (
       <Link
@@ -109,6 +111,7 @@ export const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, Bu
           if (disabled || isLoading) event.preventDefault();
           else onClick?.(event as unknown as React.MouseEvent<HTMLButtonElement>);
         }}
+        {...domProps}
       >
         {content}
       </Link>
@@ -123,7 +126,7 @@ export const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, Bu
       disabled={disabled || isLoading}
       aria-busy={isLoading}
       onClick={onClick}
-      {...buttonProps}
+      {...domProps}
     >
       {content}
     </button>
