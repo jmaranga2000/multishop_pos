@@ -167,7 +167,12 @@ export default function AdminCustomerDetailsPage() {
                   {customer.phone && <p className="text-slate-600">Phone: {customer.phone}</p>}
                   {customer.email && <p className="text-slate-600">Email: {customer.email}</p>}
                 </div>
-                <Button onClick={() => setEditing(true)}>Edit</Button>
+                <div className="flex gap-2">
+                  <Link href={`/admin/customers/${customer.id}/statement`}>
+                    <Button variant="secondary" size="sm">View Statement</Button>
+                  </Link>
+                  <Button onClick={() => setEditing(true)}>Edit</Button>
+                </div>
               </div>
 
               {/* Credit Summary */}

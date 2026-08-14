@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney, fromMinorUnits } from "@/lib/utils";
-import { Download, Printer, ChevronLeft } from "lucide-react";
+import { Download, ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { renderToBuffer } from "@react-pdf/renderer";
@@ -31,6 +31,11 @@ interface Customer {
   creditLimit: number;
   cachedOutstandingMinor: number;
   lastTransactionAt: string | null;
+  shop?: {
+    id: string;
+    name: string;
+    code: string;
+  };
 }
 
 interface StatementData {
@@ -44,7 +49,7 @@ interface StatementData {
   };
 }
 
-export default function CustomerStatementPage() {
+export default function AdminCustomerStatementPage() {
   const params = useParams();
   const customerId = params.id as string;
   const [statement, setStatement] = useState<StatementData | null>(null);
@@ -58,7 +63,7 @@ export default function CustomerStatementPage() {
     async function fetchStatement() {
       try {
         const res = await fetch(
-          `/api/shop/customers/${customerId}/statement`
+          `/api/admin/customers/${customerId}/statement`
         );
         if (!res.ok) throw new Error("Failed to fetch statement");
         const data = await res.json();
@@ -265,6 +270,9 @@ export default function CustomerStatementPage() {
       day: "numeric",
     });
 
+    const totalDebit = filteredEntries?.reduce((sum, e) => sum + e.debitMinor, 0) || 0;
+    const totalCredit = filteredEntries?.reduce((sum, e) => sum + e.creditMinor, 0) || 0;
+
     const StatementPDF = (
       <Document>
         <Page style={styles.page} size="A4">
@@ -292,11 +300,9 @@ export default function CustomerStatementPage() {
                 </Text>
               </View>
               <View style={styles.infoBlock}>
-                <Text style={styles.infoLabel}>Statement Period</Text>
+                <Text style={styles.infoLabel}>Shop</Text>
                 <Text style={styles.infoValue}>
-                  {statement.ledgerEntries.length > 0
-                    ? `${new Date(statement.ledgerEntries[statement.ledgerEntries.length - 1].occurredAt).toLocaleDateString()} - ${new Date(statement.ledgerEntries[0].occurredAt).toLocaleDateString()}`
-                    : "N/A"}
+                  {statement.customer.shop?.name} ({statement.customer.shop?.code})
                 </Text>
               </View>
             </View>
@@ -478,7 +484,7 @@ export default function CustomerStatementPage() {
               This is an electronically generated statement. No signature
               required.
             </Text>
-            <Text>For inquiries, please contact your shop administrator.</Text>
+            <Text>For inquiries, please contact your business administrator.</Text>
           </View>
         </Page>
       </Document>
@@ -514,7 +520,7 @@ export default function CustomerStatementPage() {
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/shop/customers">
+            <Link href={`/admin/customers/${customerId}`}>
               <Button variant="ghost" size="sm">
                 <ChevronLeft className="h-4 w-4" />
                 Back
@@ -535,17 +541,29 @@ export default function CustomerStatementPage() {
         </div>
 
         {/* Customer Info Cards */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-3 gap-4 mb-6">
           <Card className="p-4">
             <p className="text-sm text-gray-600">Customer Name</p>
             <p className="text-lg font-bold">{statement.customer.name}</p>
           </Card>
           <Card className="p-4">
-            <p className="text-sm text-gray-600">Phone</p>
+            <p className="text-sm text-gray-600">Shop</p>
             <p className="text-lg font-bold">
-              {statement.customer.phone || "N/A"}
+              {statement.customer.shop?.name}
             </p>
           </Card>
+          <Card className="p-4">
+            <p className="text-sm text-gray-600">Outstanding Balance</p>
+            <p className="text-lg font-bold text-red-600">
+              {formatMoney(
+                fromMinorUnits(statement.customer.cachedOutstandingMinor)
+              )}
+            </p>
+          </Card>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
           <Card className="p-4">
             <p className="text-sm text-gray-600">Credit Limit</p>
             <p className="text-lg font-bold">
@@ -555,10 +573,13 @@ export default function CustomerStatementPage() {
             </p>
           </Card>
           <Card className="p-4">
-            <p className="text-sm text-gray-600">Outstanding Balance</p>
-            <p className="text-lg font-bold text-red-600">
+            <p className="text-sm text-gray-600">Available Credit</p>
+            <p className="text-lg font-bold text-green-600">
               {formatMoney(
-                fromMinorUnits(statement.customer.cachedOutstandingMinor)
+                fromMinorUnits(
+                  statement.customer.creditLimit -
+                    statement.customer.cachedOutstandingMinor
+                )
               )}
             </p>
           </Card>
@@ -594,7 +615,7 @@ export default function CustomerStatementPage() {
             </div>
             <div>
               <p className="text-sm text-gray-600">90+ days</p>
-              <p className="text-lg font-bold">
+              <p className="text-lg font-bold text-red-600">
                 {formatMoney(
                   fromMinorUnits(statement.agedBalance.ninetyPlus)
                 )}
