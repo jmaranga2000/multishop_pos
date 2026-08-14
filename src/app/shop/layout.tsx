@@ -21,6 +21,7 @@ const nav=[
 	{ href: "/shop/expenses", label: "Expenses", icon: "Store" },
 	{ href: "/shop/refund-request", label: "Refund request", icon: "RotateCcw" },
 	{ href: "/shop/synchronization", label: "Synchronization", icon: "RefreshCw" },
+	{ href: "/shop/customers", label: "Customers", icon: "UsersRound" },
 	{ href: "/shop/profile", label: "Profile", icon: "Settings" },
 ];
  return <OfflineProvider shopId={user.shopId} shopName={user.shop.name}><AppShell navItems={nav} userName={user.shop.name} userEmail={user.email} accountLabel={`Shop account • ${user.shop.code}`} headerExtra={<ConnectivityStatus/>}><ShopPortalLockGuard salespersonId={openSession?.salespersonId ?? null} salespersonName={openSession?.salesperson?.name ?? null} />{children}</AppShell></OfflineProvider>;

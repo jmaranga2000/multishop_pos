@@ -66,6 +66,11 @@ a { color: inherit; text-decoration: none; }
   grid-template-columns: 260px minmax(0, 1fr);
 }
 
+/* When collapsed, shrink the sidebar to a compact width and center icons */
+.app-grid.sidebar-collapsed {
+  grid-template-columns: 72px minmax(0, 1fr);
+}
+
 .app-sidebar {
   position: sticky;
   top: 0;
@@ -75,6 +80,39 @@ a { color: inherit; text-decoration: none; }
   padding: 22px 16px;
   overflow-y: auto;
 }
+
+.app-sidebar.collapsed {
+  padding: 12px 8px;
+}
+
+.app-sidebar.collapsed .min-w-0 {
+  display: none;
+}
+
+.app-sidebar.collapsed .nav-link {
+  justify-content: center;
+  padding: 8px;
+  border-radius: 10px;
+}
+
+.app-sidebar.collapsed .nav-link .inline-block,
+.app-sidebar.collapsed .nav-link span {
+  display: none;
+}
+
+.app-sidebar.collapsed .rounded-xl {
+  padding: 8px;
+}
+
+.app-sidebar.collapsed .rounded-xl p { display: none; }
+
+/* Make the sidebar layout use column flex so footer can stick to bottom */
+.app-sidebar { display: flex; flex-direction: column; }
+.app-sidebar .sidebar-footer { margin-top: auto; }
+
+/* When collapsed, center the footer's sign-out button icon */
+.app-sidebar.collapsed .sidebar-footer .nav-link { justify-content: center; }
+.app-sidebar.collapsed .sidebar-footer { padding-bottom: 12px; }
 
 .app-main { min-width: 0; }
 .app-header {

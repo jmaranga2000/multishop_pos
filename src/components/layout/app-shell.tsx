@@ -28,10 +28,10 @@ export function AppShell({ children, navItems, userName, userEmail, accountLabel
   };
 
   return <div className={`app-grid ${collapsed ? "sidebar-collapsed" : ""}`}>
-    <aside className={`app-sidebar ${collapsed ? "collapsed" : ""}`}>
+    <aside className={`app-sidebar ${collapsed ? "collapsed" : ""} flex flex-col`}>
       <div className="flex items-center gap-3 px-2"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-500 text-white shadow-lg shadow-blue-950/30"><Store className="h-6 w-6" /></div><div className="min-w-0"><p className="font-extrabold text-white">MultiShop POS</p><p className="text-xs text-blue-200">Offline-first retail</p></div></div>
       <SidebarNav items={navItems} collapsed={collapsed} />
-      <div className="mt-8 border-t border-white/10 pt-4"><div className="rounded-xl bg-white/5 px-3 py-3"><p className="truncate text-sm font-bold text-white">{userName}</p><p className="truncate text-xs text-blue-200">{accountLabel}</p></div><SignOutButton /></div>
+      <div className="sidebar-footer mt-8 border-t border-white/10 pt-4"><div className="rounded-xl bg-white/5 px-3 py-3"><p className="truncate text-sm font-bold text-white">{userName}</p><p className="truncate text-xs text-blue-200">{accountLabel}</p></div><SignOutButton /></div>
     </aside>
     <div className="app-main">
       <header className="app-header flex items-center justify-between gap-3">

@@ -1245,14 +1245,47 @@ export function PosShell({
             ) : null}
             {splitPaymentEnabled ? (
               <div className="mt-3 grid grid-cols-2 gap-2">
-                <Button type="button" variant="secondary" disabled={!mpesaEnabled || mpesaInFlight || !mpesaAmount || Number(mpesaAmount) <= 0} onClick={() => {
-                  const amountMinor = Math.round(Number(mpesaAmount || 0) * 100);
-                  void startMpesaPayment("STK_PUSH", amountMinor);
-                }}>Start M-Pesa (STK) for split amount</Button>
-                <Button type="button" variant="secondary" disabled={!mpesaEnabled || mpesaInFlight || !mpesaAmount || Number(mpesaAmount) <= 0 || !online} onClick={() => {
-                  const amountMinor = Math.round(Number(mpesaAmount || 0) * 100);
-                  void startMpesaPayment("PAY_TO_TILL", amountMinor);
-                }}>Start M-Pesa (Till)</Button>
+                {(() => {
+                  const amt = Number(mpesaAmount || 0);
+                  const validAmount = Number.isFinite(amt) && amt > 0;
+                  const stkDisabled = !mpesaEnabled || mpesaInFlight || !validAmount;
+                  const stkReason = !mpesaEnabled ? "M-Pesa not configured" : mpesaInFlight ? "M-Pesa request in progress" : !validAmount ? "Enter a valid M-Pesa amount" : "";
+                  return (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={stkDisabled}
+                      title={stkDisabled ? stkReason : "Start STK Push for the split amount"}
+                      onClick={() => {
+                        const amountMinor = Math.round((Number(mpesaAmount || 0) || 0) * 100);
+                        void startMpesaPayment("STK_PUSH", amountMinor);
+                      }}
+                    >
+                      Start M-Pesa (STK) for split amount
+                    </Button>
+                  );
+                })()}
+
+                {(() => {
+                  const amt = Number(mpesaAmount || 0);
+                  const validAmount = Number.isFinite(amt) && amt > 0;
+                  const tillDisabled = !mpesaEnabled || mpesaInFlight || !validAmount || !online;
+                  const tillReason = !mpesaEnabled ? "M-Pesa not configured" : mpesaInFlight ? "M-Pesa request in progress" : !validAmount ? "Enter a valid M-Pesa amount" : !online ? "Offline — M-Pesa Till requires connection" : "";
+                  return (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={tillDisabled}
+                      title={tillDisabled ? tillReason : "Start Pay-to-Till for the split amount"}
+                      onClick={() => {
+                        const amountMinor = Math.round((Number(mpesaAmount || 0) || 0) * 100);
+                        void startMpesaPayment("PAY_TO_TILL", amountMinor);
+                      }}
+                    >
+                      Start M-Pesa (Till)
+                    </Button>
+                  );
+                })()}
               </div>
             ) : null}
             <div className="mt-3 grid grid-cols-4 gap-2">

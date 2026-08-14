@@ -34,7 +34,13 @@ export function SidebarNav({ items, collapsed = false }: SidebarNavProps) {
             : "bg-red-500 text-white";
 
         return (
-          <Link key={item.href} href={item.href} className={active ? "nav-link relative active" : "nav-link relative"}>
+          <Link
+            key={item.href}
+            href={item.href}
+            title={collapsed ? item.label : undefined}
+            aria-label={item.label}
+            className={active ? "nav-link relative active" : "nav-link relative"}
+          >
             {Icon ? <Icon className="h-[18px] w-[18px]" /> : <span className="inline-block h-[18px] w-[18px]" />}
             {!collapsed && <span>{item.label}</span>}
             {count > 0 && (
