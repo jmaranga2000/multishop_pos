@@ -115,7 +115,7 @@ export function PosShell({
   const [amountReceived, setAmountReceived] = useState("");
   const [customerName, setCustomerName] = useState("Walk-in customer");
   const [customerId, setCustomerId] = useState<string | null>(null);
-  const [customerSearchResults, setCustomerSearchResults] = useState<Array<any>>([]);
+  const [allCustomers, setAllCustomers] = useState<Array<any>>([]);
   const [customerDetails, setCustomerDetails] = useState<any | null>(null);
   const [discountMinor, setDiscountMinor] = useState(0);
   const [notes, setNotes] = useState("");
@@ -354,6 +354,23 @@ export function PosShell({
       active = false;
       streamRef.current?.getTracks().forEach((track) => track.stop());
     };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function loadCustomers() {
+      try {
+        const res = await fetch("/api/shop/customers");
+        if (res.ok && active) {
+          const list = await res.json();
+          setAllCustomers(list);
+        }
+      } catch {
+        // Silently fail if customers can't be loaded
+      }
+    }
+    void loadCustomers();
+    return () => { active = false; };
   }, []);
 
   const handleBarcodeScan = useCallback(async (code: string) => {
@@ -1233,37 +1250,33 @@ export function PosShell({
             </div>
             <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
               <label className="mb-1 block text-xs font-bold text-slate-600">Customer {paymentMode === "CREDIT" || (splitPaymentEnabled && splitSecondMethod === "CREDIT") ? "(required for credit)" : ""}</label>
-              <Input value={customerName} onChange={async (e) => {
-                const q = e.target.value;
-                setCustomerName(q);
-                setCustomerId(null);
-                if (q && q.length >= 2) {
-                  try {
-                    const res = await fetch(`/api/shop/customers?q=${encodeURIComponent(q)}`);
-                    if (res.ok) {
-                      const list = await res.json();
-                      setCustomerSearchResults(list);
-                    }
-                  } catch {}
-                } else {
-                  setCustomerSearchResults([]);
-                }
-              }} placeholder="Walk-in customer" />
-              {customerSearchResults.length ? (
-                <div className="mt-2 max-h-40 overflow-auto rounded border bg-white">
-                  {customerSearchResults.map((c) => (
-                    <div key={c.id} className="px-3 py-2 hover:bg-slate-50 cursor-pointer" onClick={async () => {
-                      setCustomerId(c.id);
-                      setCustomerName(c.name);
-                      setCustomerSearchResults([]);
+              <select
+                value={customerId || ""}
+                onChange={async (e) => {
+                  const id = e.target.value;
+                  if (!id) {
+                    setCustomerId(null);
+                    setCustomerName("Walk-in customer");
+                    setCustomerDetails(null);
+                  } else {
+                    const customer = allCustomers.find((c) => c.id === id);
+                    if (customer) {
+                      setCustomerId(id);
+                      setCustomerName(customer.name);
                       try {
-                        const res = await fetch(`/api/shop/customers/${c.id}`);
+                        const res = await fetch(`/api/shop/customers/${id}`);
                         if (res.ok) setCustomerDetails(await res.json());
                       } catch {}
-                    }}>{c.name} • {c.phone ?? ""}</div>
-                  ))}
-                </div>
-              ) : null}
+                    }
+                  }
+                }}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
+              >
+                <option value="">Walk-in customer</option>
+                {allCustomers.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}{c.phone ? " • " + c.phone : ""}</option>
+                ))}
+              </select>
 
               {customerDetails ? (
                 <div className="mt-2 text-sm text-slate-700">
