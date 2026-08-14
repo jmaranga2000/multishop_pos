@@ -35,6 +35,12 @@ export type OfflineInventory = {
   syncedAt: string;
 };
 
+export type PaymentEntry = {
+  method: "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER" | "CREDIT";
+  amountMinor: number;
+  reference?: string | null;
+};
+
 export type OfflineSale = {
   localId: string;
   idempotencyKey: string;
@@ -42,6 +48,7 @@ export type OfflineSale = {
   deviceId: string;
   salespersonId: string | null;
   registerSessionId: string | null;
+  customerId?: string | null;
   customerName: string | null;
   subtotalMinor: number;
   discountMinor: number;
@@ -49,8 +56,11 @@ export type OfflineSale = {
   totalMinor: number;
   amountPaidMinor: number;
   changeDueMinor: number;
-  paymentMethod: "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER";
+  /** @deprecated Use payments array instead */
+  paymentMethod: "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER" | "SPLIT" | "CREDIT";
+  /** @deprecated Use payments array instead */
   paymentReference: string | null;
+  payments: PaymentEntry[];
   occurredAt: string;
   status: "LOCAL_ONLY" | "PENDING_SYNC" | "SYNCING" | "SYNCED" | "FAILED" | "CONFLICT";
   serverId?: string;

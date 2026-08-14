@@ -491,6 +491,49 @@ export interface RefundItemDocument extends BaseDocument {
   restock: boolean;
 }
 
+export type CustomerAccountStatus = "ACTIVE" | "SUSPENDED" | "CREDIT_RESTRICTED";
+
+export interface CustomerDocument extends BaseDocument {
+  shopId: string;
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  code?: string | null;
+  creditLimit: number; // minor units
+  cachedOutstandingMinor: number; // cached derived balance in minor units
+  status: CustomerAccountStatus;
+  lastTransactionAt?: Date | null;
+  createdAt: Date;
+}
+
+export type CustomerLedgerEntryType =
+  | "CREDIT_SALE"
+  | "CUSTOMER_PAYMENT"
+  | "CUSTOMER_REFUND"
+  | "PRODUCT_RETURN"
+  | "DEBIT_ADJUSTMENT"
+  | "CREDIT_ADJUSTMENT"
+  | "OPENING_BALANCE"
+  | "REVERSAL";
+
+export interface CustomerLedgerEntryDocument extends BaseDocument {
+  transactionId: string; // unique business id for idempotency
+  customerId: string;
+  shopId: string;
+  type: CustomerLedgerEntryType;
+  occurredAt: Date;
+  reference?: string | null;
+  description?: string | null;
+  debitMinor: number; // amount added to customer outstanding
+  creditMinor: number; // amount subtracted from customer outstanding
+  runningBalanceMinor: number; // balance after this entry
+  userId?: string | null;
+  saleId?: string | null;
+  paymentId?: string | null;
+  syncStatus?: "PENDING" | "SYNCED" | "FAILED";
+  createdAt: Date;
+}
+
 export interface ExpenseCategoryDocument extends BaseDocument {
   businessId: string;
   name: string;

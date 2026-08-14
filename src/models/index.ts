@@ -2,6 +2,7 @@ export * from "./catalog.model";
 export * from "./core.model";
 export * from "./expense.model";
 export * from "./inventory.model";
+export * from "./customer.model";
 export * from "./model.types";
 export * from "./notification.model";
 export * from "./offline.model";

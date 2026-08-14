@@ -13,6 +13,12 @@ export const offlineSyncItemSchema = z.object({
   lineTotalMinor: z.number().int().nonnegative(),
 });
 
+export const paymentEntrySchema = z.object({
+  method: z.enum(["CASH", "MPESA", "CARD", "BANK_TRANSFER", "CREDIT"]),
+  amountMinor: z.number().int().positive(),
+  reference: z.string().nullable().optional(),
+});
+
 export const offlineSyncSaleSchema = z.object({
   queueId: z.string().min(1),
   sale: z.object({
@@ -22,6 +28,7 @@ export const offlineSyncSaleSchema = z.object({
     deviceId: z.string().min(1),
     salespersonId: z.string().nullable(),
     registerSessionId: z.string().nullable(),
+    customerId: z.string().nullable().optional(),
     customerName: z.string().nullable(),
     subtotalMinor: z.number().int().nonnegative(),
     discountMinor: z.number().int().nonnegative(),
@@ -29,8 +36,9 @@ export const offlineSyncSaleSchema = z.object({
     totalMinor: z.number().int().positive(),
     amountPaidMinor: z.number().int().nonnegative(),
     changeDueMinor: z.number().int().nonnegative(),
-    paymentMethod: z.enum(["CASH", "MPESA", "CARD", "BANK_TRANSFER"]),
+    paymentMethod: z.enum(["CASH", "MPESA", "CARD", "BANK_TRANSFER", "SPLIT", "CREDIT"]),
     paymentReference: z.string().nullable(),
+    payments: z.array(paymentEntrySchema).optional(),
     occurredAt: z.string().datetime(),
   }),
   items: z.array(offlineSyncItemSchema).min(1),

@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { hasPriceMismatchBetweenMinorUnits } from "@/lib/offline/price";
 import { fromMinorUnits } from "@/lib/utils";
 import { reconcileStockAlert } from "@/lib/stock-alerts";
+import { writeAuditLog } from "@/services/shared/audit-service";
 import { AppError } from "@/lib/errors/app-error";
 import type { z } from "zod";
 import type { offlineSyncPayloadSchema } from "@/validators/shop/offline-sync-validator";
@@ -111,6 +112,24 @@ export async function synchronizeOfflineSales(user: ShopSyncContext, payload: Of
 
         const occurredAt = new Date(entry.sale.occurredAt);
         const receipt = createReceiptNumber(user.shop.code, occurredAt, entry.sale.localId);
+        
+        // Prepare payments for creation. Exclude CREDIT entries from payments table and handle as ledger entries.
+        const paymentsData = entry.sale.payments && entry.sale.payments.length > 0
+          ? entry.sale.payments
+              .filter((payment) => payment.method !== "CREDIT")
+              .map((payment) => ({
+                method: payment.method as "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER",
+                status: (payment.method === "CASH" ? "VERIFIED" : "PENDING") as "VERIFIED" | "PENDING",
+                amount: fromMinorUnits(payment.amountMinor),
+                reference: (payment.reference ?? null) as string | null,
+              }))
+          : [{
+              method: entry.sale.paymentMethod as "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER",
+              status: (entry.sale.paymentMethod === "CASH" ? "VERIFIED" : "PENDING") as "VERIFIED" | "PENDING",
+              amount: fromMinorUnits(entry.sale.amountPaidMinor),
+              reference: (entry.sale.paymentReference ?? null) as string | null,
+            }];
+        
         const sale = await tx.sale.create({
           data: {
             shopId: user.shopId,
@@ -144,15 +163,66 @@ export async function synchronizeOfflineSales(user: ShopSyncContext, payload: Of
               })),
             },
             payments: {
-              create: [{
-                method: entry.sale.paymentMethod,
-                status: entry.sale.paymentMethod === "CASH" ? "VERIFIED" : "PENDING",
-                amount: fromMinorUnits(entry.sale.amountPaidMinor),
-                reference: entry.sale.paymentReference,
-              }],
+              create: paymentsData,
             },
           },
         });
+
+        // Handle credit portions: create ledger entries and update customer outstanding balances
+        const creditPayments = (entry.sale.payments ?? []).filter((p) => p.method === "CREDIT");
+        if (creditPayments.length > 0) {
+          if (!entry.sale.customerId) {
+            // mark as conflict
+            await tx.offlineSyncConflict.create({ data: { shopId: user.shopId, deviceId: device.id, batchId: batch.id, type: "CREDIT_LIMIT_EXCEEDED", entityType: "SALE", entityReference: entry.sale.localId, details: { reason: "Missing customer for credit sale" } } });
+            await writeAuditLog(tx, { action: "CREDIT_SALE_REJECTED", userId: user.id, shopId: user.shopId, description: `Credit sale missing customer: ${entry.sale.localId}`, metadata: { localId: entry.sale.localId } });
+            throw new AppError("Credit sales must include a customerId.", "MISSING_CUSTOMER", 400);
+          }
+          const customer = await tx.customer.findFirst({ where: { id: entry.sale.customerId, shopId: user.shopId } });
+          if (!customer) {
+            await tx.offlineSyncConflict.create({ data: { shopId: user.shopId, deviceId: device.id, batchId: batch.id, type: "CREDIT_LIMIT_EXCEEDED", entityType: "SALE", entityReference: entry.sale.localId, details: { reason: "Customer not found for credit sale" } } });
+            await writeAuditLog(tx, { action: "CREDIT_SALE_REJECTED", userId: user.id, shopId: user.shopId, description: `Customer not found for credit sale: ${entry.sale.localId}`, metadata: { localId: entry.sale.localId, customerId: entry.sale.customerId } });
+            throw new AppError("Customer not found for credit sale.", "CUSTOMER_NOT_FOUND", 404);
+          }
+
+          const totalCreditMinor = creditPayments.reduce((s, p) => s + p.amountMinor, 0);
+          const previous = Number(customer.cachedOutstandingMinor ?? 0);
+          const newBalance = previous + totalCreditMinor;
+
+          if (customer.creditLimit !== undefined && customer.creditLimit !== null && newBalance > Number(customer.creditLimit)) {
+            // Create a sync conflict and notify admin
+            await tx.offlineSyncConflict.create({ data: { shopId: user.shopId, deviceId: device.id, batchId: batch.id, type: "CREDIT_LIMIT_EXCEEDED", entityType: "SALE", entityReference: entry.sale.localId, details: { requiredLimitMinor: customer.creditLimit, attemptedMinor: totalCreditMinor, previousBalanceMinor: previous } } });
+            await tx.notification.create({ data: { userId: admin.id, shopId: user.shopId, type: "SYNC_CONFLICT", priority: "HIGH", title: `Credit limit exceeded at ${user.shop.name}`, message: `Sale ${receipt} attempted credit ${fromMinorUnits(totalCreditMinor)} exceeding limit ${fromMinorUnits(Number(customer.creditLimit))}`, actionUrl: "/admin/credit" } });
+            await writeAuditLog(tx, { action: "CREDIT_LIMIT_EXCEEDED", userId: user.id, shopId: user.shopId, description: `Credit limit exceeded for sale ${entry.sale.localId}`, metadata: { localId: entry.sale.localId, customerId: customer.id, attemptedMinor: totalCreditMinor, limitMinor: customer.creditLimit } });
+            // mark conflicts to be handled; don't create ledger entries — abort processing this entry so outer logic records conflict
+            throw new AppError("Credit limit exceeded for customer", "CREDIT_LIMIT_EXCEEDED", 409);
+          }
+
+          // Idempotency check: ensure ledger entry is created only once per transaction
+          const transactionId = `credit-sale-${entry.sale.localId}`;
+          const existingEntry = await tx.ledgerEntry.findFirst({ where: { transactionId, customerId: entry.sale.customerId, shopId: user.shopId } });
+          
+          if (!existingEntry) {
+            await tx.ledgerEntry.create({ data: {
+              transactionId,
+              customerId: entry.sale.customerId,
+              shopId: user.shopId,
+              type: "CREDIT_SALE",
+              occurredAt,
+              reference: sale.id,
+              description: `Credit sale ${sale.receiptNumber}`,
+              debitMinor: totalCreditMinor,
+              creditMinor: 0,
+              runningBalanceMinor: newBalance,
+              userId: entry.sale.salespersonId ?? null,
+              saleId: sale.id,
+              paymentId: null,
+              syncStatus: "SYNCED",
+              createdAt: new Date(),
+            } });
+
+            await tx.customer.update({ where: { id: customer.id }, data: { cachedOutstandingMinor: newBalance, lastTransactionAt: new Date() } });
+          }
+        }
 
         const conflicts: string[] = [];
         for (const item of entry.items) {

@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { buildThermalReceiptHtml, downloadReceiptPdf, type ThermalReceiptData } from "@/components/shop/thermal-receipt";
 import { describeSaleLifecycleMessage, type SaleLifecycleStatus } from "@/lib/offline/sale-status";
 import { formatMoney, fromMinorUnits, getStockStatus } from "@/lib/utils";
+import { CreditLimitOverrideModal } from "@/components/shop/credit-limit-override-modal";
 
 type PricingOption = {
   unitId?: string | null;
@@ -51,7 +52,7 @@ type FrequentProduct = {
   inventoryEntry?: InventoryEntry;
 };
 
-type PaymentMode = "CASH" | "MPESA" | "CARD" | "BANK";
+type PaymentMode = "CASH" | "MPESA" | "CARD" | "BANK" | "CREDIT";
 
 type MpesaFlow = "STK_PUSH" | "PAY_TO_TILL" | null;
 
@@ -113,8 +114,13 @@ export function PosShell({
   const [processing, setProcessing] = useState(false);
   const [amountReceived, setAmountReceived] = useState("");
   const [customerName, setCustomerName] = useState("Walk-in customer");
+  const [customerId, setCustomerId] = useState<string | null>(null);
+  const [customerSearchResults, setCustomerSearchResults] = useState<Array<any>>([]);
+  const [customerDetails, setCustomerDetails] = useState<any | null>(null);
   const [discountMinor, setDiscountMinor] = useState(0);
   const [notes, setNotes] = useState("");
+  const [overrideModalOpen, setOverrideModalOpen] = useState(false);
+  const [pendingOverrideData, setPendingOverrideData] = useState<any | null>(null);
   const [barcodeInput, setBarcodeInput] = useState("");
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraScanning, setCameraScanning] = useState(false);
@@ -129,6 +135,7 @@ export function PosShell({
   const [mpesaPhone, setMpesaPhone] = useState("");
   const [mpesaStatus, setMpesaStatus] = useState("Ready");
   const [mpesaReference, setMpesaReference] = useState<string | null>(null);
+  const [mpesaAmount, setMpesaAmount] = useState("");
   const [mpesaInFlight, setMpesaInFlight] = useState(false);
   const [mpesaError, setMpesaError] = useState<string | null>(null);
   const [manualConfirmationCandidates, setManualConfirmationCandidates] = useState<Array<{ name: string; phone: string; amountMinor: number }>>([]);
@@ -568,17 +575,98 @@ export function PosShell({
       return;
     }
     if (!cart.length || processing) return;
-    if (!splitPaymentEnabled && receivedMinor < totalMinor) {
-      toast.error("Amount received is lower than the sale total");
-      return;
+
+    // Handle split payment validation
+    if (splitPaymentEnabled) {
+      const cashAmount = Math.round(Number(amountReceived || 0) * 100);
+      const mpesaAmountMinor = Math.round(Number(mpesaAmount || 0) * 100);
+      const totalPaymentMinor = cashAmount + mpesaAmountMinor;
+      
+      if (totalPaymentMinor < totalMinor) {
+        toast.error("Total payment (cash + M-Pesa) is lower than the sale total");
+        return;
+      }
+      
+      if (cashAmount < 0 || mpesaAmountMinor < 0) {
+        toast.error("Payment amounts cannot be negative");
+        return;
+      }
+    } else {
+      // Regular single payment validation
+      if (receivedMinor < totalMinor) {
+        toast.error("Amount received is lower than the sale total");
+        return;
+      }
     }
+
     setProcessing(true);
     try {
+      // Build payments array
+      const payments = splitPaymentEnabled
+        ? [
+            {
+              method: "CASH" as const,
+              amountMinor: Math.round(Number(amountReceived || 0) * 100),
+              reference: null,
+            },
+            {
+              method: "MPESA" as const,
+              amountMinor: Math.round(Number(mpesaAmount || 0) * 100),
+              reference: mpesaReference ?? null,
+            },
+          ].filter(p => p.amountMinor > 0)
+        : [{
+            method: (paymentMode === "BANK" ? ("BANK_TRANSFER" as const) : paymentMode) as any,
+            amountMinor: receivedMinor,
+            reference: mpesaReference ?? null,
+          }];
+
+      if (!payments.length) {
+        throw new Error("At least one payment method must be specified.");
+      }
+
+      // If any credit portion is present, ensure a customer is selected and credit limit is not exceeded
+      const creditPortions = payments.filter(p => p.method === "CREDIT");
+      if (creditPortions.length > 0) {
+        if (!customerId) {
+          toast.error("Please select a customer for credit sales.");
+          setProcessing(false);
+          return;
+        }
+        // ensure customerDetails loaded
+        if (!customerDetails) {
+          try {
+            const res = await fetch(`/api/shop/customers/${customerId}`);
+            if (res.ok) setCustomerDetails(await res.json());
+          } catch {}
+        }
+        const totalCreditMinor = creditPortions.reduce((s, p) => s + p.amountMinor, 0);
+        const available = (customerDetails?.creditLimit ?? 0) - (customerDetails?.cachedOutstandingMinor ?? 0);
+        if (totalCreditMinor > available) {
+          // Instead of blocking, show override modal
+          setPendingOverrideData({
+            customerId,
+            totalCreditMinor,
+            creditLimit: customerDetails?.creditLimit ?? 0,
+            payments,
+          });
+          setOverrideModalOpen(true);
+          setProcessing(false);
+          return;
+        }
+      }
+
+      const totalPaidMinor = payments.reduce((sum, p) => sum + p.amountMinor, 0);
+      const paymentMethod = payments.length === 1 ? payments[0].method : "SPLIT";
+      const normalizedPaymentMethod = paymentMethod === "BANK" ? "BANK_TRANSFER" : paymentMethod;
+
       const sale = await createLocalSale({
         shopId,
         registerSessionId,
-        paymentMethod: "CASH",
-        amountPaidMinor: receivedMinor,
+        customerId: customerId ?? undefined,
+        customerName: customerName ?? null,
+        payments,
+        amountPaidMinor: totalPaidMinor,
         items: cart.map((item) => ({
           productId: item.productId,
           productName: item.name,
@@ -593,6 +681,14 @@ export function PosShell({
         })),
       });
       const receiptNumber = sale.receiptNumber ?? buildReceiptNumber(sale.localId);
+      
+      // Determine display payment method
+      let displayPaymentMethod = "Cash";
+      if (normalizedPaymentMethod === "MPESA") displayPaymentMethod = "M-Pesa";
+      else if (normalizedPaymentMethod === "CARD") displayPaymentMethod = "Card";
+      else if (normalizedPaymentMethod === "BANK_TRANSFER") displayPaymentMethod = "Bank Transfer";
+      else if (paymentMethod === "SPLIT") displayPaymentMethod = `Split (${payments.map(p => p.method).join(" + ")})`;
+
       const receiptData: ThermalReceiptData = {
         businessName: receiptSettings?.businessName ?? receiptSettings?.shopName ?? (shopName || "MultiShop POS"),
         shopLocation: receiptSettings?.shopLocation ?? null,
@@ -614,9 +710,9 @@ export function PosShell({
         discountMinor,
         taxMinor: 0,
         grandTotalMinor: totalMinor - discountMinor,
-        paymentMethod: "Cash",
-        amountPaidMinor: receivedMinor,
-        changeDueMinor: Math.max(0, receivedMinor - totalMinor),
+        paymentMethod: displayPaymentMethod,
+        amountPaidMinor: totalPaidMinor,
+        changeDueMinor: Math.max(0, totalPaidMinor - totalMinor),
         paymentReference: sale.paymentReference ?? null,
         receiptFooter: receiptSettings?.receiptFooter ?? null,
         returnPolicy: receiptSettings?.returnPolicy ?? "Returns accepted within 7 days with original receipt.",
@@ -627,12 +723,43 @@ export function PosShell({
       setSaleLifecycleStatus(online ? "PENDING_SYNC" : "LOCAL_ONLY");
       setCart([]);
       setAmountReceived("");
+      setMpesaAmount("");
       setSplitPaymentEnabled(false);
       toast.success(online ? "Sale completed and submitted for synchronization" : "Offline sale saved", { description: `Receipt: ${receiptNumber}` });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to complete sale");
     } finally {
       setProcessing(false);
+    }
+  }
+
+  async function handleOverrideApprove(reason: string) {
+    if (!pendingOverrideData) return;
+    
+    try {
+      // Submit override approval to server
+      const res = await fetch("/api/shop/customers/credit-override", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          saleId: "pending", // This will be created after override
+          customerId: pendingOverrideData.customerId,
+          overrideReason: reason,
+          amountMinor: pendingOverrideData.totalCreditMinor,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Override approval failed");
+
+      // Close modal and proceed with sale creation
+      setOverrideModalOpen(false);
+      setPendingOverrideData(null);
+      
+      // Re-run checkout with override approved (will pass credit check now since override is logged)
+      setProcessing(true);
+      await checkout();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Override approval failed");
     }
   }
 
@@ -698,7 +825,7 @@ export function PosShell({
     }
   }
 
-  async function startMpesaPayment(mode: "STK_PUSH" | "PAY_TO_TILL") {
+  async function startMpesaPayment(mode: "STK_PUSH" | "PAY_TO_TILL", expectedAmountMinor?: number) {
     if (!cart.length || mpesaInFlight) return;
     setMpesaFlow(mode);
     setMpesaInFlight(true);
@@ -718,7 +845,7 @@ export function PosShell({
         body: JSON.stringify({
           shopId,
           mode,
-          expectedAmountMinor: totalMinor,
+          expectedAmountMinor: typeof expectedAmountMinor === "number" ? expectedAmountMinor : totalMinor,
           customerPhone: mpesaPhone || null,
           tillNumber: mpesaTillNumber || null,
           items: cart.map((item) => ({
@@ -745,7 +872,7 @@ export function PosShell({
           if (!shopId) return;
           setManualConfirmationChecking(true);
           try {
-            const response = await fetch(`/api/mpesa/manual-confirmation?shopId=${encodeURIComponent(shopId)}&expectedAmountMinor=${encodeURIComponent(totalMinor)}`);
+            const response = await fetch(`/api/mpesa/manual-confirmation?shopId=${encodeURIComponent(shopId)}&expectedAmountMinor=${encodeURIComponent(typeof expectedAmountMinor === "number" ? expectedAmountMinor : totalMinor)}`);
             const payload = await response.json();
             if (!response.ok || !payload.ok) throw new Error(payload.error || "Unable to load recent M-Pesa payers");
             setManualConfirmationCandidates(payload.candidates ?? []);
@@ -1053,7 +1180,45 @@ export function PosShell({
             </div>
             <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
               <label className="mb-1 block text-xs font-bold text-slate-600">Customer</label>
-              <Input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Walk-in customer" />
+              <Input value={customerName} onChange={async (e) => {
+                const q = e.target.value;
+                setCustomerName(q);
+                setCustomerId(null);
+                if (q && q.length >= 2) {
+                  try {
+                    const res = await fetch(`/api/shop/customers?q=${encodeURIComponent(q)}`);
+                    if (res.ok) {
+                      const list = await res.json();
+                      setCustomerSearchResults(list);
+                    }
+                  } catch {}
+                } else {
+                  setCustomerSearchResults([]);
+                }
+              }} placeholder="Walk-in customer" />
+              {customerSearchResults.length ? (
+                <div className="mt-2 max-h-40 overflow-auto rounded border bg-white">
+                  {customerSearchResults.map((c) => (
+                    <div key={c.id} className="px-3 py-2 hover:bg-slate-50 cursor-pointer" onClick={async () => {
+                      setCustomerId(c.id);
+                      setCustomerName(c.name);
+                      setCustomerSearchResults([]);
+                      try {
+                        const res = await fetch(`/api/shop/customers/${c.id}`);
+                        if (res.ok) setCustomerDetails(await res.json());
+                      } catch {}
+                    }}>{c.name} • {c.phone ?? ""}</div>
+                  ))}
+                </div>
+              ) : null}
+
+              {customerDetails ? (
+                <div className="mt-2 text-sm text-slate-700">
+                  <div>Outstanding: {formatMoney(fromMinorUnits(customerDetails.cachedOutstandingMinor ?? 0))}</div>
+                  <div>Credit limit: {formatMoney(fromMinorUnits(customerDetails.creditLimit ?? 0))}</div>
+                  <div>Available: {formatMoney(fromMinorUnits((customerDetails.creditLimit ?? 0) - (customerDetails.cachedOutstandingMinor ?? 0)))}</div>
+                </div>
+              ) : null}
               <label className="mt-3 mb-1 block text-xs font-bold text-slate-600">Discount</label>
               <Input type="number" min="0" step="0.01" value={discountMinor / 100} onChange={(e) => setDiscountMinor(Math.round(Number(e.target.value || 0) * 100))} placeholder="0.00" />
               <label className="mt-3 mb-1 block text-xs font-bold text-slate-600">Notes</label>
@@ -1071,13 +1236,37 @@ export function PosShell({
               </div>
             </div>
             <label className="mt-3 flex items-center gap-2 text-sm text-slate-600"><input className="h-4 w-4 rounded border-slate-300" type="checkbox" checked={splitPaymentEnabled} onChange={(e) => setSplitPaymentEnabled(e.target.checked)} />Allow split payment</label>
-            <div className="mt-3 grid grid-cols-3 gap-2">
+            {splitPaymentEnabled ? (
+              <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
+                <label className="mb-1 block text-xs font-bold text-slate-600">Split payment — M-Pesa amount</label>
+                <Input type="number" min="0" step="0.01" value={mpesaAmount} onChange={(e) => setMpesaAmount(e.target.value)} placeholder="Amount to collect via M-Pesa" />
+                <p className="mt-2 text-xs text-slate-500">When split payment is enabled, you may collect part of the total via M-Pesa.</p>
+              </div>
+            ) : null}
+            {splitPaymentEnabled ? (
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Button type="button" variant="secondary" disabled={!mpesaEnabled || mpesaInFlight || !mpesaAmount || Number(mpesaAmount) <= 0} onClick={() => {
+                  const amountMinor = Math.round(Number(mpesaAmount || 0) * 100);
+                  void startMpesaPayment("STK_PUSH", amountMinor);
+                }}>Start M-Pesa (STK) for split amount</Button>
+                <Button type="button" variant="secondary" disabled={!mpesaEnabled || mpesaInFlight || !mpesaAmount || Number(mpesaAmount) <= 0 || !online} onClick={() => {
+                  const amountMinor = Math.round(Number(mpesaAmount || 0) * 100);
+                  void startMpesaPayment("PAY_TO_TILL", amountMinor);
+                }}>Start M-Pesa (Till)</Button>
+              </div>
+            ) : null}
+            <div className="mt-3 grid grid-cols-4 gap-2">
               <button onClick={() => { setPaymentMode("CASH"); setMpesaOverlayOpen(false); }} className={`w-full rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CASH" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600"}`}><Banknote className="mx-auto mb-1 h-5 w-5"/>Cash</button>
               <button onClick={() => { setPaymentMode("MPESA"); setMpesaOverlayOpen(true); setMpesaFlow(null); setMpesaStatus("Ready"); setMpesaError(null); setManualConfirmationCandidates([]); setManualConfirmationSelection(null); }} disabled={!online} className={`w-full rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "MPESA" ? "border-sky-200 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"} ${!online ? "opacity-50" : ""}`}><MdPhoneAndroid className="mx-auto mb-1 h-5 w-5"/>M-Pesa</button>
               <button onClick={() => { setPaymentMode("CARD"); setMpesaOverlayOpen(false); }} disabled={!online} className={`w-full rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CARD" ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-600"} ${!online ? "opacity-50" : ""}`}><CreditCard className="mx-auto mb-1 h-5 w-5"/>Card</button>
+              <button onClick={() => { setPaymentMode("CREDIT"); setMpesaOverlayOpen(false); }} className={`w-full rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CREDIT" ? "border-rose-200 bg-rose-50 text-rose-700" : "border-slate-200 bg-white text-slate-600"}`}><PackageX className="mx-auto mb-1 h-5 w-5"/>Credit</button>
             </div>
             {!online ? <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Offline mode only allows cash. M-Pesa and card payments remain unavailable until the connection is restored.</div> : null}
-            {paymentMode === "CASH" ? <Button onClick={() => void checkout()} isLoading={processing} disabled={!registerSessionId || !cart.length || processing} className="mt-3 w-full" size="lg" loadingText="Completing sale..."><Banknote className="h-5 w-5"/>Complete cash sale{pendingCount ? ` • ${pendingCount} pending` : ""}</Button> : null}
+            {splitPaymentEnabled ? (
+              <Button onClick={() => void checkout()} isLoading={processing} disabled={!registerSessionId || !cart.length || processing || (Math.round(Number(amountReceived || 0) * 100) + Math.round(Number(mpesaAmount || 0) * 100) < totalMinor)} className="mt-3 w-full" size="lg" loadingText="Completing split sale...">Complete split payment{pendingCount ? ` • ${pendingCount} pending` : ""}</Button>
+            ) : paymentMode === "CASH" ? (
+              <Button onClick={() => void checkout()} isLoading={processing} disabled={!registerSessionId || !cart.length || processing} className="mt-3 w-full" size="lg" loadingText="Completing sale..."><Banknote className="h-5 w-5"/>Complete cash sale{pendingCount ? ` • ${pendingCount} pending` : ""}</Button>
+            ) : null}
           </div>
         </div>
       </Card>
@@ -1200,6 +1389,18 @@ export function PosShell({
         </div>
       </div>
     ) : null}
+    <CreditLimitOverrideModal
+      isOpen={overrideModalOpen}
+      customerId={pendingOverrideData?.customerId ?? ""}
+      saleId={pendingOverrideData?.saleId ?? "pending"}
+      amountMinor={pendingOverrideData?.totalCreditMinor ?? 0}
+      creditLimitMinor={pendingOverrideData?.creditLimit ?? 0}
+      onApprove={handleOverrideApprove}
+      onCancel={() => {
+        setOverrideModalOpen(false);
+        setPendingOverrideData(null);
+      }}
+    />
     {unitModalOpen && unitModalEntry ? (
       <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="unit-modal-title" aria-describedby="unit-modal-description">
         <div className="absolute inset-0 bg-black opacity-40" onClick={cancelUnitSelection} />

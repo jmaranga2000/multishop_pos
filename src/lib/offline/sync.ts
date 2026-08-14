@@ -45,10 +45,12 @@ export async function createLocalSale(input: {
   shopId: string;
   salespersonId?: string | null;
   registerSessionId?: string | null;
+  customerId?: string | null;
   customerName?: string | null;
-  paymentMethod: "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER";
+  paymentMethod?: "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER";
   paymentReference?: string | null;
-  amountPaidMinor: number;
+  amountPaidMinor?: number;
+  payments?: Array<{ method: "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER"; amountMinor: number; reference?: string | null }>;
   items: Array<{
     productId: string;
     productName: string;
@@ -62,7 +64,23 @@ export async function createLocalSale(input: {
     taxRate?: number;
   }>;
 }) {
-  if (!navigator.onLine && input.paymentMethod !== "CASH") throw new Error("Only cash sales can be completed while offline.");
+  // Support both legacy (single payment) and new (multiple payments) formats
+  const payments = input.payments ?? 
+    (input.paymentMethod ? [{
+      method: input.paymentMethod,
+      amountMinor: input.amountPaidMinor ?? 0,
+      reference: input.paymentReference ?? null,
+    }] : []);
+
+  if (!payments.length) {
+    throw new Error("At least one payment method must be specified.");
+  }
+
+  const amountPaidMinor = payments.reduce((sum, p) => sum + p.amountMinor, 0);
+  
+  if (!navigator.onLine && payments.some(p => p.method !== "CASH")) {
+    throw new Error("Only cash sales can be completed while offline.");
+  }
   const expires = await offlineDb.syncMetadata.get("offlineAccessExpiresAt");
   if (!navigator.onLine && (!expires || new Date(expires.value).getTime() < Date.now())) throw new Error("Offline access has expired. Reconnect before creating another sale.");
 
@@ -81,12 +99,14 @@ export async function createLocalSale(input: {
     localId, idempotencyKey, shopId: input.shopId, deviceId,
     salespersonId: input.salespersonId ?? null,
     registerSessionId: input.registerSessionId ?? null,
+    customerId: input.customerId ?? null,
     customerName: input.customerName ?? null,
     subtotalMinor, discountMinor: 0, taxMinor, totalMinor,
-    amountPaidMinor: input.amountPaidMinor,
-    changeDueMinor: Math.max(0, input.amountPaidMinor - totalMinor),
-    paymentMethod: input.paymentMethod,
-    paymentReference: input.paymentReference ?? null,
+    amountPaidMinor,
+    changeDueMinor: Math.max(0, amountPaidMinor - totalMinor),
+    paymentMethod: payments.length === 1 ? payments[0].method : "SPLIT",
+    paymentReference: payments.length === 1 ? (payments[0].reference ?? null) : null,
+    payments,
     occurredAt, status: "PENDING_SYNC",
   };
   const saleItems: OfflineSaleItem[] = input.items.map((item) => ({

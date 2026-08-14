@@ -1,3 +1,4 @@
+import React from "react";
 import { connectToMongoDB } from "@/lib/mongodb";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { DailySnapshotPdf, type DailySnapshotPdfData } from "./daily-snapshot-pdf";
@@ -75,6 +76,8 @@ export async function buildDailySnapshotDataForShop(businessId: string, shopId: 
 }
 
 export async function renderDailySnapshotPdfBuffer(data: DailySnapshotPdfData) {
-  const buffer = await renderToBuffer(<DailySnapshotPdf report={data} /> as any);
+  const element = React.createElement(DailySnapshotPdf, { report: data });
+  // renderToBuffer expects a Document element; cast to any to satisfy typing
+  const buffer = await renderToBuffer(element as any);
   return buffer;
 }
