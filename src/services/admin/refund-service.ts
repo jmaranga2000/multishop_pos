@@ -127,6 +127,37 @@ export async function reviewRefundRequest(admin: AdminContext, input: ReviewRefu
       where: { id: request.id },
       data: { status: "COMPLETED", reviewedAt: new Date(), reviewNote: input.reviewNote || null },
     });
+    // If the original sale had associated credit ledger entries, create a refund ledger entry to adjust the customer's balance
+    const creditLedger = await tx.ledgerEntry.findFirst({ where: { saleId: refund.saleId, type: "CREDIT_SALE" } });
+    if (creditLedger) {
+      const customerId = creditLedger.customerId;
+      const refundAmountMinor = Math.round(refund.total * 100);
+      const transactionId = `refund-${refund.id}`;
+      const existing = await tx.ledgerEntry.findFirst({ where: { transactionId, customerId, shopId: request.shopId } });
+      if (!existing) {
+        const previous = Number((await tx.customer.findUnique({ where: { id: customerId } }))?.cachedOutstandingMinor ?? 0);
+        const running = previous - refundAmountMinor;
+        await tx.ledgerEntry.create({ data: {
+          transactionId,
+          customerId,
+          shopId: request.shopId,
+          type: "CUSTOMER_REFUND",
+          occurredAt: new Date(),
+          reference: refund.refundNumber,
+          description: `Refund ${refund.refundNumber} for sale ${request.sale?.receiptNumber}`,
+          debitMinor: 0,
+          creditMinor: refundAmountMinor,
+          runningBalanceMinor: running,
+          userId: admin.id,
+          saleId: refund.saleId,
+          paymentId: null,
+          syncStatus: "SYNCED",
+          createdAt: new Date(),
+        } });
+        await tx.customer.update({ where: { id: customerId }, data: { cachedOutstandingMinor: running, lastTransactionAt: new Date() } });
+        await writeAuditLog(tx, { userId: admin.id, shopId: request.shopId, action: "CUSTOMER_REFUND", description: `Refund ${refund.refundNumber} adjusted customer ${customerId}`, metadata: { refundId: refund.id, customerId } });
+      }
+    }
     await writeAuditLog(tx, {
       userId: admin.id,
       shopId: request.shopId,

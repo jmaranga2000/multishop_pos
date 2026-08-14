@@ -49,6 +49,11 @@ export async function POST(request: Request) {
       );
     }
 
+    // Only administrators may approve overrides
+    if (user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
     // Record override in audit log
     await writeAuditLog(db, {
       action: "CREDIT_LIMIT_OVERRIDE",

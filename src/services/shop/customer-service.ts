@@ -108,7 +108,7 @@ export async function receiveCustomerPayment(user: ShopUser, customerId: string,
 
     // Register reconciliation: if registerSessionId provided, add registerTransaction
     if (input.registerSessionId) {
-      await tx.registerTransaction.create({ data: { registerSessionId: input.registerSessionId, type: "CASH_IN", amount: input.method === "CASH" ? Number(input.amountMinor) / 100 : 0, note: `Customer payment ${transactionId}` } });
+      await tx.registerTransaction.create({ data: { registerSessionId: input.registerSessionId, type: "CASH_IN", amount: Number(input.amountMinor) / 100, source: input.method === "CASH" ? "CASH" : input.method === "MPESA" ? "MPESA" : "CASH", note: `Customer payment ${transactionId}` } });
     }
 
     await writeAuditLog(tx, { action: "CUSTOMER_PAYMENT_RECEIVED", userId: user.id, shopId: user.shopId, description: `Payment received ${ledgerEntry.id}`, metadata: { customerId, ledgerEntryId: ledgerEntry.id, amountMinor: input.amountMinor } });

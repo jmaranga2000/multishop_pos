@@ -118,9 +118,9 @@ export async function authenticateUser(email: string, password: string) {
   } as AuthUser;
 }
 
-export function buildLoginResponse(user: AuthUser) {
+export function buildLoginResponse(user: AuthUser, redirectAfter = false) {
   const token = createSessionToken({ userId: user.id, passwordVersion: user.passwordVersion });
-  const response = NextResponse.json({ ok: true });
+  const response = redirectAfter ? NextResponse.redirect("/") : NextResponse.json({ ok: true });
   response.cookies.set({
     name: SESSION_COOKIE_NAME,
     value: token,

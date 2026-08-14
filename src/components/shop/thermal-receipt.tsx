@@ -23,6 +23,8 @@ export type ThermalReceiptData = {
   grandTotalMinor: number;
   paymentMethod: string;
   amountPaidMinor: number;
+  creditAmountMinor?: number;
+  outstandingMinor?: number;
   changeDueMinor: number;
   paymentReference?: string | null;
   receiptFooter?: string | null;
@@ -81,8 +83,10 @@ export function ThermalReceipt({ data }: { data: ThermalReceiptData }) {
         {data.taxMinor > 0 ? <div className="flex items-center justify-between"><span>VAT included in total</span><span>{formatAmount(data.taxMinor)}</span></div> : null}
         <div className="mt-1 flex items-center justify-between text-sm font-black"><span>Total (VAT inclusive)</span><span>{formatAmount(data.grandTotalMinor)}</span></div>
         <div className="mt-1 flex items-center justify-between"><span>Payment</span><span>{data.paymentMethod}</span></div>
+        {data.creditAmountMinor && data.creditAmountMinor > 0 ? <div className="flex items-center justify-between"><span>Credit</span><span>{formatAmount(data.creditAmountMinor)}</span></div> : null}
         <div className="flex items-center justify-between"><span>Cash received</span><span>{formatAmount(data.amountPaidMinor)}</span></div>
         <div className="flex items-center justify-between"><span>Change</span><span>{formatAmount(data.changeDueMinor)}</span></div>
+        {typeof data.outstandingMinor === "number" ? <div className="mt-2 flex items-center justify-between text-sm"><span>Outstanding</span><span>{formatAmount(data.outstandingMinor)}</span></div> : null}
       </div>
       {data.qrCodeDataUrl ? <div className="mt-3 border-t border-dashed border-slate-300 pt-2 text-center"><img src={data.qrCodeDataUrl} alt={`QR code for receipt ${data.receiptNumber}`} className="mx-auto h-28 w-28" /><div className="mt-1 text-[10px] text-slate-500">Scan for receipt details</div></div> : null}
       <div className="mt-3 border-t border-dashed border-slate-300 pt-2 text-center text-[10px] text-slate-500">
@@ -123,8 +127,10 @@ export function buildThermalReceiptHtml(data: ThermalReceiptData) {
     data.taxMinor > 0 ? `<div style="display:flex;justify-content:space-between;gap:8px;"><span>VAT included in total</span><span>${escapeHtml(formatAmount(data.taxMinor))}</span></div>` : "",
     `<div style="display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:12px;font-weight:700;"><span>Total (VAT inclusive)</span><span>${escapeHtml(formatAmount(data.grandTotalMinor))}</span></div>`,
     `<div style="display:flex;justify-content:space-between;gap:8px;"><span>Payment</span><span>${escapeHtml(data.paymentMethod)}</span></div>`,
+    ${data.creditAmountMinor && data.creditAmountMinor > 0 ? `<div style="display:flex;justify-content:space-between;gap:8px;"><span>Credit</span><span>${escapeHtml(formatAmount(data.creditAmountMinor))}</span></div>` : ""}
     `<div style="display:flex;justify-content:space-between;gap:8px;"><span>Cash received</span><span>${escapeHtml(formatAmount(data.amountPaidMinor))}</span></div>`,
     `<div style="display:flex;justify-content:space-between;gap:8px;"><span>Change</span><span>${escapeHtml(formatAmount(data.changeDueMinor))}</span></div>`,
+    ${typeof data.outstandingMinor === 'number' ? `<div style="display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:12px;font-weight:700;"><span>Outstanding</span><span>${escapeHtml(formatAmount(data.outstandingMinor))}</span></div>` : ""}
     `</div>`,
     data.qrCodeDataUrl ? `<div style="margin-top:10px;border-top:1px dashed #cbd5e1;padding-top:8px;text-align:center;"><img src="${escapeHtml(data.qrCodeDataUrl)}" alt="Receipt QR code" style="width:112px;height:112px;" /><div style="margin-top:4px;font-size:10px;color:#64748b;">Scan for receipt details</div></div>` : "",
     `<div style="margin-top:10px;border-top:1px dashed #cbd5e1;padding-top:8px;text-align:center;font-size:10px;color:#64748b;">`,
@@ -183,8 +189,10 @@ function ReceiptPdfDocument({ data }: { data: ThermalReceiptData }) {
             {data.taxMinor > 0 ? <View style={styles.totalRow}><Text style={styles.label}>VAT included in total</Text><Text style={styles.value}>{formatAmount(data.taxMinor)}</Text></View> : null}
             <View style={styles.totalRow}><Text style={styles.label}>Total (VAT inclusive)</Text><Text style={styles.value}>{formatAmount(data.grandTotalMinor)}</Text></View>
             <View style={styles.totalRow}><Text style={styles.label}>Payment</Text><Text style={styles.value}>{data.paymentMethod}</Text></View>
+            {data.creditAmountMinor && data.creditAmountMinor > 0 ? <View style={styles.totalRow}><Text style={styles.label}>Credit</Text><Text style={styles.value}>{formatAmount(data.creditAmountMinor)}</Text></View> : null}
             <View style={styles.totalRow}><Text style={styles.label}>Cash received</Text><Text style={styles.value}>{formatAmount(data.amountPaidMinor)}</Text></View>
             <View style={styles.totalRow}><Text style={styles.label}>Change</Text><Text style={styles.value}>{formatAmount(data.changeDueMinor)}</Text></View>
+            {typeof data.outstandingMinor === "number" ? <View style={styles.totalRow}><Text style={styles.label}>Outstanding</Text><Text style={styles.value}>{formatAmount(data.outstandingMinor)}</Text></View> : null}
           </View>
           {data.qrCodeDataUrl ? <View><Image src={data.qrCodeDataUrl} style={styles.qrCode} /><Text style={styles.subheading}>Scan for receipt details</Text></View> : null}
           <View style={styles.footer}>

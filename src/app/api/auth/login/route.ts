@@ -8,7 +8,19 @@ const requestSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const body = await request.json();
+  const contentType = (request.headers.get("content-type") || "").toLowerCase();
+  let body: any;
+  if (contentType.includes("application/json")) {
+    body = await request.json();
+  } else {
+    // Accept traditional form posts from non-JS clients (e.g. Safari without JS)
+    const form = await request.formData();
+    body = {
+      email: form.get("email")?.toString() || "",
+      password: form.get("password")?.toString() || "",
+    };
+  }
+
   const parsed = requestSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid email or password." }, { status: 400 });
@@ -19,5 +31,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid credentials, suspended account, or temporarily locked login." }, { status: 401 });
   }
 
-  return buildLoginResponse(user);
+  // If this was a form post, redirect so the browser follows with the cookie applied.
+  const isFormPost = !(contentType.includes("application/json"));
+  return buildLoginResponse(user, isFormPost);
 }

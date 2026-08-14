@@ -49,7 +49,25 @@ export default function LoginPage() {
           <p className="mt-2 text-sm text-slate-500">Use the credentials issued by the administrator.</p>
 
           <div className="surface mt-7 rounded-3xl p-6">
-            <Suspense fallback={<p>Loading...</p>}>
+            <Suspense
+              fallback={
+                <div>
+                  <p className="mb-4">Loading...</p>
+                  <form method="post" action="/api/auth/login" className="space-y-4">
+                    <div>
+                      <label className="mb-1.5 block text-sm font-semibold text-slate-700">Email address</label>
+                      <input name="email" type="email" className="w-full rounded-md border px-3 py-2" required />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-semibold text-slate-700">Password</label>
+                      <input name="password" type="password" className="w-full rounded-md border px-3 py-2" required />
+                    </div>
+                    <button type="submit" className="w-full rounded-md bg-blue-600 px-4 py-2 text-white">Sign in</button>
+                    <p className="text-xs text-slate-500">If JavaScript is disabled or failed to load, use this form to sign in.</p>
+                  </form>
+                </div>
+              }
+            >
               <LoginPanel />
             </Suspense>
           </div>

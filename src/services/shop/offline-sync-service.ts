@@ -170,7 +170,7 @@ export async function synchronizeOfflineSales(user: ShopSyncContext, payload: Of
 
         // Handle credit portions: create ledger entries and update customer outstanding balances
         const creditPayments = (entry.sale.payments ?? []).filter((p) => p.method === "CREDIT");
-        if (creditPayments.length > 0) {
+          if (creditPayments.length > 0) {
           if (!entry.sale.customerId) {
             // mark as conflict
             await tx.offlineSyncConflict.create({ data: { shopId: user.shopId, deviceId: device.id, batchId: batch.id, type: "CREDIT_LIMIT_EXCEEDED", entityType: "SALE", entityReference: entry.sale.localId, details: { reason: "Missing customer for credit sale" } } });
@@ -187,6 +187,13 @@ export async function synchronizeOfflineSales(user: ShopSyncContext, payload: Of
           const totalCreditMinor = creditPayments.reduce((s, p) => s + p.amountMinor, 0);
           const previous = Number(customer.cachedOutstandingMinor ?? 0);
           const newBalance = previous + totalCreditMinor;
+
+          // Enforce account status: do not accept credit sales for suspended or restricted accounts
+          if (customer.status && (customer.status === "SUSPENDED" || customer.status === "CREDIT_RESTRICTED")) {
+            await tx.offlineSyncConflict.create({ data: { shopId: user.shopId, deviceId: device.id, batchId: batch.id, type: "CREDIT_ACCOUNT_RESTRICTED", entityType: "SALE", entityReference: entry.sale.localId, details: { reason: `Customer account status ${customer.status}` } } });
+            await writeAuditLog(tx, { action: "CREDIT_SALE_REJECTED", userId: user.id, shopId: user.shopId, description: `Credit sale rejected due to customer status: ${entry.sale.localId}`, metadata: { localId: entry.sale.localId, customerId: entry.sale.customerId, status: customer.status } });
+            throw new AppError("Customer account is not allowed to take credit sales.", "CUSTOMER_ACCOUNT_RESTRICTED", 403);
+          }
 
           if (customer.creditLimit !== undefined && customer.creditLimit !== null && newBalance > Number(customer.creditLimit)) {
             // Create a sync conflict and notify admin

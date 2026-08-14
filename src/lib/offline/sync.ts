@@ -47,10 +47,10 @@ export async function createLocalSale(input: {
   registerSessionId?: string | null;
   customerId?: string | null;
   customerName?: string | null;
-  paymentMethod?: "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER";
+  paymentMethod?: "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER" | "CREDIT";
   paymentReference?: string | null;
   amountPaidMinor?: number;
-  payments?: Array<{ method: "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER"; amountMinor: number; reference?: string | null }>;
+  payments?: Array<{ method: "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER" | "CREDIT"; amountMinor: number; reference?: string | null }>;
   items: Array<{
     productId: string;
     productName: string;
@@ -65,7 +65,7 @@ export async function createLocalSale(input: {
   }>;
 }) {
   // Support both legacy (single payment) and new (multiple payments) formats
-  const payments = input.payments ?? 
+  const payments = input.payments ??
     (input.paymentMethod ? [{
       method: input.paymentMethod,
       amountMinor: input.amountPaidMinor ?? 0,
@@ -76,10 +76,13 @@ export async function createLocalSale(input: {
     throw new Error("At least one payment method must be specified.");
   }
 
-  const amountPaidMinor = payments.reduce((sum, p) => sum + p.amountMinor, 0);
-  
-  if (!navigator.onLine && payments.some(p => p.method !== "CASH")) {
-    throw new Error("Only cash sales can be completed while offline.");
+  // Amount paid toward the sale should exclude credit portions (credit is recorded to ledger)
+  const nonCreditPayments = payments.filter((p) => p.method !== "CREDIT");
+  const amountPaidMinor = nonCreditPayments.reduce((sum, p) => sum + p.amountMinor, 0);
+
+  // Allow CREDIT sales while offline; disallow other non-cash (online-only) payments when offline
+  if (!navigator.onLine && payments.some((p) => p.method !== "CASH" && p.method !== "CREDIT")) {
+    throw new Error("Only cash or credit sales can be completed while offline.");
   }
   const expires = await offlineDb.syncMetadata.get("offlineAccessExpiresAt");
   if (!navigator.onLine && (!expires || new Date(expires.value).getTime() < Date.now())) throw new Error("Offline access has expired. Reconnect before creating another sale.");

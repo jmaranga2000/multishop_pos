@@ -129,6 +129,7 @@ export function PosShell({
   const [hardwareScanBuffer, setHardwareScanBuffer] = useState("");
   const hardwareScanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [splitPaymentEnabled, setSplitPaymentEnabled] = useState(false);
+  const [splitSecondMethod, setSplitSecondMethod] = useState<"MPESA" | "CREDIT">("MPESA");
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("CASH");
   const [mpesaOverlayOpen, setMpesaOverlayOpen] = useState(false);
   const [mpesaFlow, setMpesaFlow] = useState<MpesaFlow>(null);
@@ -579,21 +580,21 @@ export function PosShell({
     // Handle split payment validation
     if (splitPaymentEnabled) {
       const cashAmount = Math.round(Number(amountReceived || 0) * 100);
-      const mpesaAmountMinor = Math.round(Number(mpesaAmount || 0) * 100);
-      const totalPaymentMinor = cashAmount + mpesaAmountMinor;
-      
+      const secondAmountMinor = Math.round(Number(mpesaAmount || 0) * 100);
+      const totalPaymentMinor = cashAmount + secondAmountMinor;
+
       if (totalPaymentMinor < totalMinor) {
-        toast.error("Total payment (cash + M-Pesa) is lower than the sale total");
+        toast.error("Total split payment is lower than the sale total");
         return;
       }
-      
-      if (cashAmount < 0 || mpesaAmountMinor < 0) {
+
+      if (cashAmount < 0 || secondAmountMinor < 0) {
         toast.error("Payment amounts cannot be negative");
         return;
       }
     } else {
-      // Regular single payment validation
-      if (receivedMinor < totalMinor) {
+      // Regular single payment validation (except for full-credit sales)
+      if (paymentMode !== "CREDIT" && receivedMinor < totalMinor) {
         toast.error("Amount received is lower than the sale total");
         return;
       }
@@ -602,24 +603,51 @@ export function PosShell({
     setProcessing(true);
     try {
       // Build payments array
-      const payments = splitPaymentEnabled
-        ? [
-            {
-              method: "CASH" as const,
-              amountMinor: Math.round(Number(amountReceived || 0) * 100),
-              reference: null,
-            },
-            {
-              method: "MPESA" as const,
-              amountMinor: Math.round(Number(mpesaAmount || 0) * 100),
-              reference: mpesaReference ?? null,
-            },
-          ].filter(p => p.amountMinor > 0)
-        : [{
+      let payments: Array<{ method: string; amountMinor: number; reference: string | null }> = [];
+      let amountPaidMinorForSale = 0;
+
+      if (splitPaymentEnabled) {
+        const cashAmount = Math.round(Number(amountReceived || 0) * 100);
+        const secondAmountMinor = Math.round(Number(mpesaAmount || 0) * 100);
+        const secondMethod = splitSecondMethod === "MPESA" ? "MPESA" : "CREDIT";
+        payments = [
+          {
+            method: "CASH",
+            amountMinor: cashAmount,
+            reference: null,
+          },
+          {
+            method: secondMethod,
+            amountMinor: secondAmountMinor,
+            reference: splitSecondMethod === "MPESA" ? (mpesaReference ?? null) : null,
+          },
+        ].filter((p) => p.amountMinor > 0);
+        amountPaidMinorForSale = payments.filter((p) => p.method !== "CREDIT").reduce((s, p) => s + p.amountMinor, 0);
+      } else if (paymentMode === "CREDIT") {
+        // Full sale on credit. Require a selected customer.
+        if (!customerId) {
+          toast.error("Please select a customer for credit sales.");
+          setProcessing(false);
+          return;
+        }
+        payments = [
+          {
+            method: "CREDIT",
+            amountMinor: totalMinor,
+            reference: null,
+          },
+        ];
+        amountPaidMinorForSale = 0;
+      } else {
+        payments = [
+          {
             method: (paymentMode === "BANK" ? ("BANK_TRANSFER" as const) : paymentMode) as any,
             amountMinor: receivedMinor,
             reference: mpesaReference ?? null,
-          }];
+          },
+        ];
+        amountPaidMinorForSale = receivedMinor;
+      }
 
       if (!payments.length) {
         throw new Error("At least one payment method must be specified.");
@@ -639,6 +667,12 @@ export function PosShell({
             const res = await fetch(`/api/shop/customers/${customerId}`);
             if (res.ok) setCustomerDetails(await res.json());
           } catch {}
+        }
+        // Block credit sales for suspended or restricted accounts client-side as well
+        if (customerDetails?.status && (customerDetails.status === "SUSPENDED" || customerDetails.status === "CREDIT_RESTRICTED")) {
+          toast.error("This customer's account is not eligible for credit purchases.");
+          setProcessing(false);
+          return;
         }
         const totalCreditMinor = creditPortions.reduce((s, p) => s + p.amountMinor, 0);
         const available = (customerDetails?.creditLimit ?? 0) - (customerDetails?.cachedOutstandingMinor ?? 0);
@@ -666,7 +700,7 @@ export function PosShell({
         customerId: customerId ?? undefined,
         customerName: customerName ?? null,
         payments,
-        amountPaidMinor: totalPaidMinor,
+        amountPaidMinor: amountPaidMinorForSale,
         items: cart.map((item) => ({
           productId: item.productId,
           productName: item.name,
@@ -687,7 +721,11 @@ export function PosShell({
       if (normalizedPaymentMethod === "MPESA") displayPaymentMethod = "M-Pesa";
       else if (normalizedPaymentMethod === "CARD") displayPaymentMethod = "Card";
       else if (normalizedPaymentMethod === "BANK_TRANSFER") displayPaymentMethod = "Bank Transfer";
-      else if (paymentMethod === "SPLIT") displayPaymentMethod = `Split (${payments.map(p => p.method).join(" + ")})`;
+      else if (normalizedPaymentMethod === "CREDIT") displayPaymentMethod = "Credit";
+      else if (paymentMethod === "SPLIT") displayPaymentMethod = `Split (${payments.map((p) => p.method).join(" + ")})`;
+
+      const creditAmountMinor = payments.filter((p) => p.method === "CREDIT").reduce((s, p) => s + p.amountMinor, 0);
+      const expectedOutstanding = (customerDetails?.cachedOutstandingMinor ?? 0) + creditAmountMinor;
 
       const receiptData: ThermalReceiptData = {
         businessName: receiptSettings?.businessName ?? receiptSettings?.shopName ?? (shopName || "MultiShop POS"),
@@ -711,8 +749,10 @@ export function PosShell({
         taxMinor: 0,
         grandTotalMinor: totalMinor - discountMinor,
         paymentMethod: displayPaymentMethod,
-        amountPaidMinor: totalPaidMinor,
-        changeDueMinor: Math.max(0, totalPaidMinor - totalMinor),
+        amountPaidMinor: amountPaidMinorForSale,
+        creditAmountMinor: creditAmountMinor > 0 ? creditAmountMinor : undefined,
+        outstandingMinor: typeof customerDetails?.cachedOutstandingMinor === "number" ? expectedOutstanding : undefined,
+        changeDueMinor: Math.max(0, amountPaidMinorForSale - totalMinor),
         paymentReference: sale.paymentReference ?? null,
         receiptFooter: receiptSettings?.receiptFooter ?? null,
         returnPolicy: receiptSettings?.returnPolicy ?? "Returns accepted within 7 days with original receipt.",
@@ -1238,54 +1278,32 @@ export function PosShell({
             <label className="mt-3 flex items-center gap-2 text-sm text-slate-600"><input className="h-4 w-4 rounded border-slate-300" type="checkbox" checked={splitPaymentEnabled} onChange={(e) => setSplitPaymentEnabled(e.target.checked)} />Allow split payment</label>
             {splitPaymentEnabled ? (
               <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
-                <label className="mb-1 block text-xs font-bold text-slate-600">Split payment — M-Pesa amount</label>
-                <Input type="number" min="0" step="0.01" value={mpesaAmount} onChange={(e) => setMpesaAmount(e.target.value)} placeholder="Amount to collect via M-Pesa" />
-                <p className="mt-2 text-xs text-slate-500">When split payment is enabled, you may collect part of the total via M-Pesa.</p>
+                <div className="flex items-center gap-3 mb-3">
+                  <label className="mb-0 text-xs font-bold text-slate-600">Split target</label>
+                  <div className="ml-2 inline-flex items-center gap-2">
+                    <button type="button" onClick={() => setSplitSecondMethod("MPESA")} className={`rounded-full px-3 py-1 text-xs ${splitSecondMethod === "MPESA" ? "bg-sky-50 text-sky-700" : "bg-slate-100 text-slate-600"}`}>M-Pesa</button>
+                    <button type="button" onClick={() => setSplitSecondMethod("CREDIT")} className={`rounded-full px-3 py-1 text-xs ${splitSecondMethod === "CREDIT" ? "bg-rose-50 text-rose-700" : "bg-slate-100 text-slate-600"}`}>Credit</button>
+                  </div>
+                </div>
+                <label className="mb-1 block text-xs font-bold text-slate-600">{splitSecondMethod === "MPESA" ? "M-Pesa amount" : "Credit amount"}</label>
+                <Input type="number" min="0" step="0.01" value={mpesaAmount} onChange={(e) => setMpesaAmount(e.target.value)} placeholder={splitSecondMethod === "MPESA" ? "Amount to collect via M-Pesa" : "Amount to put on customer credit"} />
+                <p className="mt-2 text-xs text-slate-500">When split payment is enabled, you may collect part of the total via the selected method.</p>
               </div>
             ) : null}
             {splitPaymentEnabled ? (
               <div className="mt-3 grid grid-cols-2 gap-2">
-                {(() => {
-                  const amt = Number(mpesaAmount || 0);
-                  const validAmount = Number.isFinite(amt) && amt > 0;
-                  const stkDisabled = !mpesaEnabled || mpesaInFlight || !validAmount;
-                  const stkReason = !mpesaEnabled ? "M-Pesa not configured" : mpesaInFlight ? "M-Pesa request in progress" : !validAmount ? "Enter a valid M-Pesa amount" : "";
-                  return (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      disabled={stkDisabled}
-                      title={stkDisabled ? stkReason : "Start STK Push for the split amount"}
-                      onClick={() => {
-                        const amountMinor = Math.round((Number(mpesaAmount || 0) || 0) * 100);
-                        void startMpesaPayment("STK_PUSH", amountMinor);
-                      }}
-                    >
-                      Start M-Pesa (STK) for split amount
-                    </Button>
-                  );
-                })()}
-
-                {(() => {
-                  const amt = Number(mpesaAmount || 0);
-                  const validAmount = Number.isFinite(amt) && amt > 0;
-                  const tillDisabled = !mpesaEnabled || mpesaInFlight || !validAmount || !online;
-                  const tillReason = !mpesaEnabled ? "M-Pesa not configured" : mpesaInFlight ? "M-Pesa request in progress" : !validAmount ? "Enter a valid M-Pesa amount" : !online ? "Offline — M-Pesa Till requires connection" : "";
-                  return (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      disabled={tillDisabled}
-                      title={tillDisabled ? tillReason : "Start Pay-to-Till for the split amount"}
-                      onClick={() => {
-                        const amountMinor = Math.round((Number(mpesaAmount || 0) || 0) * 100);
-                        void startMpesaPayment("PAY_TO_TILL", amountMinor);
-                      }}
-                    >
-                      Start M-Pesa (Till)
-                    </Button>
-                  );
-                })()}
+                {splitSecondMethod === "MPESA" ? (
+                  <>
+                    <Button type="button" variant="secondary" disabled={!mpesaEnabled || mpesaInFlight || !(Number.isFinite(Number(mpesaAmount || 0)) && Number(mpesaAmount) > 0)} onClick={() => { const amountMinor = Math.round((Number(mpesaAmount || 0) || 0) * 100); void startMpesaPayment("STK_PUSH", amountMinor); }}>Start M-Pesa (STK) for split amount</Button>
+                    <Button type="button" variant="secondary" disabled={!mpesaEnabled || mpesaInFlight || !(Number.isFinite(Number(mpesaAmount || 0)) && Number(mpesaAmount) > 0) || !online} onClick={() => { const amountMinor = Math.round((Number(mpesaAmount || 0) || 0) * 100); void startMpesaPayment("PAY_TO_TILL", amountMinor); }}>Start M-Pesa (Till)</Button>
+                  </>
+                ) : (
+                  // Split target is CREDIT — no external MPESA flow required
+                  <>
+                    <div />
+                    <div />
+                  </>
+                )}
               </div>
             ) : null}
             <div className="mt-3 grid grid-cols-4 gap-2">
@@ -1299,6 +1317,11 @@ export function PosShell({
               <Button onClick={() => void checkout()} isLoading={processing} disabled={!registerSessionId || !cart.length || processing || (Math.round(Number(amountReceived || 0) * 100) + Math.round(Number(mpesaAmount || 0) * 100) < totalMinor)} className="mt-3 w-full" size="lg" loadingText="Completing split sale...">Complete split payment{pendingCount ? ` • ${pendingCount} pending` : ""}</Button>
             ) : paymentMode === "CASH" ? (
               <Button onClick={() => void checkout()} isLoading={processing} disabled={!registerSessionId || !cart.length || processing} className="mt-3 w-full" size="lg" loadingText="Completing sale..."><Banknote className="h-5 w-5"/>Complete cash sale{pendingCount ? ` • ${pendingCount} pending` : ""}</Button>
+            ) : paymentMode === "CREDIT" ? (
+              <>
+                <div className="mt-3 text-sm text-slate-500">This will record the full sale as credit to the selected customer. Select a customer above.</div>
+                <Button onClick={() => void checkout()} isLoading={processing} disabled={!registerSessionId || !cart.length || processing || !customerId} className="mt-3 w-full" size="lg" loadingText="Recording credit sale...">Complete credit sale{pendingCount ? ` • ${pendingCount} pending` : ""}</Button>
+              </>
             ) : null}
           </div>
         </div>
