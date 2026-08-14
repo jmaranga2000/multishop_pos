@@ -1232,7 +1232,7 @@ export function PosShell({
               <div className="flex items-center justify-between text-sm"><span className="text-slate-500">Change due</span><span className={`font-black ${changeDueMinor >= 0 ? "text-emerald-700" : "text-red-600"}`}>{formatMoney(fromMinorUnits(changeDueMinor))}</span></div>
             </div>
             <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
-              <label className="mb-1 block text-xs font-bold text-slate-600">Customer</label>
+              <label className="mb-1 block text-xs font-bold text-slate-600">Customer {paymentMode === "CREDIT" || (splitPaymentEnabled && splitSecondMethod === "CREDIT") ? "(required for credit)" : ""}</label>
               <Input value={customerName} onChange={async (e) => {
                 const q = e.target.value;
                 setCustomerName(q);
@@ -1326,15 +1326,18 @@ export function PosShell({
               <button onClick={() => { setPaymentMode("CREDIT"); setMpesaOverlayOpen(false); }} className={`w-full rounded-xl border p-2.5 text-xs font-bold ${paymentMode === "CREDIT" ? "border-rose-200 bg-rose-50 text-rose-700" : "border-slate-200 bg-white text-slate-600"}`}><PackageX className="mx-auto mb-1 h-5 w-5"/>Credit</button>
             </div>
             {!online ? <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Offline mode only allows cash. M-Pesa and card payments remain unavailable until the connection is restored.</div> : null}
+            {(paymentMode === "CREDIT" || (splitPaymentEnabled && splitSecondMethod === "CREDIT")) ? (
+              <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+                <div className="text-[11px] font-black uppercase tracking-wide text-rose-700">Credit sale requires a customer</div>
+                <div className="mt-1">Choose the customer in the Customer field above before completing this sale.</div>
+              </div>
+            ) : null}
             {splitPaymentEnabled ? (
               <Button onClick={() => void checkout()} isLoading={processing} disabled={!registerSessionId || !cart.length || processing || (Math.round(Number(amountReceived || 0) * 100) + Math.round(Number(mpesaAmount || 0) * 100) < totalMinor)} className="mt-3 w-full" size="lg" loadingText="Completing split sale...">Complete split payment{pendingCount ? ` • ${pendingCount} pending` : ""}</Button>
             ) : paymentMode === "CASH" ? (
               <Button onClick={() => void checkout()} isLoading={processing} disabled={!registerSessionId || !cart.length || processing} className="mt-3 w-full" size="lg" loadingText="Completing sale..."><Banknote className="h-5 w-5"/>Complete cash sale{pendingCount ? ` • ${pendingCount} pending` : ""}</Button>
             ) : paymentMode === "CREDIT" ? (
-              <>
-                <div className="mt-3 text-sm text-slate-500">This will record the full sale as credit to the selected customer. Select a customer above.</div>
-                <Button onClick={() => void checkout()} isLoading={processing} disabled={!registerSessionId || !cart.length || processing || !customerId} className="mt-3 w-full" size="lg" loadingText="Recording credit sale...">Complete credit sale{pendingCount ? ` • ${pendingCount} pending` : ""}</Button>
-              </>
+              <Button onClick={() => void checkout()} isLoading={processing} disabled={!registerSessionId || !cart.length || processing || !customerId} className="mt-3 w-full" size="lg" loadingText="Recording credit sale...">Complete credit sale{pendingCount ? ` • ${pendingCount} pending` : ""}</Button>
             ) : null}
           </div>
         </div>
