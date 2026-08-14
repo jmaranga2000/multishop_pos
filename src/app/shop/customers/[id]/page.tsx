@@ -98,8 +98,8 @@ export default function CustomerDetailsPage() {
 
   if (loading) {
     return (
-      <div className="p-6 min-h-screen">
-        <div className="max-w-2xl mx-auto">
+      <div className="min-h-screen bg-slate-50 p-6">
+        <div className="mx-auto max-w-7xl">
           <Card className="p-6">Loading customer details...</Card>
         </div>
       </div>
@@ -108,8 +108,8 @@ export default function CustomerDetailsPage() {
 
   if (error || !customer) {
     return (
-      <div className="p-6 min-h-screen">
-        <div className="max-w-2xl mx-auto">
+      <div className="min-h-screen bg-slate-50 p-6">
+        <div className="mx-auto max-w-7xl">
           <Link href="/shop/customers">
             <Button variant="secondary" size="sm" className="mb-4">
               <ChevronLeft className="h-4 w-4" />
@@ -130,8 +130,8 @@ export default function CustomerDetailsPage() {
     : 0;
 
   return (
-    <div className="p-6 min-h-screen bg-slate-50">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-slate-50 p-6">
+      <div className="mx-auto max-w-7xl">
         <Link href="/shop/customers">
           <Button variant="secondary" size="sm" className="mb-4">
             <ChevronLeft className="h-4 w-4" />
@@ -139,8 +139,9 @@ export default function CustomerDetailsPage() {
           </Button>
         </Link>
 
-        {/* Customer Info */}
-        <Card className="p-6 mb-6">
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Customer Info - takes 2 columns on large screens */}
+          <Card className="p-6 lg:col-span-2">
           <div className="flex items-start justify-between mb-4">
             <div>
               <h1 className="text-3xl font-bold">{customer.name}</h1>
@@ -207,8 +208,8 @@ export default function CustomerDetailsPage() {
           )}
         </Card>
 
-        {/* Record Payment */}
-        <Card className="p-6">
+        {/* Record Payment - takes 1 column on large screens */}
+        <Card className="p-6 lg:col-span-1">
           <h2 className="text-lg font-bold mb-4">Record Payment</h2>
           
           <div className="space-y-4">
@@ -263,6 +264,7 @@ export default function CustomerDetailsPage() {
             </Button>
           </div>
         </Card>
+        </div>
       </div>
     </div>
   );

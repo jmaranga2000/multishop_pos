@@ -7,11 +7,19 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const search = url.searchParams.get("q") ?? undefined;
 
+  // First, get all shops for this business
+  const shops = await db.shop.findMany({
+    where: {
+      businessId: user.businessId,
+    },
+  });
+
+  const shopIds = shops.map((s) => s.id);
+
+  // Then get customers from those shops
   const customers = await db.customer.findMany({
     where: {
-      shop: {
-        businessId: user.businessId,
-      },
+      shopId: { in: shopIds },
       ...(search ? { name: { contains: search } } : {}),
     },
     orderBy: { name: "asc" },

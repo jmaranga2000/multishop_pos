@@ -19,7 +19,7 @@ interface Customer {
   creditLimit: number;
   cachedOutstandingMinor: number;
   lastTransactionAt: string | null;
-  shop: {
+  shop?: {
     id: string;
     name: string;
     code: string;
@@ -112,8 +112,8 @@ export default function AdminCustomerDetailsPage() {
 
   if (loading) {
     return (
-      <div className="p-6 min-h-screen">
-        <div className="max-w-2xl mx-auto">
+      <div className="min-h-screen bg-slate-50 p-6">
+        <div className="mx-auto max-w-7xl">
           <Card className="p-6">Loading customer details...</Card>
         </div>
       </div>
@@ -122,8 +122,8 @@ export default function AdminCustomerDetailsPage() {
 
   if (error || !customer) {
     return (
-      <div className="p-6 min-h-screen">
-        <div className="max-w-2xl mx-auto">
+      <div className="min-h-screen bg-slate-50 p-6">
+        <div className="mx-auto max-w-7xl">
           <Link href="/admin/customers">
             <Button variant="secondary" size="sm" className="mb-4">
               <ChevronLeft className="h-4 w-4" />
@@ -144,8 +144,8 @@ export default function AdminCustomerDetailsPage() {
     : 0;
 
   return (
-    <div className="p-6 min-h-screen bg-slate-50">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-slate-50 p-6">
+      <div className="mx-auto max-w-7xl">
         <Link href="/admin/customers">
           <Button variant="secondary" size="sm" className="mb-4">
             <ChevronLeft className="h-4 w-4" />
@@ -161,7 +161,8 @@ export default function AdminCustomerDetailsPage() {
                 <div>
                   <h1 className="text-3xl font-bold">{customer.name}</h1>
                   <p className="text-slate-600 mt-1">
-                    Shop: <span className="font-semibold">{customer.shop.name}</span> ({customer.shop.code})
+                    Shop: <span className="font-semibold">{customer.shop?.name ?? "Unknown shop"}</span>
+                    {customer.shop?.code ? ` (${customer.shop.code})` : ""}
                   </p>
                   {customer.phone && <p className="text-slate-600">Phone: {customer.phone}</p>}
                   {customer.email && <p className="text-slate-600">Email: {customer.email}</p>}
@@ -273,7 +274,7 @@ export default function AdminCustomerDetailsPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <p className="text-sm text-slate-600 col-span-2">
-                    Shop: <span className="font-semibold">{customer.shop.name}</span>
+                    Shop: <span className="font-semibold">{customer.shop?.name ?? "Unknown shop"}</span>
                   </p>
                 </div>
               </div>

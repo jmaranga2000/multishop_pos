@@ -14,11 +14,19 @@ export default async function AdminCustomersPage(props: { searchParams: Promise<
   const searchParams = await props.searchParams;
   const query = searchParams.q ?? "";
 
+  // First, get all shops for this business
+  const shops = await db.shop.findMany({
+    where: {
+      businessId: admin.businessId,
+    },
+  });
+
+  const shopIds = shops.map((s) => s.id);
+
+  // Then get customers from those shops
   const customers = await db.customer.findMany({
     where: {
-      shop: {
-        businessId: admin.businessId,
-      },
+      shopId: { in: shopIds },
       ...(query ? { name: { contains: query } } : {}),
     },
     orderBy: { name: "asc" },

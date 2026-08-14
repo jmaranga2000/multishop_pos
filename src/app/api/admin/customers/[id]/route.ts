@@ -7,12 +7,19 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const user = await requireAdmin();
   const { id } = await params;
 
+  // Get all shops for this business
+  const shops = await db.shop.findMany({
+    where: {
+      businessId: user.businessId,
+    },
+  });
+
+  const shopIds = shops.map((s) => s.id);
+
   const customer = await db.customer.findFirst({
     where: {
       id,
-      shop: {
-        businessId: user.businessId,
-      },
+      shopId: { in: shopIds },
     },
     include: {
       shop: {
@@ -40,12 +47,19 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const body = await request.json();
 
+  // Get all shops for this business
+  const shops = await db.shop.findMany({
+    where: {
+      businessId: user.businessId,
+    },
+  });
+
+  const shopIds = shops.map((s) => s.id);
+
   const customer = await db.customer.findFirst({
     where: {
       id,
-      shop: {
-        businessId: user.businessId,
-      },
+      shopId: { in: shopIds },
     },
   });
 

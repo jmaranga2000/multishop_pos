@@ -106,6 +106,9 @@ export const modelRelations: Record<string, Record<string, RelationDefinition>> 
     supplierProducts: relation("supplierProduct", "id", "supplierId", true),
     notificationHistory: relation("supplierNotificationHistory", "id", "supplierId", true),
   },
+  customer: {
+    shop: relation("shop", "shopId", "id"),
+  },
   supplierProduct: {
     supplier: relation("supplier", "supplierId", "id"),
     shop: relation("shop", "shopId", "id"),
