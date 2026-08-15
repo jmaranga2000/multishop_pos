@@ -13,16 +13,9 @@ export const dynamic = "force-dynamic";
 export default async function ArchivedCustomersPage() {
   const admin = await requireAdmin();
 
-  const shops = await db.shop.findMany({
-    where: { businessId: admin.businessId },
-    select: { id: true },
-  });
-
-  const shopIds = shops.map((shop) => shop.id);
-
   const customers = await db.customer.findMany({
     where: {
-      shopId: { in: shopIds },
+      shop: { businessId: admin.businessId },
       isArchived: true,
     },
     include: {

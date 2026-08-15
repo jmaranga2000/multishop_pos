@@ -14,21 +14,14 @@ export default async function AdminCustomersPage(props: { searchParams: Promise<
   const searchParams = await props.searchParams;
   const query = searchParams.q ?? "";
 
-  // First, get all shops for this business
-  const shops = await db.shop.findMany({
-    where: {
-      businessId: admin.businessId,
-    },
-  });
-
-  const shopIds = shops.map((s) => s.id);
-
-  // Then get customers from those shops
   const customers = await db.customer.findMany({
     where: {
-      shopId: { in: shopIds },
+      shop: { businessId: admin.businessId },
       isArchived: false,
       ...(query ? { name: { contains: query } } : {}),
+    },
+    include: {
+      shop: { select: { id: true, name: true, code: true } },
     },
     orderBy: { name: "asc" },
     take: 200,
@@ -37,17 +30,17 @@ export default async function AdminCustomersPage(props: { searchParams: Promise<
   return (
     <div className="p-6 min-h-screen">
       <div className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-2xl font-bold">Customers (Admin)</h1>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-row flex-wrap items-center gap-2">
             <Link href="/admin/credit">
-              <Button variant="secondary">Credit Dashboard</Button>
+              <Button variant="secondary" className="whitespace-nowrap">Credit Dashboard</Button>
             </Link>
             <Link href="/admin/customers/archived">
-              <Button variant="secondary">Archived Customers</Button>
+              <Button variant="secondary" className="whitespace-nowrap">Archived Customers</Button>
             </Link>
             <Link href="/admin/customers/new">
-              <Button>Create Customer</Button>
+              <Button className="whitespace-nowrap">Create Customer</Button>
             </Link>
           </div>
         </div>
