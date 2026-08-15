@@ -27,6 +27,7 @@ export default async function AdminCustomersPage(props: { searchParams: Promise<
   const customers = await db.customer.findMany({
     where: {
       shopId: { in: shopIds },
+      isArchived: false,
       ...(query ? { name: { contains: query } } : {}),
     },
     orderBy: { name: "asc" },
@@ -38,9 +39,12 @@ export default async function AdminCustomersPage(props: { searchParams: Promise<
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Customers (Admin)</h1>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Link href="/admin/credit">
               <Button variant="secondary">Credit Dashboard</Button>
+            </Link>
+            <Link href="/admin/customers/archived">
+              <Button variant="secondary">Archived Customers</Button>
             </Link>
             <Link href="/admin/customers/new">
               <Button>Create Customer</Button>

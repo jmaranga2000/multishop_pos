@@ -20,6 +20,7 @@ export async function GET(request: Request) {
   const customers = await db.customer.findMany({
     where: {
       shopId: { in: shopIds },
+      isArchived: false,
       ...(search ? { name: { contains: search } } : {}),
     },
     orderBy: { name: "asc" },
