@@ -21,13 +21,21 @@ export function BarcodePrintPreview({ barcode, productName, sku }: BarcodePrintP
 
     async function renderBarcode() {
       try {
+        const trimmedBarcode = barcode?.trim();
+        if (!trimmedBarcode) {
+          if (!cancelled) {
+            setRenderError("Barcode is missing.");
+          }
+          return;
+        }
+
         const imported = await import("jsbarcode");
         const JsBarcode = (imported.default ?? imported) as any;
 
         if (!svgRef.current) return;
 
-        JsBarcode(svgRef.current, barcode, {
-          format: /^\d{12,13}$/.test(barcode) ? "EAN13" : "CODE128",
+        JsBarcode(svgRef.current, trimmedBarcode, {
+          format: /^\d{12,13}$/.test(trimmedBarcode) ? "EAN13" : "CODE128",
           lineColor: "#111827",
           width: 1.8,
           height: 72,
@@ -37,7 +45,6 @@ export function BarcodePrintPreview({ barcode, productName, sku }: BarcodePrintP
           background: "#ffffff",
           textMargin: 6,
           flat: false,
-          valid: true,
         });
 
         if (!cancelled) {
