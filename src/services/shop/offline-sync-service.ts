@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { hasPriceMismatchBetweenMinorUnits } from "@/lib/offline/price";
+import { detectMixedUnitSaleConflict } from "@/lib/offline/sync";
 import { fromMinorUnits } from "@/lib/utils";
 import { reconcileStockAlert } from "@/lib/stock-alerts";
 import { writeAuditLog } from "@/services/shared/audit-service";
@@ -99,6 +100,37 @@ export async function synchronizeOfflineSales(user: ShopSyncContext, payload: Of
             create: { key: entry.sale.idempotencyKey, shopId: user.shopId, operation: "OFFLINE_SALE", responseData: response },
           });
           return response;
+        }
+
+        if (detectMixedUnitSaleConflict(entry.items)) {
+          const conflictType = "MIXED_UNIT_SALE" as const;
+          await tx.offlineSyncConflict.create({
+            data: {
+              shopId: user.shopId,
+              deviceId: device.id,
+              batchId: batch.id,
+              type: conflictType,
+              entityType: "SALE",
+              entityReference: entry.sale.localId,
+              details: {
+                reason: "A single product was sold in multiple unit options in one sale.",
+                productIds: Array.from(new Set(entry.items.map((item) => item.productId))),
+                units: Array.from(new Set(entry.items.map((item) => item.unitId ?? "default"))),
+              },
+            },
+          });
+          await tx.notification.create({
+            data: {
+              userId: admin.id,
+              shopId: user.shopId,
+              type: "SYNC_CONFLICT",
+              priority: "HIGH",
+              title: `Mixed unit sale at ${user.shop.name}`,
+              message: `${entry.sale.localId} contains more than one unit option for the same product and requires review.`,
+              actionUrl: "/admin/synchronization",
+            },
+          });
+          throw new AppError("A single product cannot be sold in multiple unit options in the same sale.", "MIXED_UNIT_SALE", 409);
         }
 
         const productIds = entry.items.map((item) => item.productId);

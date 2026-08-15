@@ -36,6 +36,7 @@ export const OfflineSyncConflictModel = defineModel<OfflineSyncConflictDocument>
   enums: {
     type: [
       "INSUFFICIENT_SERVER_STOCK", "PRODUCT_DEACTIVATED", "PRICE_CHANGED",
+      "CREDIT_LIMIT_EXCEEDED", "CREDIT_ACCOUNT_RESTRICTED", "MIXED_UNIT_SALE",
       "REGISTER_CLOSED", "INVALID_SHOP_SESSION", "DUPLICATE_MUTATION",
     ],
     status: ["OPEN", "REVIEWED", "RESOLVED"],

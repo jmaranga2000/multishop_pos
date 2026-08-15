@@ -29,13 +29,15 @@ export function BarcodePrintPreview({ barcode, productName, sku }: BarcodePrintP
         JsBarcode(svgRef.current, barcode, {
           format: /^\d{12,13}$/.test(barcode) ? "EAN13" : "CODE128",
           lineColor: "#111827",
-          width: 2,
-          height: 80,
+          width: 1.8,
+          height: 72,
           displayValue: true,
-          fontSize: 14,
-          margin: 8,
+          fontSize: 12,
+          margin: 10,
           background: "#ffffff",
           textMargin: 6,
+          flat: false,
+          valid: true,
         });
 
         if (!cancelled) {
@@ -58,6 +60,17 @@ export function BarcodePrintPreview({ barcode, productName, sku }: BarcodePrintP
     <>
       <style>{`
         @media print {
+          @page {
+            size: auto;
+            margin: 10mm;
+          }
+
+          html, body {
+            background: #fff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
           body * {
             visibility: hidden !important;
           }
@@ -68,16 +81,15 @@ export function BarcodePrintPreview({ barcode, productName, sku }: BarcodePrintP
           }
 
           .barcode-print-area {
-            position: fixed !important;
-            inset: 0 !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            margin: 0 !important;
+            position: static !important;
+            display: block !important;
+            width: auto !important;
+            max-width: 340px !important;
+            margin: 0 auto !important;
             padding: 0 !important;
             background: white !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
+            box-shadow: none !important;
+            border: none !important;
           }
 
           .barcode-print-area .barcode-card {
@@ -85,7 +97,16 @@ export function BarcodePrintPreview({ barcode, productName, sku }: BarcodePrintP
             border: none !important;
             border-radius: 0 !important;
             padding: 0 !important;
-            width: min(420px, 90vw) !important;
+            width: 100% !important;
+          }
+
+          .barcode-print-area svg {
+            display: block !important;
+            width: 100% !important;
+            height: auto !important;
+            max-width: 100% !important;
+            object-fit: contain !important;
+            transform: none !important;
           }
 
           .no-print {
@@ -104,8 +125,8 @@ export function BarcodePrintPreview({ barcode, productName, sku }: BarcodePrintP
             </div>
 
             <div className="rounded-3xl bg-slate-50 p-4 print:p-0">
-              <div className="mx-auto w-full max-w-[340px] print:max-w-none">
-                <svg ref={svgRef} className="w-full" aria-label={`Barcode for ${barcode}`} />
+              <div className="mx-auto w-full max-w-[340px]">
+                <svg ref={svgRef} className="block h-auto w-full max-w-full" aria-label={`Barcode for ${barcode}`} />
               </div>
             </div>
           </div>
