@@ -214,34 +214,34 @@ export default async function AdminDashboard() {
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
+            <Link href="/admin/synchronization" className="flex items-center justify-between rounded-xl border border-slate-200 p-3 transition hover:border-slate-300 hover:bg-slate-50">
               <div className="flex items-center gap-2 text-slate-700">
                 <ShieldAlert className="h-4 w-4" />
                 <span className="text-sm font-medium">Open sync conflicts</span>
               </div>
               <Badge tone={operational.openConflicts ? "danger" : "success"}>{operational.openConflicts}</Badge>
-            </div>
-            <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
+            </Link>
+            <Link href="/admin/devices" className="flex items-center justify-between rounded-xl border border-slate-200 p-3 transition hover:border-slate-300 hover:bg-slate-50">
               <div className="flex items-center gap-2 text-slate-700">
                 <PackageCheck className="h-4 w-4" />
                 <span className="text-sm font-medium">Active devices</span>
               </div>
               <Badge tone="info">{operational.activeDevices}</Badge>
-            </div>
-            <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
+            </Link>
+            <Link href="/admin/expenses" className="flex items-center justify-between rounded-xl border border-slate-200 p-3 transition hover:border-slate-300 hover:bg-slate-50">
               <div className="flex items-center gap-2 text-slate-700">
                 <Wallet className="h-4 w-4" />
                 <span className="text-sm font-medium">Pending expenses</span>
               </div>
               <Badge tone="warning">{operational.pendingExpenses}</Badge>
-            </div>
-            <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
+            </Link>
+            <Link href="/admin/refunds" className="flex items-center justify-between rounded-xl border border-slate-200 p-3 transition hover:border-slate-300 hover:bg-slate-50">
               <div className="flex items-center gap-2 text-slate-700">
                 <ShoppingCart className="h-4 w-4" />
                 <span className="text-sm font-medium">Pending refunds</span>
               </div>
               <Badge tone="warning">{operational.pendingRefunds}</Badge>
-            </div>
+            </Link>
           </CardContent>
         </Card>
       </div>
