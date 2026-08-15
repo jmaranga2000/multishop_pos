@@ -6,7 +6,7 @@ import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { SignOutButton } from "@/components/layout/sign-out-button";
 import { Button } from "@/components/ui/button";
 
-export function AppShell({ children, navItems, userName, userEmail, accountLabel, notificationCount = 0, headerExtra }: {
+export function AppShell({ children, navItems, userName, userEmail, accountLabel, notificationCount = 0, headerExtra, headerUserName, headerAccountLabel }: {
   children: React.ReactNode;
   navItems: { href: string; label: string; icon: string; count?: number; countTone?: "danger" | "warning" | "success" }[];
   userName: string;
@@ -14,6 +14,8 @@ export function AppShell({ children, navItems, userName, userEmail, accountLabel
   accountLabel: string;
   notificationCount?: number;
   headerExtra?: React.ReactNode;
+  headerUserName?: string;
+  headerAccountLabel?: string;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -41,8 +43,9 @@ export function AppShell({ children, navItems, userName, userEmail, accountLabel
         </div>
         <div className="hidden min-w-0 flex-1 items-center justify-center text-center md:flex">
           <div>
-            <p className="text-sm font-bold text-slate-900">{userName}</p>
-            {userEmail && <p className="text-xs text-slate-500">{userEmail}</p>}
+            <p className="text-sm font-bold text-slate-900">{headerUserName ?? userName}</p>
+            {(headerAccountLabel ?? accountLabel) && <p className="text-xs text-slate-500">{headerAccountLabel ?? accountLabel}</p>}
+            {userEmail && !headerAccountLabel && <p className="text-xs text-slate-500">{userEmail}</p>}
           </div>
         </div>
         <div className="relative flex items-center gap-3">
@@ -59,7 +62,7 @@ export function AppShell({ children, navItems, userName, userEmail, accountLabel
               </Button>
             </div>
           )}
-          <div className="hidden text-right sm:block"><p className="text-sm font-bold text-slate-900">{userName}</p><p className="text-xs text-slate-500">{accountLabel}</p></div>
+          <div className="hidden text-right sm:block"><p className="text-sm font-bold text-slate-900">{headerUserName ?? userName}</p><p className="text-xs text-slate-500">{headerAccountLabel ?? accountLabel}</p></div>
         </div>
       </header>
       {mobileOpen && <div className="fixed inset-0 z-40">

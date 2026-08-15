@@ -24,5 +24,16 @@ const nav=[
 	{ href: "/shop/customers", label: "Customers", icon: "UsersRound" },
 	{ href: "/shop/profile", label: "Profile", icon: "Settings" },
 ];
- return <OfflineProvider shopId={user.shopId} shopName={user.shop.name}><AppShell navItems={nav} userName={user.shop.name} userEmail={user.email} accountLabel={`Shop account • ${user.shop.code}`} headerExtra={<ConnectivityStatus/>}><ShopPortalLockGuard salespersonId={openSession?.salespersonId ?? null} salespersonName={openSession?.salesperson?.name ?? null} />{children}</AppShell></OfflineProvider>;
+ const cashierName = openSession?.salesperson?.name ?? "No cashier selected";
+ const counterName = openSession?.register?.name ?? "No active counter";
+
+ return <OfflineProvider shopId={user.shopId} shopName={user.shop.name}><AppShell
+  navItems={nav}
+  userName={user.shop.name}
+  userEmail={user.email}
+  accountLabel={`Shop account • ${user.shop.code}`}
+  headerUserName={cashierName}
+  headerAccountLabel={`Counter • ${counterName}`}
+  headerExtra={<ConnectivityStatus/>}
+><ShopPortalLockGuard salespersonId={openSession?.salespersonId ?? null} salespersonName={openSession?.salesperson?.name ?? null} />{children}</AppShell></OfflineProvider>;
 }
