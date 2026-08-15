@@ -17,10 +17,16 @@ type ShopDocument = {
 
 type InventoryDocument = {
   shopId: string;
+  productId: string;
   quantity: number;
   costPrice: number | string;
   reorderLevel: number;
   criticalLevel: number;
+};
+
+type ProductDocument = {
+  id: string;
+  name: string;
 };
 
 type SalesFacetResult = {
@@ -41,7 +47,7 @@ export async function getAdminDashboardData(businessId: string) {
   const weekStart = subDays(todayStart, 6);
   const database = await connectToMongoDB();
 
-  const [businessResult, shopsResult] = await Promise.all([
+  const [businessResult, shopsResult, productsResult] = await Promise.all([
     database.collection("businesses").findOne(
       { id: businessId },
       { projection: { _id: 0, id: 1, name: 1, currency: 1, timezone: 1 } },
@@ -50,9 +56,15 @@ export async function getAdminDashboardData(businessId: string) {
       { businessId, isActive: true },
       { projection: { _id: 0, id: 1, name: 1, code: 1 } },
     ).sort({ name: 1 }).toArray(),
+    database.collection("products").find(
+      { businessId },
+      { projection: { _id: 0, id: 1, name: 1 } },
+    ).toArray(),
   ]);
   const business = businessResult as BusinessDocument | null;
   const shops = shopsResult as unknown as ShopDocument[];
+  const products = productsResult as unknown as ProductDocument[];
+
   if (!business) throw new Error("business record was not found.");
 
   const shopIds = shops.map((shop) => shop.id);
@@ -65,6 +77,14 @@ export async function getAdminDashboardData(businessId: string) {
       todayExpenseTotal: 0,
       transactionCount: 0,
       inventoryHealth: { low: 0, critical: 0, out: 0, healthy: 0 },
+      inventoryWatchlist: [],
+      operational: {
+        openConflicts: 0,
+        pendingExpenses: 0,
+        pendingRefunds: 0,
+        pendingTransfers: 0,
+        activeDevices: 0,
+      },
       chartData: Array.from({ length: 7 }, (_, index) => ({
         label: format(subDays(todayStart, 6 - index), "EEE"),
         sales: 0,
@@ -74,7 +94,16 @@ export async function getAdminDashboardData(businessId: string) {
   }
 
   const timezone = business.timezone ?? "Africa/Nairobi";
-  const [salesFacetRows, inventoryRows, expenseRows] = await Promise.all([
+  const [
+    salesFacetRows,
+    inventoryRows,
+    expenseRows,
+    openConflictCount,
+    pendingExpenseCount,
+    pendingRefundCount,
+    pendingTransferCount,
+    activeDeviceCount,
+  ] = await Promise.all([
     database.collection("sales").aggregate([
       {
         $match: {
@@ -141,6 +170,7 @@ export async function getAdminDashboardData(businessId: string) {
         projection: {
           _id: 0,
           shopId: 1,
+          productId: 1,
           quantity: 1,
           costPrice: 1,
           reorderLevel: 1,
@@ -158,6 +188,28 @@ export async function getAdminDashboardData(businessId: string) {
       },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]).toArray(),
+    database.collection("offlineSyncConflicts").countDocuments({
+      shopId: { $in: shopIds },
+      status: "OPEN",
+    }),
+    database.collection("expenses").countDocuments({
+      shopId: { $in: shopIds },
+      status: "PENDING",
+    }),
+    database.collection("refundRequests").countDocuments({
+      shopId: { $in: shopIds },
+      status: { $in: ["PENDING", "APPROVED"] },
+    }),
+    database.collection("stockTransfers").countDocuments({
+      $or: [
+        { sourceShopId: { $in: shopIds }, status: { $in: ["DRAFT", "DISPATCHED"] } },
+        { destinationShopId: { $in: shopIds }, status: { $in: ["DRAFT", "DISPATCHED"] } },
+      ],
+    }),
+    database.collection("offlineDevices").countDocuments({
+      shopId: { $in: shopIds },
+      isActive: true,
+    }),
   ]);
   const salesFacet = (salesFacetRows[0] ?? {
     daily: [],
@@ -184,6 +236,9 @@ export async function getAdminDashboardData(businessId: string) {
     inventoryByShop.set(entry.shopId, rows);
   }
 
+  const productNameById = new Map(products.map((product) => [product.id, product.name]));
+  const shopNameById = new Map(shops.map((shop) => [shop.id, shop.name]));
+
   const low = inventory.filter(
     (entry) => getStockStatus(entry.quantity, entry.reorderLevel, entry.criticalLevel) === "LOW_STOCK",
   );
@@ -191,6 +246,14 @@ export async function getAdminDashboardData(businessId: string) {
     (entry) => getStockStatus(entry.quantity, entry.reorderLevel, entry.criticalLevel) === "CRITICAL",
   );
   const out = inventory.filter((entry) => entry.quantity <= 0);
+  const inventoryWatchlist = inventory
+    .map((entry) => {
+      const status = getStockStatus(entry.quantity, entry.reorderLevel, entry.criticalLevel);
+      return { ...entry, status, productName: productNameById.get(entry.productId) ?? "Unknown product", shopName: shopNameById.get(entry.shopId) ?? "Shop" };
+    })
+    .filter((entry) => entry.status !== "IN_STOCK")
+    .sort((left, right) => left.quantity - right.quantity)
+    .slice(0, 6);
 
   return {
     business,
@@ -204,6 +267,14 @@ export async function getAdminDashboardData(businessId: string) {
       critical: critical.length,
       out: out.length,
       healthy: inventory.length - low.length - critical.length - out.length,
+    },
+    inventoryWatchlist,
+    operational: {
+      openConflicts: openConflictCount,
+      pendingExpenses: pendingExpenseCount,
+      pendingRefunds: pendingRefundCount,
+      pendingTransfers: pendingTransferCount,
+      activeDevices: activeDeviceCount,
     },
     chartData: Array.from({ length: 7 }, (_, index) => {
       const date = subDays(todayStart, 6 - index);
