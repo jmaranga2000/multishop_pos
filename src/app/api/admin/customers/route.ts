@@ -10,6 +10,7 @@ export async function GET(request: Request) {
   const customers = await db.customer.findMany({
     where: {
       shop: { businessId: user.businessId },
+      status: "ACTIVE",
       isArchived: false,
       ...(search ? { name: { contains: search } } : {}),
     },

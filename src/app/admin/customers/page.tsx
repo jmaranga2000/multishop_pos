@@ -17,6 +17,7 @@ export default async function AdminCustomersPage(props: { searchParams: Promise<
   const customers = await db.customer.findMany({
     where: {
       shop: { businessId: admin.businessId },
+      status: "ACTIVE",
       isArchived: false,
       ...(query ? { name: { contains: query } } : {}),
     },

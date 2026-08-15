@@ -7,8 +7,8 @@ import { z } from "zod";
 import { db } from "./db";
 
 const credentialsSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
+  email: z.string().trim().email().max(50),
+  password: z.string().min(1).max(20),
 });
 
 const SESSION_COOKIE_NAME = "multishop-pos-session";

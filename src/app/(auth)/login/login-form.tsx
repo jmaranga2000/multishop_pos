@@ -50,7 +50,7 @@ export function LoginForm({
   }
 
   return <form onSubmit={submit} className="space-y-4">
-    <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">Email address</label><div className="relative"><Mail className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" /><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10" placeholder="shop@example.com" required /></div></div>
+    <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">Email address</label><div className="relative"><Mail className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" /><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10" placeholder="shop@example.com" required maxLength={50} /></div></div>
     <div>
       <label className="mb-1.5 block text-sm font-semibold text-slate-700">Password</label>
       <div className="relative">
@@ -62,6 +62,7 @@ export function LoginForm({
           className="pl-10"
           placeholder={passwordPlaceholder}
           required
+          maxLength={20}
         />
         <button
           type="button"

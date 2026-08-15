@@ -56,11 +56,11 @@ export default function LoginPage() {
                   <form method="post" action="/api/auth/login" className="space-y-4">
                     <div>
                       <label className="mb-1.5 block text-sm font-semibold text-slate-700">Email address</label>
-                      <input name="email" type="email" className="w-full rounded-md border px-3 py-2" required />
+                      <input name="email" type="email" className="w-full rounded-md border px-3 py-2" required maxLength={50} />
                     </div>
                     <div>
                       <label className="mb-1.5 block text-sm font-semibold text-slate-700">Password</label>
-                      <input name="password" type="password" className="w-full rounded-md border px-3 py-2" required />
+                      <input name="password" type="password" className="w-full rounded-md border px-3 py-2" required maxLength={20} />
                     </div>
                     <button type="submit" className="w-full rounded-md bg-blue-600 px-4 py-2 text-white">Sign in</button>
                     <p className="text-xs text-slate-500">If JavaScript is disabled or failed to load, use this form to sign in.</p>

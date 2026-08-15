@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { hasPriceMismatchBetweenMinorUnits } from "@/lib/offline/price";
-import { detectMixedUnitSaleConflict } from "@/lib/offline/sync";
+import { detectMixedUnitSaleConflict } from "@/lib/offline/conflicts";
 import { fromMinorUnits } from "@/lib/utils";
 import { reconcileStockAlert } from "@/lib/stock-alerts";
 import { writeAuditLog } from "@/services/shared/audit-service";
