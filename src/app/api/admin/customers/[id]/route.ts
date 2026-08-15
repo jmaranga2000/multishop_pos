@@ -70,6 +70,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     );
   }
 
+  const nextStatus = body.status;
+  const isArchived = body.isArchived;
+
   const updatedCustomer = await db.customer.update({
     where: { id },
     data: {
@@ -77,6 +80,11 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       ...(body.phone !== undefined && { phone: body.phone || null }),
       ...(body.email !== undefined && { email: body.email || null }),
       ...(body.creditLimit !== undefined && { creditLimit: body.creditLimit }),
+      ...(nextStatus !== undefined && { status: nextStatus }),
+      ...(isArchived !== undefined && { isArchived: Boolean(isArchived) }),
+      ...(nextStatus === "ACTIVE" && isArchived === undefined && { isArchived: false }),
+      ...(nextStatus === "ACTIVE" && isArchived === true && { isArchived: false }),
+      ...(isArchived === true && { status: "SUSPENDED" }),
     },
     include: {
       shop: {

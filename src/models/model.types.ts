@@ -502,6 +502,7 @@ export interface CustomerDocument extends BaseDocument {
   creditLimit: number; // minor units
   cachedOutstandingMinor: number; // cached derived balance in minor units
   status: CustomerAccountStatus;
+  isArchived?: boolean;
   lastTransactionAt?: Date | null;
   createdAt: Date;
 }

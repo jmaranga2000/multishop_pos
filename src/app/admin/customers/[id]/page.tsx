@@ -18,6 +18,8 @@ interface Customer {
   email: string | null;
   creditLimit: number;
   cachedOutstandingMinor: number;
+  status: "ACTIVE" | "SUSPENDED" | "CREDIT_RESTRICTED";
+  isArchived?: boolean;
   lastTransactionAt: string | null;
   shop?: {
     id: string;
@@ -34,6 +36,7 @@ export default function AdminCustomerDetailsPage() {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [updatingAccount, setUpdatingAccount] = useState(false);
 
   // Form state
   const [name, setName] = useState("");
@@ -110,6 +113,32 @@ export default function AdminCustomerDetailsPage() {
     }
   };
 
+  const updateCustomerAccountState = async (payload: { status?: "ACTIVE" | "SUSPENDED" | "CREDIT_RESTRICTED"; isArchived?: boolean }) => {
+    if (!customer) return;
+    setUpdatingAccount(true);
+
+    try {
+      const res = await fetch(`/api/admin/customers/${customerId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to update customer status");
+      }
+
+      const updatedCustomer = await res.json();
+      setCustomer(updatedCustomer);
+      toast.success(payload.isArchived ? "Customer archived successfully" : payload.status === "SUSPENDED" ? "Customer suspended successfully" : "Customer account restored successfully");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update customer status");
+    } finally {
+      setUpdatingAccount(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 p-6">
@@ -142,6 +171,8 @@ export default function AdminCustomerDetailsPage() {
   const utilizationPercent = customer.creditLimit > 0
     ? Math.round((customer.cachedOutstandingMinor / customer.creditLimit) * 100)
     : 0;
+  const isArchived = !!customer.isArchived;
+  const canArchive = customer.cachedOutstandingMinor === 0 && !isArchived;
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">
@@ -160,6 +191,11 @@ export default function AdminCustomerDetailsPage() {
               <div className="flex items-start justify-between mb-6">
                 <div>
                   <h1 className="text-3xl font-bold">{customer.name}</h1>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Badge tone={isArchived ? "neutral" : customer.status === "SUSPENDED" ? "warning" : customer.status === "CREDIT_RESTRICTED" ? "warning" : "success"}>
+                      {isArchived ? "Archived" : customer.status}
+                    </Badge>
+                  </div>
                   <p className="text-slate-600 mt-1">
                     Shop: <span className="font-semibold">{customer.shop?.name ?? "Unknown shop"}</span>
                     {customer.shop?.code ? ` (${customer.shop.code})` : ""}
@@ -167,12 +203,60 @@ export default function AdminCustomerDetailsPage() {
                   {customer.phone && <p className="text-slate-600">Phone: {customer.phone}</p>}
                   {customer.email && <p className="text-slate-600">Email: {customer.email}</p>}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Link href={`/admin/customers/${customer.id}/statement`}>
                     <Button variant="secondary" size="sm">View Statement</Button>
                   </Link>
-                  <Button onClick={() => setEditing(true)}>Edit</Button>
+                  <Button onClick={() => setEditing(true)} size="sm">Edit</Button>
                 </div>
+              </div>
+
+              <div className="mb-6 flex flex-wrap gap-2">
+                {customer.status === "SUSPENDED" || isArchived ? (
+                  <Button
+                    variant="success"
+                    size="sm"
+                    onClick={() => void updateCustomerAccountState({ status: "ACTIVE", isArchived: false })}
+                    disabled={updatingAccount}
+                  >
+                    {updatingAccount ? "Updating..." : "Activate Account"}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => void updateCustomerAccountState({ status: "SUSPENDED", isArchived: false })}
+                    disabled={updatingAccount}
+                  >
+                    Suspend Account
+                  </Button>
+                )}
+
+                {isArchived ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => void updateCustomerAccountState({ status: "ACTIVE", isArchived: false })}
+                    disabled={updatingAccount}
+                  >
+                    Unarchive
+                  </Button>
+                ) : (
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => {
+                      if (!canArchive) {
+                        toast.error("Only cleared accounts with zero outstanding balance can be archived.");
+                        return;
+                      }
+                      void updateCustomerAccountState({ status: "SUSPENDED", isArchived: true });
+                    }}
+                    disabled={updatingAccount || !canArchive}
+                  >
+                    Archive Account
+                  </Button>
+                )}
               </div>
 
               {/* Credit Summary */}

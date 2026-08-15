@@ -55,29 +55,71 @@ export function BarcodePrintPreview({ barcode, productName, sku }: BarcodePrintP
   }, [barcode]);
 
   return (
-    <div className="space-y-4">
-      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-sm print:shadow-none">
-        <div className="mb-4">
-          <p className="text-sm font-semibold text-slate-900">{productName}</p>
-          {sku ? <p className="text-xs text-slate-500">SKU: {sku}</p> : null}
-          <p className="text-xs text-slate-500">Barcode: {barcode}</p>
-        </div>
+    <>
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
 
-        <div className="rounded-3xl bg-slate-50 p-4 print:p-0">
-          <div className="mx-auto w-full max-w-[340px] print:max-w-none">
-            <svg ref={svgRef} className="w-full" aria-label={`Barcode for ${barcode}`} />
+          .barcode-print-area,
+          .barcode-print-area * {
+            visibility: visible !important;
+          }
+
+          .barcode-print-area {
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+          }
+
+          .barcode-print-area .barcode-card {
+            box-shadow: none !important;
+            border: none !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+            width: min(420px, 90vw) !important;
+          }
+
+          .no-print {
+            display: none !important;
+          }
+        }
+      `}</style>
+
+      <div className="space-y-4">
+        <div className="barcode-print-area overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-sm print:shadow-none">
+          <div className="barcode-card">
+            <div className="mb-4">
+              <p className="text-sm font-semibold text-slate-900">{productName}</p>
+              {sku ? <p className="text-xs text-slate-500">SKU: {sku}</p> : null}
+              <p className="text-xs text-slate-500">Barcode: {barcode}</p>
+            </div>
+
+            <div className="rounded-3xl bg-slate-50 p-4 print:p-0">
+              <div className="mx-auto w-full max-w-[340px] print:max-w-none">
+                <svg ref={svgRef} className="w-full" aria-label={`Barcode for ${barcode}`} />
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {renderError ? <p className="text-sm text-red-600">{renderError}</p> : null}
+        {renderError ? <p className="text-sm text-red-600">{renderError}</p> : null}
 
-      <div className="flex flex-wrap items-center gap-3 print:hidden">
-        <Button type="button" onClick={() => window.print()} disabled={!isReady}>
-          Print barcode
-        </Button>
-        <p className="text-xs text-slate-500">Use your browser print dialog to print the barcode label.</p>
+        <div className="no-print flex flex-wrap items-center gap-3">
+          <Button type="button" onClick={() => window.print()} disabled={!isReady}>
+            Print barcode
+          </Button>
+          <p className="text-xs text-slate-500">Use your browser print dialog to print the barcode label.</p>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

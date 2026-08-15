@@ -4,7 +4,8 @@ import type { CustomerDocument, CustomerLedgerEntryDocument } from "./model.type
 export const CustomerModel = defineModel<CustomerDocument>({
   collection: "customers",
   required: ["shopId", "name", "creditLimit"],
-  defaults: { creditLimit: 0, cachedOutstandingMinor: 0, status: "ACTIVE" },
+  defaults: { creditLimit: 0, cachedOutstandingMinor: 0, status: "ACTIVE", isArchived: false },
+  enums: { status: ["ACTIVE", "SUSPENDED", "CREDIT_RESTRICTED"] },
   indexes: [index({ shopId: 1, name: 1 }), index({ shopId: 1, phone: 1 })],
 });
 

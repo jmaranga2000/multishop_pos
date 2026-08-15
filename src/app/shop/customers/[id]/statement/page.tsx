@@ -9,8 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatMoney, fromMinorUnits } from "@/lib/utils";
 import { Download, Printer, ChevronLeft } from "lucide-react";
 import Link from "next/link";
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
-import { renderToBuffer } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, pdf } from "@react-pdf/renderer";
 
 interface LedgerEntry {
   id: string;
@@ -485,8 +484,7 @@ export default function CustomerStatementPage() {
     ) as any;
 
     try {
-      const buffer = await renderToBuffer(StatementPDF);
-      const blob = new Blob([buffer as unknown as ArrayBuffer], { type: "application/pdf" });
+      const blob = await pdf(StatementPDF).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -497,7 +495,8 @@ export default function CustomerStatementPage() {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error("PDF export failed:", err);
-      alert("Failed to generate PDF. Please try again.");
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      alert(`Failed to generate PDF: ${errorMsg}`);
     }
   }
 
