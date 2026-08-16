@@ -12,13 +12,26 @@ import type {
 } from "@/validators/stocktake/stocktake-validator";
 
 type AdminContext = { id: string; email: string; businessId: string };
-type StocktakeActor = { id: string; businessId: string; shopId?: string; email?: string };
+type StocktakeActor = { id: string; businessId: string; shopId?: string | null; email?: string };
 type CreateStocktakeInput = z.infer<typeof createStocktakeSchema>;
 type CountInput = z.infer<typeof recordStocktakeCountsSchema>;
 type StocktakeIdInput = z.infer<typeof stocktakeIdSchema>;
 type RejectInput = z.infer<typeof rejectStocktakeSchema>;
 
 type CountableStatus = "DRAFT" | "COUNTING";
+
+type StocktakeLine = {
+  id: string;
+  productId: string;
+  productName: string;
+  sku: string;
+  systemQuantity: number;
+  physicalQuantity?: number | null;
+  varianceQuantity?: number | null;
+  variancePercentage?: number | null;
+  varianceReason?: string | null;
+  reasonNote?: string | null;
+};
 
 function history(action: "SUBMITTED" | "APPROVED" | "REJECTED" | "CANCELLED" | "COMPLETED", userId: string, note?: string | null) {
   return { action, userId, occurredAt: new Date(), note: note || null };
@@ -54,7 +67,7 @@ export async function getStocktakeManagementData(businessId: string, shopId?: st
       include: { shop: true, product: true }, orderBy: [{ shop: { name: "asc" } }, { product: { name: "asc" } }],
     }),
   ]);
-  const varianceHistory = stocktakes.flatMap((stocktake) => stocktake.items.filter((item) => item.varianceQuantity && item.varianceQuantity !== 0).map((item) => ({ ...item, stocktake })));
+  const varianceHistory = stocktakes.flatMap((stocktake) => (stocktake.items as StocktakeLine[]).filter((item) => item.varianceQuantity !== undefined && item.varianceQuantity !== null && item.varianceQuantity !== 0).map((item) => ({ ...item, stocktake })));
   return { shops, stocktakes, currentInventory, varianceHistory };
 }
 
@@ -80,7 +93,7 @@ export async function startStocktake(actor: StocktakeActor, input: CreateStockta
         businessId: actor.businessId, shopId, stocktakeNumber: createDocumentNumber("STK", shop.code), status: "COUNTING",
         startedById: actor.id, startedAt: new Date(), notes: input.notes ?? null, approvalHistory: [],
         items: { create: inventory.map((row) => ({
-          productId: row.productId, productName: row.product?.name ?? "Unknown product", sku: row.product?.sku ?? "-",
+          productId: row.productId, productName: row.product?.name ?? "Unknown product", sku: row.product?.sku ?? "-", barcode: row.product?.barcode ?? null,
           unitName: row.product?.unit?.name ?? null, unitSymbol: row.product?.unit?.symbol ?? null, systemQuantity: row.quantity,
         })) },
       },
@@ -96,7 +109,7 @@ export async function recordStocktakeCounts(actor: StocktakeActor, input: CountI
   if (!( ["DRAFT", "COUNTING"] as CountableStatus[]).includes(stocktake.status as CountableStatus)) {
     throw new AppError("Only active stocktakes can be counted.");
   }
-  const itemsById = new Map(stocktake.items.map((item) => [item.id, item]));
+  const itemsById = new Map<string, StocktakeLine>((stocktake.items as StocktakeLine[]).map((item): [string, StocktakeLine] => [item.id, item]));
   if (new Set(input.items.map((item) => item.stocktakeItemId)).size !== input.items.length) throw new AppError("Each stocktake line can only be counted once in a submission.");
   for (const count of input.items) {
     const item = itemsById.get(count.stocktakeItemId);
@@ -106,6 +119,8 @@ export async function recordStocktakeCounts(actor: StocktakeActor, input: CountI
     }
   }
   return db.$transaction(async (tx) => {
+    const currentStocktake = await tx.stocktake.findFirst({ where: { id: stocktake.id, businessId: actor.businessId, ...(actor.shopId ? { shopId: actor.shopId } : {}), status: { in: ["DRAFT", "COUNTING"] } } });
+    if (!currentStocktake) throw new AppError("This stocktake is no longer active for counting.");
     for (const count of input.items) {
       const item = itemsById.get(count.stocktakeItemId)!;
       const varianceQuantity = count.physicalQuantity - item.systemQuantity;
@@ -121,9 +136,10 @@ export async function recordStocktakeCounts(actor: StocktakeActor, input: CountI
 export async function submitStocktake(actor: StocktakeActor, input: StocktakeIdInput) {
   const stocktake = await scopedStocktake(actor, input.stocktakeId);
   if (stocktake.status !== "COUNTING") throw new AppError("Only an active stocktake can be submitted for review.");
-  const uncounted = stocktake.items.filter((item) => item.physicalQuantity === undefined || item.physicalQuantity === null);
+  const stocktakeItems = stocktake.items as StocktakeLine[];
+  const uncounted = stocktakeItems.filter((item) => item.physicalQuantity === undefined || item.physicalQuantity === null);
   if (uncounted.length) throw new AppError(`${uncounted.length} product${uncounted.length === 1 ? " is" : "s are"} still uncounted.`);
-  const missingReason = stocktake.items.find((item) => isSignificantVariance(item.systemQuantity, item.physicalQuantity ?? item.systemQuantity) && !item.varianceReason);
+  const missingReason = stocktakeItems.find((item) => isSignificantVariance(item.systemQuantity, item.physicalQuantity ?? item.systemQuantity) && !item.varianceReason);
   if (missingReason) throw new AppError(`${missingReason.productName} needs a documented variance reason before submission.`);
   const updated = await db.stocktake.update({ where: { id: stocktake.id }, data: { status: "SUBMITTED", submittedById: actor.id, submittedAt: new Date(), approvalHistory: appendHistory(stocktake.approvalHistory, history("SUBMITTED", actor.id, input.note)) } });
   await writeAuditLog(db, { userId: actor.id, shopId: stocktake.shopId, action: "STOCKTAKE_SUBMITTED", entityType: "STOCKTAKE", entityId: stocktake.id, description: `Submitted stocktake ${stocktake.stocktakeNumber} for manager review.`, metadata: { note: input.note ?? null } });
@@ -133,10 +149,13 @@ export async function submitStocktake(actor: StocktakeActor, input: StocktakeIdI
 export async function approveStocktake(admin: AdminContext, input: StocktakeIdInput) {
   const stocktake = await scopedStocktake(admin, input.stocktakeId);
   if (stocktake.status !== "SUBMITTED" && stocktake.status !== "UNDER_REVIEW") throw new AppError("Only submitted stocktakes can be approved.");
-  if (stocktake.items.some((item) => item.physicalQuantity === undefined || item.physicalQuantity === null)) throw new AppError("All stocktake lines must be counted before approval.");
+  const stocktakeItems = stocktake.items as StocktakeLine[];
+  if (stocktakeItems.some((item) => item.physicalQuantity === undefined || item.physicalQuantity === null)) throw new AppError("All stocktake lines must be counted before approval.");
 
   return db.$transaction(async (tx) => {
-    for (const item of stocktake.items) {
+    const currentStocktake = await tx.stocktake.findFirst({ where: { id: stocktake.id, businessId: admin.businessId, status: { in: ["SUBMITTED", "UNDER_REVIEW"] } } });
+    if (!currentStocktake) throw new AppError("This stocktake has already been reviewed or is no longer awaiting approval.");
+    for (const item of stocktakeItems) {
       const current = await tx.shopInventory.findUnique({ where: { shopId_productId: { shopId: stocktake.shopId, productId: item.productId } } });
       if (!current) throw new AppError(`${item.productName} is no longer in this shop inventory. Resolve the stock record before approval.`);
       const physicalQuantity = item.physicalQuantity!;
@@ -150,7 +169,7 @@ export async function approveStocktake(admin: AdminContext, input: StocktakeIdIn
     }
     const completedAt = new Date();
     const updated = await tx.stocktake.update({ where: { id: stocktake.id }, data: { status: "COMPLETED", approvedById: admin.id, approvedAt: completedAt, completedAt, approvalHistory: appendHistory(appendHistory(stocktake.approvalHistory, history("APPROVED", admin.id, input.note)), history("COMPLETED", admin.id)) } });
-    const varianceLines = stocktake.items.filter((item) => item.physicalQuantity !== item.systemQuantity).length;
+    const varianceLines = stocktakeItems.filter((item) => item.physicalQuantity !== item.systemQuantity).length;
     await writeAuditLog(tx, { userId: admin.id, shopId: stocktake.shopId, action: "STOCKTAKE_APPROVED", entityType: "STOCKTAKE", entityId: stocktake.id, description: `Approved and applied stocktake ${stocktake.stocktakeNumber}.`, metadata: { varianceLines, note: input.note ?? null } });
     return updated;
   });

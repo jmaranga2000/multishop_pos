@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 type FormAction = (formData: FormData) => void | Promise<void>;
-type Product = { id: string; name: string; sku?: string | null; defaultCostPrice?: number };
+type Product = { id: string; name: string; sku?: string | null; unitId?: string | null; defaultCostPrice?: number };
 type Supplier = { id: string; name: string; shopId: string };
 type Shop = { id: string; name: string };
 
@@ -31,12 +31,109 @@ export function RequisitionForm({ action, shops, suppliers, products, fixedShopI
   </form>;
 }
 
-export function PurchaseOrderForm({ action, shops, suppliers, products, requisitions = [] }: { action: FormAction; shops: Shop[]; suppliers: Supplier[]; products: Product[]; requisitions?: Array<{ id: string; requisitionNumber: string; shopId: string; supplierId?: string | null }> }) {
-  const [shopId, setShopId] = useState(shops[0]?.id ?? ""); const [supplierId, setSupplierId] = useState(""); const [requisitionId, setRequisitionId] = useState(""); const [productId, setProductId] = useState(""); const [quantity, setQuantity] = useState("1"); const [unitCost, setUnitCost] = useState("0"); const [taxRate, setTaxRate] = useState("0");
-  const [items, setItems] = useState<Array<{ productId: string; quantity: number; unitCost: number; taxRate: number }>>([]);
+type PurchaseOrderRequisition = {
+  id: string;
+  requisitionNumber: string;
+  shopId: string;
+  supplierId?: string | null;
+  items: Array<{ id: string; productId: string; unitId?: string | null; requestedQuantity: number }>;
+};
+
+type PurchaseOrderLine = {
+  requisitionItemId?: string;
+  productId: string;
+  unitId?: string;
+  quantity: number;
+  unitCost: number;
+  taxRate: number;
+};
+
+export function PurchaseOrderForm({ action, shops, suppliers, products, requisitions = [] }: { action: FormAction; shops: Shop[]; suppliers: Supplier[]; products: Product[]; requisitions?: PurchaseOrderRequisition[] }) {
+  const [shopId, setShopId] = useState(shops[0]?.id ?? "");
+  const [supplierId, setSupplierId] = useState("");
+  const [requisitionId, setRequisitionId] = useState("");
+  const [productId, setProductId] = useState("");
+  const [quantity, setQuantity] = useState("1");
+  const [unitCost, setUnitCost] = useState("0");
+  const [taxRate, setTaxRate] = useState("0");
+  const [items, setItems] = useState<PurchaseOrderLine[]>([]);
   const productById = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
-  const addItem = () => { const parsedQuantity = Number(quantity), parsedCost = Number(unitCost), parsedTax = Number(taxRate); if (!productId || parsedQuantity <= 0 || parsedCost < 0 || parsedTax < 0 || parsedTax > 100 || items.some((item) => item.productId === productId)) return; setItems((current) => [...current, { productId, quantity: parsedQuantity, unitCost: parsedCost, taxRate: parsedTax }]); setProductId(""); setQuantity("1"); setUnitCost("0"); setTaxRate("0"); };
-  return <form action={action} className="space-y-3"><div className="grid gap-3 sm:grid-cols-2"><label className="grid gap-1 text-sm font-medium">Shop<select name="shopId" value={shopId} onChange={(event) => { setShopId(event.target.value); setSupplierId(""); }} className="rounded-lg border bg-white px-3 py-2" required><option value="">Select shop</option>{shops.map((shop) => <option key={shop.id} value={shop.id}>{shop.name}</option>)}</select></label><label className="grid gap-1 text-sm font-medium">Supplier<select name="supplierId" value={supplierId} onChange={(event) => setSupplierId(event.target.value)} className="rounded-lg border bg-white px-3 py-2" required><option value="">Select supplier</option>{suppliers.filter((supplier) => supplier.shopId === shopId).map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}</select></label></div><label className="grid gap-1 text-sm font-medium">Approved requisition <span className="font-normal text-slate-500">(optional conversion)</span><select name="requisitionId" value={requisitionId} onChange={(event) => { const next = event.target.value; setRequisitionId(next); const request = requisitions.find((entry) => entry.id === next); if (request) { setShopId(request.shopId); setSupplierId(request.supplierId ?? ""); } }} className="rounded-lg border bg-white px-3 py-2"><option value="">Create standalone order</option>{requisitions.map((request) => <option key={request.id} value={request.id}>{request.requisitionNumber}</option>)}</select></label><label className="grid gap-1 text-sm font-medium">Expected delivery<Input name="expectedDeliveryDate" type="date" /></label><div className="grid gap-2 lg:grid-cols-[1fr_100px_110px_90px_auto]"><select value={productId} onChange={(event) => { setProductId(event.target.value); setUnitCost(String(productById.get(event.target.value)?.defaultCostPrice ?? 0)); }} className="rounded-lg border bg-white px-3 py-2"><option value="">Select product</option>{products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select><Input type="number" min="0.01" step="0.01" value={quantity} onChange={(event) => setQuantity(event.target.value)} placeholder="Qty" /><Input type="number" min="0" step="0.01" value={unitCost} onChange={(event) => setUnitCost(event.target.value)} placeholder="Cost" /><Input type="number" min="0" max="100" step="0.01" value={taxRate} onChange={(event) => setTaxRate(event.target.value)} placeholder="VAT %" /><Button type="button" variant="secondary" onClick={addItem}>Add</Button></div>{items.length ? <div className="rounded-lg border bg-slate-50 p-3 text-sm">{items.map((item) => <div key={item.productId} className="flex justify-between gap-2 py-1"><span>{productById.get(item.productId)?.name} × {item.quantity} @ KES {item.unitCost.toFixed(2)} + {item.taxRate}% VAT</span><button type="button" onClick={() => setItems((current) => current.filter((entry) => entry.productId !== item.productId))} className="text-red-600">Remove</button></div>)}</div> : <p className="text-xs text-slate-500">Build the order from one or more product lines.</p>}<input type="hidden" name="itemsJson" value={JSON.stringify(items)} /><label className="grid gap-1 text-sm font-medium">Notes<Input name="notes" maxLength={1000} /></label><Button disabled={!shopId || !supplierId || !items.length}>Create draft purchase order</Button></form>;
+
+  const clearRequisitionConversion = () => {
+    setRequisitionId("");
+    setItems([]);
+  };
+
+  const selectRequisition = (nextRequisitionId: string) => {
+    setRequisitionId(nextRequisitionId);
+    if (!nextRequisitionId) {
+      setItems([]);
+      return;
+    }
+    const requisition = requisitions.find((entry) => entry.id === nextRequisitionId);
+    if (!requisition) return;
+    setShopId(requisition.shopId);
+    setSupplierId(requisition.supplierId ?? "");
+    setItems(requisition.items.map((item) => {
+      const product = productById.get(item.productId);
+      return {
+        requisitionItemId: item.id,
+        productId: item.productId,
+        unitId: item.unitId ?? product?.unitId ?? undefined,
+        quantity: item.requestedQuantity,
+        unitCost: product?.defaultCostPrice ?? 0,
+        taxRate: 0,
+      };
+    }));
+  };
+
+  const addItem = () => {
+    const parsedQuantity = Number(quantity);
+    const parsedCost = Number(unitCost);
+    const parsedTax = Number(taxRate);
+    const product = productById.get(productId);
+    if (!productId || !product || parsedQuantity <= 0 || parsedCost < 0 || parsedTax < 0 || parsedTax > 100 || items.some((item) => item.productId === productId)) return;
+    setItems((current) => [...current, { productId, unitId: product.unitId ?? undefined, quantity: parsedQuantity, unitCost: parsedCost, taxRate: parsedTax }]);
+    setProductId("");
+    setQuantity("1");
+    setUnitCost("0");
+    setTaxRate("0");
+  };
+
+  return <form action={action} className="space-y-3">
+    <div className="grid gap-3 sm:grid-cols-2">
+      <label className="grid gap-1 text-sm font-medium">Shop
+        <select name="shopId" value={shopId} onChange={(event) => { setShopId(event.target.value); setSupplierId(""); clearRequisitionConversion(); }} className="rounded-lg border bg-white px-3 py-2" required>
+          <option value="">Select shop</option>{shops.map((shop) => <option key={shop.id} value={shop.id}>{shop.name}</option>)}
+        </select>
+      </label>
+      <label className="grid gap-1 text-sm font-medium">Supplier
+        <select name="supplierId" value={supplierId} onChange={(event) => { setSupplierId(event.target.value); if (requisitionId) clearRequisitionConversion(); }} className="rounded-lg border bg-white px-3 py-2" required>
+          <option value="">Select supplier</option>{suppliers.filter((supplier) => supplier.shopId === shopId).map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}
+        </select>
+      </label>
+    </div>
+    <label className="grid gap-1 text-sm font-medium">Approved requisition <span className="font-normal text-slate-500">(optional conversion)</span>
+      <select name="requisitionId" value={requisitionId} onChange={(event) => selectRequisition(event.target.value)} className="rounded-lg border bg-white px-3 py-2">
+        <option value="">Create standalone order</option>{requisitions.map((request) => <option key={request.id} value={request.id}>{request.requisitionNumber}</option>)}
+      </select>
+    </label>
+    {requisitionId ? <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-800">The approved request’s products are locked into this order. Select “Create standalone order” to build a different order.</p> : null}
+    <label className="grid gap-1 text-sm font-medium">Expected delivery<Input name="expectedDeliveryDate" type="date" /></label>
+    <div className="grid gap-2 lg:grid-cols-[1fr_100px_110px_90px_auto]">
+      <select value={productId} onChange={(event) => { setProductId(event.target.value); setUnitCost(String(productById.get(event.target.value)?.defaultCostPrice ?? 0)); }} className="rounded-lg border bg-white px-3 py-2" disabled={Boolean(requisitionId)}>
+        <option value="">Select product</option>{products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
+      </select>
+      <Input type="number" min="0.01" step="0.01" value={quantity} onChange={(event) => setQuantity(event.target.value)} placeholder="Qty" disabled={Boolean(requisitionId)} />
+      <Input type="number" min="0" step="0.01" value={unitCost} onChange={(event) => setUnitCost(event.target.value)} placeholder="Cost" disabled={Boolean(requisitionId)} />
+      <Input type="number" min="0" max="100" step="0.01" value={taxRate} onChange={(event) => setTaxRate(event.target.value)} placeholder="VAT %" disabled={Boolean(requisitionId)} />
+      <Button type="button" variant="secondary" onClick={addItem} disabled={Boolean(requisitionId)}>Add</Button>
+    </div>
+    {items.length ? <div className="rounded-lg border bg-slate-50 p-3 text-sm">{items.map((item) => <div key={item.productId} className="flex justify-between gap-2 py-1"><span>{productById.get(item.productId)?.name ?? "Product"} × {item.quantity} @ KES {item.unitCost.toFixed(2)} + {item.taxRate}% VAT</span>{requisitionId ? <span className="text-xs text-slate-500">Requested line</span> : <button type="button" onClick={() => setItems((current) => current.filter((entry) => entry.productId !== item.productId))} className="text-red-600">Remove</button>}</div>)}</div> : <p className="text-xs text-slate-500">Build the order from one or more product lines.</p>}
+    <input type="hidden" name="itemsJson" value={JSON.stringify(items)} />
+    <label className="grid gap-1 text-sm font-medium">Notes<Input name="notes" maxLength={1000} /></label>
+    <Button disabled={!shopId || !supplierId || !items.length}>Create draft purchase order</Button>
+  </form>;
 }
 
 type ReceiptOrder = { id: string; items: Array<{ id: string; productName: string; orderedQuantity: number; receivedQuantity: number }> };

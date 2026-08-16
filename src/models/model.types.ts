@@ -839,6 +839,7 @@ export interface PurchaseOrderDocument extends BaseDocument {
 
 export interface PurchaseOrderItemDocument extends BaseDocument {
   purchaseOrderId: string;
+  requisitionItemId?: string | null;
   productId: string;
   unitId?: string | null;
   productName: string;
@@ -939,6 +940,7 @@ export interface StocktakeItemDocument extends BaseDocument {
   productId: string;
   productName: string;
   sku: string;
+  barcode?: string | null;
   unitName?: string | null;
   unitSymbol?: string | null;
   systemQuantity: number;

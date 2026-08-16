@@ -141,6 +141,7 @@ export const modelRelations: Record<string, Record<string, RelationDefinition>> 
     requisition: relation("purchaseRequisition", "requisitionId", "id"),
     product: relation("product", "productId", "id"),
     unit: relation("unit", "unitId", "id"),
+    purchaseOrderItems: relation("purchaseOrderItem", "id", "requisitionItemId", true),
   },
   purchaseOrder: {
     shop: relation("shop", "shopId", "id"),
@@ -152,6 +153,7 @@ export const modelRelations: Record<string, Record<string, RelationDefinition>> 
   },
   purchaseOrderItem: {
     purchaseOrder: relation("purchaseOrder", "purchaseOrderId", "id"),
+    requisitionItem: relation("purchaseRequisitionItem", "requisitionItemId", "id"),
     product: relation("product", "productId", "id"),
     unit: relation("unit", "unitId", "id"),
   },

@@ -37,7 +37,7 @@ export const PurchaseOrderModel = defineModel<PurchaseOrderDocument>({
     index({ purchaseOrderNumber: 1 }, { unique: true }),
     index({ businessId: 1, shopId: 1, status: 1, createdAt: -1 }),
     index({ supplierId: 1, status: 1 }),
-    index({ requisitionId: 1 }, { sparse: true }),
+    index({ requisitionId: 1 }, { unique: true, sparse: true }),
   ],
 });
 
@@ -45,7 +45,7 @@ export const PurchaseOrderItemModel = defineModel<PurchaseOrderItemDocument>({
   collection: "purchaseOrderItems",
   required: ["purchaseOrderId", "productId", "productName", "orderedQuantity", "receivedQuantity", "acceptedQuantity", "damagedQuantity", "rejectedQuantity", "unitCost", "taxRate", "taxAmount", "lineTotal"],
   defaults: { receivedQuantity: 0, acceptedQuantity: 0, damagedQuantity: 0, rejectedQuantity: 0, taxRate: 0, taxAmount: 0, lineTotal: 0 },
-  indexes: [index({ purchaseOrderId: 1, productId: 1 }, { unique: true }), index({ productId: 1 })],
+  indexes: [index({ purchaseOrderId: 1, productId: 1 }, { unique: true }), index({ requisitionItemId: 1 }, { sparse: true }), index({ productId: 1 })],
 });
 
 export const GoodsReceivedNoteModel = defineModel<GoodsReceivedNoteDocument>({

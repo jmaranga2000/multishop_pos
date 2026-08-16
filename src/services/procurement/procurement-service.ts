@@ -174,8 +174,19 @@ export async function createPurchaseOrder(admin: AdminContext, input: CreatePurc
     input.requisitionId ? db.purchaseRequisition.findFirst({ where: { id: input.requisitionId, businessId: admin.businessId, shopId: input.shopId }, include: { items: true } }) : null,
   ]);
   if (!shop || !supplier) throw new AppError("The selected shop or supplier was not found.");
+  if (input.requisitionId && !requisition) throw new AppError("The selected requisition was not found for this shop.", "REQUISITION_NOT_FOUND", 404);
   if (products.length !== input.items.length) throw new AppError("One or more selected products are unavailable.");
   if (requisition && requisition.status !== "APPROVED") throw new AppError("Only approved requisitions can be converted to purchase orders.");
+  if (requisition?.supplierId && requisition.supplierId !== supplier.id) throw new AppError("Use the supplier assigned to this requisition when converting it to a purchase order.");
+  if (requisition) {
+    const requisitionItems = requisition.items as Array<{ id: string; productId: string }>;
+    const requisitionItemByProductId = new Map(requisitionItems.map((item) => [item.productId, item]));
+    const hasEveryRequestedLine = input.items.length === requisitionItems.length && input.items.every((item) => {
+      const requested = requisitionItemByProductId.get(item.productId);
+      return requested?.id === item.requisitionItemId;
+    });
+    if (!hasEveryRequestedLine) throw new AppError("A converted purchase order must contain each requested product exactly once.");
+  }
   const productById = new Map(products.map((product) => [product.id, product]));
   const preparedItems = input.items.map((item) => {
     const product = productById.get(item.productId)!;
@@ -186,13 +197,17 @@ export async function createPurchaseOrder(admin: AdminContext, input: CreatePurc
   const subtotal = preparedItems.reduce((sum, item) => sum + item.quantity * item.unitCost, 0);
   const taxTotal = preparedItems.reduce((sum, item) => sum + item.taxAmount, 0);
   return db.$transaction(async (tx) => {
+    if (input.requisitionId) {
+      const currentRequisition = await tx.purchaseRequisition.findFirst({ where: { id: input.requisitionId, businessId: admin.businessId, shopId: shop.id, status: "APPROVED" } });
+      if (!currentRequisition) throw new AppError("This requisition has already been converted or is no longer approved.");
+    }
     const order = await tx.purchaseOrder.create({
       data: {
         businessId: admin.businessId, shopId: shop.id, supplierId: supplier.id, requisitionId: requisition?.id ?? null,
         purchaseOrderNumber: createDocumentNumber("PO", shop.code), status: "DRAFT", orderDate: new Date(), expectedDeliveryDate: input.expectedDeliveryDate ?? null,
         subtotal, taxTotal, grandTotal: subtotal + taxTotal, notes: input.notes ?? null, createdById: admin.id, approvalHistory: [],
         items: { create: preparedItems.map((item) => ({
-          productId: item.product.id, unitId: item.unitId ?? item.product.unitId ?? null, productName: item.product.name,
+          requisitionItemId: item.requisitionItemId ?? null, productId: item.product.id, unitId: item.unitId ?? item.product.unitId ?? null, productName: item.product.name,
           unitName: item.product.unit?.name ?? null, unitSymbol: item.product.unit?.symbol ?? null,
           orderedQuantity: item.quantity, receivedQuantity: 0, acceptedQuantity: 0, damagedQuantity: 0, rejectedQuantity: 0,
           unitCost: item.unitCost, taxRate: item.taxRate, taxAmount: item.taxAmount, lineTotal: item.lineTotal,
@@ -244,10 +259,10 @@ export async function sendPurchaseOrderToSupplier(admin: AdminContext, input: z.
     subtotal: order.subtotal,
     taxTotal: order.taxTotal,
     grandTotal: order.grandTotal,
-    items: order.items.map((item) => ({ productName: item.productName, unitName: item.unitName, quantity: item.orderedQuantity, unitCost: item.unitCost, taxRate: item.taxRate, lineTotal: item.lineTotal })),
+    items: order.items.map((item: { productName: string; unitName?: string | null; orderedQuantity: number; unitCost: number; taxRate: number; lineTotal: number }) => ({ productName: item.productName, unitName: item.unitName, quantity: item.orderedQuantity, unitCost: item.unitCost, taxRate: item.taxRate, lineTotal: item.lineTotal })),
   }) as any;
   const purchaseOrderPdf = Buffer.from(await renderToBuffer(pdfDocument as any)).toString("base64");
-  await queueNotification({ tx: db, businessId: admin.businessId, userId: admin.id, shopId: order.shopId, type: "SYSTEM", priority: "HIGH", title: `Purchase order sent: ${order.purchaseOrderNumber}`, message: `Purchase order sent to ${order.supplier.name}.`, actionUrl: "/admin/procurement", inApp: true, push: false, email: { to: order.supplier.email.trim(), subject: `Purchase order ${order.purchaseOrderNumber} from ${order.shop.name}`, html: supplierOrderEmail({ supplierName: order.supplier.name, shopName: order.shop.name, orderNumber: order.purchaseOrderNumber, items: order.items.map((item) => ({ productName: item.productName, quantity: item.orderedQuantity, unitName: item.unitName, unitCost: item.unitCost, lineTotal: item.lineTotal })), total: order.grandTotal, notes: order.notes }), referenceType: "SUPPLIER_NOTIFICATION_HISTORY", referenceId: notification.id, attachments: [{ filename: `purchase-order-${order.purchaseOrderNumber}.pdf`, contentType: "application/pdf", content: purchaseOrderPdf }] } });
+  await queueNotification({ tx: db, businessId: admin.businessId, userId: admin.id, shopId: order.shopId, type: "SYSTEM", priority: "HIGH", title: `Purchase order sent: ${order.purchaseOrderNumber}`, message: `Purchase order sent to ${order.supplier.name}.`, actionUrl: "/admin/procurement", inApp: true, push: false, email: { to: order.supplier.email.trim(), subject: `Purchase order ${order.purchaseOrderNumber} from ${order.shop.name}`, html: supplierOrderEmail({ supplierName: order.supplier.name, shopName: order.shop.name, orderNumber: order.purchaseOrderNumber, items: order.items.map((item: { productName: string; orderedQuantity: number; unitName?: string | null; unitCost: number; lineTotal: number }) => ({ productName: item.productName, quantity: item.orderedQuantity, unitName: item.unitName, unitCost: item.unitCost, lineTotal: item.lineTotal })), total: order.grandTotal, notes: order.notes }), referenceType: "SUPPLIER_NOTIFICATION_HISTORY", referenceId: notification.id, attachments: [{ filename: `purchase-order-${order.purchaseOrderNumber}.pdf`, contentType: "application/pdf", content: purchaseOrderPdf }] } });
   const updated = await db.purchaseOrder.update({ where: { id: order.id }, data: { status: "SENT", sentById: admin.id, sentAt: new Date(), approvalHistory: appendHistory(order.approvalHistory, history("SENT", admin.id, input.note)) } });
   await db.supplierNotificationHistory.update({ where: { id: notification.id }, data: { status: "PENDING" } });
   await writeAuditLog(db, { userId: admin.id, shopId: order.shopId, action: "PURCHASE_ORDER_SENT", entityType: "PURCHASE_ORDER", entityId: order.id, description: `Sent purchase order ${order.purchaseOrderNumber} to ${order.supplier.name}.`, metadata: { email: order.supplier.email } });
@@ -255,15 +270,21 @@ export async function sendPurchaseOrderToSupplier(admin: AdminContext, input: z.
 }
 
 export async function receiveGoods(actor: ProcurementActor, input: ReceiveGoodsInput) {
-  const order = await db.purchaseOrder.findFirst({ where: { id: input.purchaseOrderId, businessId: actor.businessId, status: { in: ["APPROVED", "SENT", "PARTIALLY_RECEIVED"] } }, include: { shop: true, supplier: true, items: { include: { product: true } } } });
-  if (!order || !order.shop || !order.supplier) throw new AppError("An approved purchase order was not found.", "PURCHASE_ORDER_NOT_FOUND", 404);
-  if (actor.shopId && actor.shopId !== order.shopId) throw new AppError("Goods can only be received by the shop named on the purchase order.", "SHOP_SCOPE_FORBIDDEN", 403);
-  if (new Set(input.items.map((item) => item.purchaseOrderItemId)).size !== input.items.length) throw new AppError("Each purchase order item can only be received once per goods receipt.");
-
   return db.$transaction(async (tx) => {
+    const order = await tx.purchaseOrder.findFirst({ where: { id: input.purchaseOrderId, businessId: actor.businessId, status: { in: ["APPROVED", "SENT", "PARTIALLY_RECEIVED"] } }, include: { shop: true, supplier: true, items: { include: { product: true } } } });
+    if (!order || !order.shop || !order.supplier) throw new AppError("An approved purchase order was not found.", "PURCHASE_ORDER_NOT_FOUND", 404);
+    if (actor.shopId && actor.shopId !== order.shopId) throw new AppError("Goods can only be received by the shop named on the purchase order.", "SHOP_SCOPE_FORBIDDEN", 403);
+    if (new Set(input.items.map((item) => item.purchaseOrderItemId)).size !== input.items.length) throw new AppError("Each purchase order item can only be received once per goods receipt.");
+
     const alreadyProcessed = await tx.goodsReceivedNote.findFirst({ where: { shopId: order.shopId, idempotencyKey: input.idempotencyKey } });
     if (alreadyProcessed) return alreadyProcessed;
-    const orderItems = new Map(order.items.map((item) => [item.id, item]));
+    type ReceiptOrderItem = {
+      id: string; productId: string; productName: string; orderedQuantity: number; receivedQuantity: number;
+      unitCost: number; taxRate: number; product?: { defaultSellingPrice: number } | null;
+    };
+    const orderItems = new Map<string, ReceiptOrderItem>(
+      (order.items as ReceiptOrderItem[]).map((item) => [item.id, item]),
+    );
     for (const received of input.items) {
       const line = orderItems.get(received.purchaseOrderItemId);
       if (!line) throw new AppError("The receipt includes an item outside this purchase order.");
@@ -298,6 +319,10 @@ export async function receiveGoods(actor: ProcurementActor, input: ReceiveGoodsI
     const freshLines = await tx.purchaseOrderItem.findMany({ where: { purchaseOrderId: order.id } });
     const fullyReceived = freshLines.every((line) => line.receivedQuantity >= line.orderedQuantity - 0.000001);
     await tx.purchaseOrder.update({ where: { id: order.id }, data: { status: fullyReceived ? "FULLY_RECEIVED" : "PARTIALLY_RECEIVED", deliveryStatus: fullyReceived ? "FULLY_RECEIVED" : "PARTIALLY_RECEIVED", approvalHistory: appendHistory(order.approvalHistory, history("RECEIVED", actor.id, receipt.goodsReceivedNumber)) } });
+    if (fullyReceived && order.requisitionId) {
+      const requisition = await tx.purchaseRequisition.findFirst({ where: { id: order.requisitionId, businessId: actor.businessId, status: "CONVERTED" } });
+      if (requisition) await tx.purchaseRequisition.update({ where: { id: requisition.id }, data: { status: "COMPLETED", completedAt: new Date(), approvalHistory: appendHistory(requisition.approvalHistory, history("COMPLETED", actor.id, receipt.goodsReceivedNumber)) } });
+    }
     if (payableTotal > 0) {
       await tx.supplierPayable.create({ data: { businessId: actor.businessId, shopId: order.shopId, supplierId: order.supplierId, purchaseOrderId: order.id, goodsReceivedNoteId: receipt.id, payableNumber: createDocumentNumber("PAY", order.shop.code), status: "OPEN", amountDue: payableTotal, amountPaid: 0, outstandingAmount: payableTotal, createdById: actor.id } });
     }
@@ -307,10 +332,10 @@ export async function receiveGoods(actor: ProcurementActor, input: ReceiveGoodsI
 }
 
 export async function recordSupplierPayment(admin: AdminContext, input: SupplierPaymentInput) {
-  const payable = await db.supplierPayable.findFirst({ where: { id: input.supplierPayableId, businessId: admin.businessId, status: { in: ["OPEN", "PARTIALLY_PAID"] } }, include: { supplier: true, shop: true } });
-  if (!payable || !payable.shop || !payable.supplier) throw new AppError("Open supplier payable not found.", "PAYABLE_NOT_FOUND", 404);
-  if (input.amount > payable.outstandingAmount + 0.000001) throw new AppError("The payment cannot exceed the remaining supplier balance.");
   return db.$transaction(async (tx) => {
+    const payable = await tx.supplierPayable.findFirst({ where: { id: input.supplierPayableId, businessId: admin.businessId, status: { in: ["OPEN", "PARTIALLY_PAID"] } }, include: { supplier: true, shop: true } });
+    if (!payable || !payable.shop || !payable.supplier) throw new AppError("Open supplier payable not found.", "PAYABLE_NOT_FOUND", 404);
+    if (input.amount > payable.outstandingAmount + 0.000001) throw new AppError("The payment cannot exceed the remaining supplier balance.");
     const amountPaid = payable.amountPaid + input.amount;
     const outstandingAmount = Math.max(0, payable.amountDue - amountPaid);
     const updated = await tx.supplierPayable.update({ where: { id: payable.id }, data: { amountPaid, outstandingAmount, status: outstandingAmount <= 0.000001 ? "PAID" : "PARTIALLY_PAID", settledAt: outstandingAmount <= 0.000001 ? new Date() : null } });
@@ -337,7 +362,7 @@ export async function generateRequisitionsForActiveAlerts(admin: AdminContext) {
   for (const [key, entries] of bySupplier) {
     const [supplierId, shopId] = key.split(":");
     const active = await db.purchaseRequisition.findFirst({ where: { businessId: admin.businessId, shopId, supplierId, status: { in: ["DRAFT", "SUBMITTED", "APPROVED"] } }, include: { items: true } });
-    const unrequested = entries.filter((entry) => !active?.items.some((item) => item.productId === entry.productId));
+    const unrequested = entries.filter((entry) => !active?.items.some((item: { productId: string }) => item.productId === entry.productId));
     if (!unrequested.length) continue;
     const inventory = await db.shopInventory.findMany({ where: { shopId, productId: { in: unrequested.map((item) => item.productId) } } });
     const inventoryByProduct = new Map(inventory.map((item) => [item.productId, item]));
@@ -346,7 +371,7 @@ export async function generateRequisitionsForActiveAlerts(admin: AdminContext) {
       created += 1;
       continue;
     }
-    await createPurchaseRequisition({ ...admin, shopId }, { supplierId, reason: "Automatically created from active low-stock alerts.", items: unrequested.map((entry) => { const row = inventoryByProduct.get(entry.productId); return { productId: entry.productId, requestedQuantity: Math.max(1, row?.reorderQuantity ?? 0, (row?.reorderLevel ?? entry.thresholdQuantity) - (row?.quantity ?? 0)) }; }) });
+    await createPurchaseRequisition({ ...admin, shopId }, { supplierId, reason: "Automatically created from active low-stock alerts.", notes: undefined, items: unrequested.map((entry) => { const row = inventoryByProduct.get(entry.productId); return { productId: entry.productId, requestedQuantity: Math.max(1, row?.reorderQuantity ?? 0, (row?.reorderLevel ?? entry.thresholdQuantity) - (row?.quantity ?? 0)), notes: undefined }; }) });
     created += 1;
   }
   return { created };

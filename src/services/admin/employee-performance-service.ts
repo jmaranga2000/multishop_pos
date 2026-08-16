@@ -7,6 +7,10 @@ type PaymentBreakdown = Record<"CASH" | "MPESA" | "CARD" | "BANK_TRANSFER" | "MI
 
 function emptyPayments(): PaymentBreakdown { return { CASH: 0, MPESA: 0, CARD: 0, BANK_TRANSFER: 0, MIXED: 0 }; }
 
+function isTrackedPaymentMethod(value: unknown): value is keyof PaymentBreakdown {
+  return value === "CASH" || value === "MPESA" || value === "CARD" || value === "BANK_TRANSFER" || value === "MIXED";
+}
+
 function reviewStatus(input: { netSales: number; refunds: number; discounts: number; voids: number; registerVariance: number }) {
   const refundRate = input.netSales > 0 ? input.refunds / input.netSales : 0;
   const discountRate = input.netSales > 0 ? input.discounts / input.netSales : 0;
@@ -37,7 +41,10 @@ export async function getEmployeePerformanceData(businessId: string, filters: Fi
     const target = row ?? unassigned;
     if (sale.status === "COMPLETED" || sale.status === "REFUNDED") {
       target.transactionCount += 1; target.completedSales += sale.status === "COMPLETED" ? 1 : 0; target.salesTotal += Number(sale.total); target.discounts += Number(sale.discountTotal);
-      for (const payment of sale.payments) if (payment.status !== "FAILED") target.payments[payment.method] += Number(payment.amount);
+      for (const payment of sale.payments) {
+        const method: unknown = payment.method;
+        if (payment.status !== "FAILED" && isTrackedPaymentMethod(method)) target.payments[method] += Number(payment.amount);
+      }
     }
     if (sale.status === "VOIDED") target.voidCount += 1;
   }
