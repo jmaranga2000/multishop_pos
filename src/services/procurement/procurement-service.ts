@@ -20,7 +20,7 @@ import type {
 
 type AdminContext = { id: string; email: string; businessId: string };
 type ShopContext = { id: string; email: string; businessId: string; shopId: string; shop: { id: string; name: string; code: string } };
-type ProcurementActor = Pick<AdminContext, "id" | "businessId"> & Partial<Pick<AdminContext, "email">> & { shopId?: string };
+type ProcurementActor = Pick<AdminContext, "id" | "businessId"> & Partial<Pick<AdminContext, "email">> & { shopId?: string | null };
 type CreateRequisitionInput = z.infer<typeof createRequisitionSchema>;
 type CreatePurchaseOrderInput = z.infer<typeof createPurchaseOrderSchema>;
 type ReceiveGoodsInput = z.infer<typeof receiveGoodsSchema>;
