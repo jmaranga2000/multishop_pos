@@ -145,23 +145,45 @@ export async function synchronizeOfflineSales(user: ShopSyncContext, payload: Of
         const occurredAt = new Date(entry.sale.occurredAt);
         const receipt = createReceiptNumber(user.shop.code, occurredAt, entry.sale.localId);
         
-        // Prepare payments for creation. Exclude CREDIT entries from payments table and handle as ledger entries.
-        const paymentsData = entry.sale.payments && entry.sale.payments.length > 0
+        const salePayments = entry.sale.payments && entry.sale.payments.length > 0
           ? entry.sale.payments
-              .filter((payment) => payment.method !== "CREDIT")
-              .map((payment) => ({
-                method: payment.method as "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER",
-                status: (payment.method === "CASH" ? "VERIFIED" : "PENDING") as "VERIFIED" | "PENDING",
-                amount: fromMinorUnits(payment.amountMinor),
-                reference: (payment.reference ?? null) as string | null,
-              }))
           : [{
-              method: entry.sale.paymentMethod as "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER",
-              status: (entry.sale.paymentMethod === "CASH" ? "VERIFIED" : "PENDING") as "VERIFIED" | "PENDING",
-              amount: fromMinorUnits(entry.sale.amountPaidMinor),
-              reference: (entry.sale.paymentReference ?? null) as string | null,
+              method: entry.sale.paymentMethod,
+              amountMinor: entry.sale.amountPaidMinor,
+              reference: entry.sale.paymentReference ?? null,
             }];
-        
+        const confirmedMpesaPayments = new Map<string, any>();
+        for (const payment of salePayments.filter((entry) => entry.method === "MPESA")) {
+          if (!payment.reference) {
+            throw new AppError("A confirmed M-Pesa payment reference is required before the sale can be synchronized.", "MPESA_REFERENCE_REQUIRED", 409);
+          }
+          const mpesa = await tx.mpesaPayment.findFirst({
+            where: {
+              shopId: user.shopId,
+              status: { in: ["SUCCESSFUL", "MATCHED"] },
+              OR: [
+                { id: payment.reference },
+                { internalReference: payment.reference },
+                { transactionId: payment.reference },
+                { receiptNumber: payment.reference },
+              ],
+            },
+          });
+          if (!mpesa || Number(mpesa.receivedAmountMinor) < payment.amountMinor || mpesa.saleId !== entry.sale.localId) {
+            throw new AppError("The M-Pesa payment is not confirmed for this sale and amount.", "MPESA_NOT_CONFIRMED", 409);
+          }
+          confirmedMpesaPayments.set(payment.reference, mpesa);
+        }
+
+        // Verified M-Pesa references are checked above; credit is recorded in the customer ledger instead.
+        const paymentsData = salePayments
+          .filter((payment) => payment.method !== "CREDIT")
+          .map((payment) => ({
+            method: payment.method as "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER",
+            status: (payment.method === "CASH" || payment.method === "MPESA" ? "VERIFIED" : "PENDING") as "VERIFIED" | "PENDING",
+            amount: fromMinorUnits(payment.amountMinor),
+            reference: (payment.reference ?? null) as string | null,
+          }));
         const sale = await tx.sale.create({
           data: {
             shopId: user.shopId,
@@ -200,6 +222,12 @@ export async function synchronizeOfflineSales(user: ShopSyncContext, payload: Of
           },
         });
 
+        for (const mpesa of confirmedMpesaPayments.values()) {
+          await tx.mpesaPayment.update({
+            where: { id: mpesa.id },
+            data: { saleId: sale.id, updatedAt: new Date() },
+          });
+        }
         // Handle credit portions: create ledger entries and update customer outstanding balances
         const creditPayments = (entry.sale.payments ?? []).filter((p) => p.method === "CREDIT");
           if (creditPayments.length > 0) {

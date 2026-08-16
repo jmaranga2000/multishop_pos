@@ -39,6 +39,7 @@ export async function bootstrapOfflineData() {
 
 export async function createLocalSale(input: {
   shopId: string;
+  localId?: string;
   salespersonId?: string | null;
   registerSessionId?: string | null;
   customerId?: string | null;
@@ -83,7 +84,7 @@ export async function createLocalSale(input: {
   const expires = await offlineDb.syncMetadata.get("offlineAccessExpiresAt");
   if (!navigator.onLine && (!expires || new Date(expires.value).getTime() < Date.now())) throw new Error("Offline access has expired. Reconnect before creating another sale.");
 
-  const localId = crypto.randomUUID();
+  const localId = input.localId ?? crypto.randomUUID();
   const idempotencyKey = `sale:${input.shopId}:${localId}`;
   const deviceId = getOrCreateDeviceId();
   const subtotalMinor = input.items.reduce((sum, item) => sum + Math.round(item.quantity * item.unitPriceMinor), 0);

@@ -148,6 +148,9 @@ export function PosShell({
   const [mpesaPhone, setMpesaPhone] = useState("");
   const [mpesaStatus, setMpesaStatus] = useState("Ready");
   const [mpesaReference, setMpesaReference] = useState<string | null>(null);
+  const [mpesaPaymentId, setMpesaPaymentId] = useState<string | null>(null);
+  const [mpesaSaleLocalReference, setMpesaSaleLocalReference] = useState<string | null>(null);
+  const [mpesaConfirmedAmountMinor, setMpesaConfirmedAmountMinor] = useState<number | null>(null);
   const [mpesaAmount, setMpesaAmount] = useState("");
   const [mpesaInFlight, setMpesaInFlight] = useState(false);
   const [mpesaError, setMpesaError] = useState<string | null>(null);
@@ -597,6 +600,10 @@ export function PosShell({
     setMpesaFlow(null);
     setMpesaPhone("");
     setMpesaStatus("Ready");
+    setMpesaReference(null);
+    setMpesaPaymentId(null);
+    setMpesaSaleLocalReference(null);
+    setMpesaConfirmedAmountMinor(null);
     setMpesaError(null);
     setManualConfirmationCandidates([]);
     setManualConfirmationSelection(null);
@@ -646,12 +653,17 @@ export function PosShell({
       }
       payments = [{
         method: (paymentMode === "BANK" ? "BANK_TRANSFER" : paymentMode) as "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER" | "CREDIT",
-        amountMinor: paymentMode === "CREDIT" ? total : receivedMinor,
+        amountMinor: paymentMode === "CREDIT" ? total : paymentMode === "MPESA" ? total : receivedMinor,
         reference: mpesaReference,
       }];
     }
     if (payments.reduce((sum, payment) => sum + payment.amountMinor, 0) < total) {
       toast.error("Payment total is lower than the eTIMS total.");
+      return;
+    }
+    const mpesaPayment = payments.find((payment) => payment.method === "MPESA");
+    if (mpesaPayment && (!mpesaPaymentId || !manualConfirmationConfirmed || !mpesaReference || mpesaConfirmedAmountMinor !== mpesaPayment.amountMinor)) {
+      toast.error("Wait for the exact M-Pesa payment confirmation before fiscalizing this sale.");
       return;
     }
 
@@ -755,6 +767,14 @@ export function PosShell({
       }
     }
 
+    const requiredMpesaAmountMinor = splitPaymentEnabled && splitSecondMethod === "MPESA"
+      ? Math.round(Number(mpesaAmount || 0) * 100)
+      : paymentMode === "MPESA" ? totalMinor : 0;
+    if (requiredMpesaAmountMinor > 0 && (!mpesaPaymentId || !mpesaSaleLocalReference || !manualConfirmationConfirmed || !mpesaReference || mpesaConfirmedAmountMinor !== requiredMpesaAmountMinor)) {
+      toast.error("Wait for the exact M-Pesa payment confirmation before completing this sale.");
+      return;
+    }
+
     setProcessing(true);
     try {
       // Build payments array
@@ -810,7 +830,7 @@ export function PosShell({
               | "CARD"
               | "BANK_TRANSFER"
               | "CREDIT",
-            amountMinor: receivedMinor,
+            amountMinor: paymentMode === "MPESA" ? totalMinor : receivedMinor,
             reference: mpesaReference ?? null,
           },
         ];
@@ -864,6 +884,7 @@ export function PosShell({
 
       const sale = await createLocalSale({
         shopId,
+        localId: payments.some((payment) => payment.method === "MPESA") ? (mpesaSaleLocalReference ?? undefined) : undefined,
         registerSessionId,
         customerId: customerId ?? undefined,
         customerName: customerName ?? null,
@@ -1033,8 +1054,51 @@ export function PosShell({
     }
   }
 
+  async function refreshMpesaPaymentStatus() {
+    if (!mpesaPaymentId) return false;
+    setManualConfirmationChecking(true);
+    try {
+      const response = await fetch(`/api/mpesa/payment/${encodeURIComponent(mpesaPaymentId)}`, { cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) throw new Error(payload.error || "Unable to check M-Pesa payment status");
+      const payment = payload.payment as {
+        status: string;
+        confirmed: boolean;
+        expectedAmountMinor: number;
+        receivedAmountMinor: number;
+        internalReference: string;
+        transactionId: string | null;
+        resultDescription: string | null;
+      };
+      setMpesaStatus(payment.confirmed ? "Payment confirmed" : payment.resultDescription || payment.status);
+      setMpesaReference(payment.transactionId || payment.internalReference);
+      if (payment.confirmed) {
+        setManualConfirmationConfirmed(true);
+        setMpesaConfirmedAmountMinor(payment.receivedAmountMinor);
+        setMpesaError(null);
+        if (!splitPaymentEnabled) setAmountReceived(String(fromMinorUnits(payment.expectedAmountMinor)));
+        else setMpesaAmount(String(fromMinorUnits(payment.expectedAmountMinor)));
+        return true;
+      }
+      if (["FAILED", "CANCELLED", "TIMED_OUT", "UNDERPAID", "OVERPAID", "AMBIGUOUS", "UNMATCHED"].includes(payment.status)) {
+        setMpesaError(payment.resultDescription || `M-Pesa payment ${payment.status.toLowerCase()}.`);
+      }
+      return false;
+    } catch (error) {
+      setMpesaError(error instanceof Error ? error.message : "Unable to check M-Pesa payment status");
+      return false;
+    } finally {
+      setManualConfirmationChecking(false);
+    }
+  }
+
   async function startMpesaPayment(mode: "STK_PUSH" | "PAY_TO_TILL", expectedAmountMinor?: number) {
-    if (!cart.length || mpesaInFlight) return;
+    if (!cart.length || mpesaInFlight || !registerSessionId) return;
+    const amountMinor = typeof expectedAmountMinor === "number" ? expectedAmountMinor : checkoutTotalMinor;
+    if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0) {
+      toast.error("Enter a valid M-Pesa amount.");
+      return;
+    }
     setMpesaFlow(mode);
     setMpesaInFlight(true);
     setMpesaError(null);
@@ -1042,58 +1106,32 @@ export function PosShell({
     setManualConfirmationSelection(null);
     setManualConfirmationChecking(false);
     setManualConfirmationConfirmed(false);
-    setMpesaStatus(mode === "STK_PUSH" ? "Sending request" : "Waiting for customer PIN");
+    setMpesaConfirmedAmountMinor(null);
+    setMpesaStatus(mode === "STK_PUSH" ? "Sending STK Push" : "Preparing till payment");
     try {
-      if (!mpesaEnabled) {
-        throw new Error("M-Pesa is not configured. Enable it in settings to use payment features.");
-      }
+      if (!mpesaEnabled) throw new Error("M-Pesa is not configured. Enable it in settings to use payment features.");
+      const saleLocalReference = crypto.randomUUID();
       const response = await fetch("/api/mpesa/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          shopId,
+          registerSessionId,
+          saleLocalReference,
           mode,
-          expectedAmountMinor: typeof expectedAmountMinor === "number" ? expectedAmountMinor : totalMinor,
+          expectedAmountMinor: amountMinor,
           customerPhone: mpesaPhone || null,
-          tillNumber: mpesaTillNumber || null,
-          items: cart.map((item) => ({
-            productId: item.productId,
-            productName: item.name,
-            sku: item.sku,
-            unitId: item.unitId,
-            unitName: item.unitName,
-            unitSymbol: item.unitSymbol,
-            quantity: item.quantity,
-            unitPriceMinor: item.unitPriceMinor,
-            unitCostMinor: item.unitCostMinor,
-            taxRate: item.taxRate,
-          })),
+          clientReference: `pos:${saleLocalReference}`,
         }),
       });
       const payload = await response.json();
-      if (!response.ok || !payload.ok) throw new Error(payload.error || "Unable to create the M-Pesa payment request");
-      setMpesaReference(payload.internalReference ?? null);
-      setMpesaStatus(mode === "STK_PUSH" ? "Request sent" : "Waiting for Till payment");
-      if (mode === "PAY_TO_TILL") {
-        setMpesaStatus("Waiting for customer confirmation");
-        void (async () => {
-          if (!shopId) return;
-          setManualConfirmationChecking(true);
-          try {
-            const response = await fetch(`/api/mpesa/manual-confirmation?shopId=${encodeURIComponent(shopId)}&expectedAmountMinor=${encodeURIComponent(typeof expectedAmountMinor === "number" ? expectedAmountMinor : totalMinor)}`);
-            const payload = await response.json();
-            if (!response.ok || !payload.ok) throw new Error(payload.error || "Unable to load recent M-Pesa payers");
-            setManualConfirmationCandidates(payload.candidates ?? []);
-          } catch (error) {
-            setMpesaError(error instanceof Error ? error.message : "Unable to load recent M-Pesa payers");
-          } finally {
-            setManualConfirmationChecking(false);
-          }
-        })();
-      }
-      toast.success(mode === "STK_PUSH" ? "STK Push request prepared" : "Till payment waiting started");
+      if (!response.ok || !payload.ok) throw new Error(payload.error || "Unable to start the M-Pesa payment request");
+      setMpesaPaymentId(payload.payment.id);
+      setMpesaSaleLocalReference(saleLocalReference);
+      setMpesaReference(payload.payment.internalReference ?? null);
+      setMpesaStatus(mode === "STK_PUSH" ? "STK Push sent — waiting for customer PIN" : "Waiting for payment at till");
+      toast.success(mode === "STK_PUSH" ? "STK Push sent to the customer" : "Till payment is now waiting for confirmation");
     } catch (error) {
-        setMpesaStatus("Payment failed");
+      setMpesaStatus("Payment request failed");
       setMpesaError(error instanceof Error ? error.message : "Unable to start M-Pesa payment");
       toast.error(error instanceof Error ? error.message : "Unable to start M-Pesa payment");
       setMpesaFlow(null);
@@ -1103,32 +1141,21 @@ export function PosShell({
   }
 
   useEffect(() => {
-    if (paymentMode !== "MPESA" || mpesaFlow !== "PAY_TO_TILL") return;
-
-    async function pollManualConfirmationCandidatesLocal() {
-      if (!shopId) return;
-      setManualConfirmationChecking(true);
-      try {
-        const response = await fetch(`/api/mpesa/manual-confirmation?shopId=${encodeURIComponent(shopId)}&expectedAmountMinor=${encodeURIComponent(totalMinor)}`);
-        const payload = await response.json();
-        if (!response.ok || !payload.ok) throw new Error(payload.error || "Unable to load recent M-Pesa payers");
-        setManualConfirmationCandidates(payload.candidates ?? []);
-        if ((payload.candidates ?? []).length) {
-          setMpesaStatus("Reviewing recent customer names");
-        }
-      } catch (error) {
-        setMpesaError(error instanceof Error ? error.message : "Unable to load recent M-Pesa payers");
-      } finally {
-        setManualConfirmationChecking(false);
-      }
+    if (!mpesaPaymentId || !online) return;
+    let active = true;
+    async function pollMpesaPayment() {
+      if (!active) return;
+      await refreshMpesaPaymentStatus();
     }
-
-    const intervalId = window.setInterval(() => {
-      void pollManualConfirmationCandidatesLocal();
-    }, 3000);
-    return () => window.clearInterval(intervalId);
-  }, [paymentMode, mpesaFlow, shopId, totalMinor]);
-
+    void pollMpesaPayment();
+    const intervalId = window.setInterval(() => { void pollMpesaPayment(); }, 3_000);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  // The active payment ID is intentionally the polling key; state updates are handled by the status request.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mpesaPaymentId, online]);
   useEffect(() => {
     if (paymentMode === "MPESA" && !mpesaEnabled) {
       toast.info("M-Pesa is not configured. Enable it in settings to use payment features.");
@@ -1136,79 +1163,13 @@ export function PosShell({
   }, [paymentMode, mpesaEnabled]);
 
   async function confirmManualMpesaPayment() {
-    if (!manualConfirmationSelection || !cart.length) return;
-    setMpesaInFlight(true);
-    setManualConfirmationChecking(true);
-    try {
-      const sale = await createLocalSale({
-        shopId,
-        registerSessionId,
-        paymentMethod: "MPESA",
-        amountPaidMinor: totalMinor,
-        paymentReference: `MPESA:${manualConfirmationSelection}`,
-        items: cart.map((item) => ({
-          productId: item.productId,
-          productName: item.name,
-          sku: item.sku,
-          unitId: item.unitId,
-          unitName: item.unitName,
-          unitSymbol: item.unitSymbol,
-          quantity: item.quantity,
-          unitPriceMinor: item.unitPriceMinor,
-          unitCostMinor: item.unitCostMinor,
-          taxRate: item.taxRate,
-        })),
-      });
-      const receiptNumber = sale.receiptNumber ?? buildReceiptNumber(sale.localId);
-      const receiptData: ThermalReceiptData = {
-        businessName: receiptSettings?.businessName ?? receiptSettings?.shopName ?? (shopName || "MultiShop POS"),
-        shopLocation: receiptSettings?.shopLocation ?? null,
-        shopContact: receiptSettings?.shopContact ?? null,
-        taxInfo: receiptSettings?.taxInfo ?? null,
-        receiptNumber,
-        occurredAt: sale.occurredAt,
-        cashierName: receiptSettings?.cashierName ?? "Current cashier",
-        customerName: customerName || "Walk-in customer",
-        items: cart.map((item) => ({
-          name: item.name,
-          quantity: item.quantity,
-          unitName: item.unitName,
-          unitSymbol: item.unitSymbol,
-          unitPriceMinor: item.unitPriceMinor,
-          lineTotalMinor: Math.round(item.quantity * item.unitPriceMinor),
-        })),
-        subtotalMinor: totalMinor,
-        discountMinor,
-        taxMinor: 0,
-        grandTotalMinor: totalMinor - discountMinor,
-        paymentMethod: "M-Pesa",
-        amountPaidMinor: totalMinor,
-        changeDueMinor: 0,
-        paymentReference: sale.paymentReference ?? null,
-        receiptFooter: receiptSettings?.receiptFooter ?? null,
-        returnPolicy: receiptSettings?.returnPolicy ?? "Returns accepted within 7 days with original receipt.",
-        thankYouMessage: receiptSettings?.thankYouMessage ?? "Thank you for shopping with us.",
-      };
-      setCompletedSale(await addReceiptQrCode(receiptData));
-      setCompletedSaleLocalId(sale.localId);
-      setSaleLifecycleStatus(online ? "PENDING_SYNC" : "LOCAL_ONLY");
-      setCart([]);
-      setAmountReceived(String(fromMinorUnits(totalMinor)));
-      setSplitPaymentEnabled(false);
-      setManualConfirmationConfirmed(true);
-      setMpesaStatus("Payment confirmed");
-      setMpesaReference(`Confirmed:${manualConfirmationSelection}`);
-      toast.success("M-Pesa payment confirmed and sale completed");
-    } catch (error) {
-      setMpesaStatus("Confirmation failed");
-      setMpesaError(error instanceof Error ? error.message : "Unable to confirm the M-Pesa payment");
-      toast.error(error instanceof Error ? error.message : "Unable to confirm the M-Pesa payment");
-    } finally {
-      setMpesaInFlight(false);
-      setManualConfirmationChecking(false);
+    const confirmed = await refreshMpesaPaymentStatus();
+    if (confirmed) {
+      toast.success("M-Pesa payment confirmed. Complete the sale when ready.");
+    } else {
+      toast.info("The payment is still awaiting confirmation from M-Pesa.");
     }
   }
-
   return <div>
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-black">Point of sale</h1><p className="text-sm text-slate-500">{online ? "Connected to the central system" : "Using the latest synchronized shop snapshot"}</p></div>{!online && <Badge tone="warning"><WifiOff className="mr-1 h-3.5 w-3.5" />Offline</Badge>}</div>
     {offlineActive ? <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Offline mode is active. Cash sales are stored locally and synced once the connection returns. Online-only payments such as M-Pesa and card are unavailable until you reconnect.</div> : null}
@@ -1606,14 +1567,23 @@ export function PosShell({
                 </div>
               ) : null}
 
+              {mpesaPaymentId && !manualConfirmationConfirmed ? (
+                <div className="mt-4 flex flex-col gap-3 rounded-3xl border border-sky-200 bg-sky-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-sky-900">Waiting for Safaricom confirmation. The sale cannot be completed until the payment is confirmed.</p>
+                  <Button type="button" variant="secondary" disabled={manualConfirmationChecking} onClick={() => void confirmManualMpesaPayment()}>
+                    {manualConfirmationChecking ? "Checking..." : "Refresh status"}
+                  </Button>
+                </div>
+              ) : null}
+
               {manualConfirmationConfirmed ? (
                 <div className="mt-4 rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-                  Manual M-Pesa payment confirmed.
+                  M-Pesa payment confirmed. You can now complete the sale.
                 </div>
               ) : null}
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Button type="button" disabled={mpesaInFlight || (!mpesaPhone && mpesaFlow === "STK_PUSH")} onClick={() => { if (mpesaFlow) void startMpesaPayment(mpesaFlow); }} className="w-full sm:w-auto">
+                <Button type="button" disabled={mpesaInFlight || (Boolean(mpesaPaymentId) && !mpesaError) || (!mpesaPhone && mpesaFlow === "STK_PUSH")} onClick={() => { if (mpesaFlow) void startMpesaPayment(mpesaFlow); }} className="w-full sm:w-auto">
                   {mpesaFlow === "STK_PUSH" ? "Start STK Push" : "Start Pay to Till"}
                 </Button>
                 <Button type="button" variant="secondary" className="w-full sm:w-auto" onClick={() => { setMpesaFlow(null); setMpesaStatus("Ready"); setMpesaError(null); setManualConfirmationCandidates([]); setManualConfirmationSelection(null); }}>

@@ -43,7 +43,7 @@ export const SupplierNotificationHistoryModel = defineModel<SupplierNotification
   },
   enums: {
     status: ["PENDING", "SENT", "FAILED"],
-    notificationType: ["RESTOCK_REQUEST", "TEST_EMAIL"],
+    notificationType: ["RESTOCK_REQUEST", "PURCHASE_ORDER", "TEST_EMAIL"],
   },
   indexes: [
     index({ businessId: 1, shopId: 1 }),

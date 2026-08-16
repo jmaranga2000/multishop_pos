@@ -84,6 +84,10 @@ export async function getAdminDashboardData(businessId: string) {
         pendingRefunds: 0,
         pendingTransfers: 0,
         activeDevices: 0,
+        pendingRequisitions: 0,
+        pendingPurchaseOrders: 0,
+        pendingStocktakes: 0,
+        openSupplierPayables: 0,
       },
       chartData: Array.from({ length: 7 }, (_, index) => ({
         label: format(subDays(todayStart, 6 - index), "EEE"),
@@ -103,6 +107,10 @@ export async function getAdminDashboardData(businessId: string) {
     pendingRefundCount,
     pendingTransferCount,
     activeDeviceCount,
+    pendingRequisitionCount,
+    pendingPurchaseOrderCount,
+    pendingStocktakeCount,
+    openSupplierPayableCount,
   ] = await Promise.all([
     database.collection("sales").aggregate([
       {
@@ -210,6 +218,10 @@ export async function getAdminDashboardData(businessId: string) {
       shopId: { $in: shopIds },
       isActive: true,
     }),
+    database.collection("purchaseRequisitions").countDocuments({ businessId, shopId: { $in: shopIds }, status: "SUBMITTED" }),
+    database.collection("purchaseOrders").countDocuments({ businessId, shopId: { $in: shopIds }, status: { $in: ["PENDING_APPROVAL", "APPROVED", "SENT", "PARTIALLY_RECEIVED"] } }),
+    database.collection("stocktakes").countDocuments({ businessId, shopId: { $in: shopIds }, status: { $in: ["SUBMITTED", "UNDER_REVIEW"] } }),
+    database.collection("supplierPayables").countDocuments({ businessId, shopId: { $in: shopIds }, status: { $in: ["OPEN", "PARTIALLY_PAID"] } }),
   ]);
   const salesFacet = (salesFacetRows[0] ?? {
     daily: [],
@@ -275,6 +287,10 @@ export async function getAdminDashboardData(businessId: string) {
       pendingRefunds: pendingRefundCount,
       pendingTransfers: pendingTransferCount,
       activeDevices: activeDeviceCount,
+      pendingRequisitions: pendingRequisitionCount,
+      pendingPurchaseOrders: pendingPurchaseOrderCount,
+      pendingStocktakes: pendingStocktakeCount,
+      openSupplierPayables: openSupplierPayableCount,
     },
     chartData: Array.from({ length: 7 }, (_, index) => {
       const date = subDays(todayStart, 6 - index);

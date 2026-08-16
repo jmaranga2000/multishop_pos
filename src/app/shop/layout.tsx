@@ -16,6 +16,8 @@ const nav=[
 	{ href: "/shop/pos", label: "Point of sale", icon: "ShoppingCart" },
 	{ href: "/shop/sales", label: "Sales", icon: "ReceiptText" },
 	{ href: "/shop/stock", label: "Stock", icon: "Boxes" },
+	{ href: "/shop/procurement", label: "Procurement", icon: "ClipboardList" },
+	{ href: "/shop/stocktake", label: "Stocktake", icon: "ScanLine" },
 	{ href: "/shop/register", label: "Register", icon: "Wallet" },
 	{ href: "/shop/transfers", label: "Transfers", icon: "ArrowLeftRight" },
 	{ href: "/shop/expenses", label: "Expenses", icon: "Store" },

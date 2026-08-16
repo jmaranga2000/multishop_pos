@@ -1,23 +1,40 @@
 import { NextResponse } from "next/server";
+import { requireShop } from "@/lib/rbac";
+import { AppError } from "@/lib/errors/app-error";
 import { startMpesaPayment } from "@/services/shop/mpesa-service";
+import { startMpesaPaymentSchema } from "@/validators/shop/mpesa-validator";
+
+export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const user = await requireShop();
+  const parsed = startMpesaPaymentSchema.safeParse(await request.json());
+  if (!parsed.success) {
+    return NextResponse.json({ ok: false, error: "Invalid M-Pesa payment request.", details: parsed.error.flatten() }, { status: 400 });
+  }
   try {
-    const payload = await request.json();
-    const result = await startMpesaPayment(payload as {
-      shopId: string;
-      saleId: string;
-      cashierId?: string | null;
-      shiftId?: string | null;
-      customerPhone?: string | null;
-      mode: "STK_PUSH" | "PAY_TO_TILL";
-      expectedAmountMinor: number;
-      tillNumber?: string | null;
-      clientReference?: string | null;
-      idempotencyKey?: string | null;
+    const result = await startMpesaPayment({
+      ...parsed.data,
+      shopId: user.shopId,
+      cashierId: user.id,
     });
-    return NextResponse.json({ ok: true, payment: result.payment, expectedAmount: result.expectedAmount, normalizedPhone: result.normalizedPhone, internalReference: result.internalReference });
+    return NextResponse.json({
+      ok: true,
+      payment: {
+        id: result.payment.id,
+        mode: result.payment.mode,
+        status: result.payment.status,
+        expectedAmountMinor: result.payment.expectedAmountMinor,
+        internalReference: result.payment.internalReference,
+        expiresAt: result.payment.expiryAt,
+      },
+      expectedAmount: result.expectedAmount,
+      normalizedPhone: result.normalizedPhone,
+      internalReference: result.internalReference,
+      duplicate: result.duplicate,
+    });
   } catch (error) {
-    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Unknown error" }, { status: 400 });
+    const status = error instanceof AppError ? error.status : 500;
+    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Unable to start M-Pesa payment." }, { status });
   }
 }

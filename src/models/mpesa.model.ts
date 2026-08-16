@@ -25,6 +25,7 @@ export const MpesaPaymentModel = defineModel<MpesaPaymentDocument>({
     index({ shopId: 1, status: 1, expiresAt: 1 }),
     index({ transactionId: 1 }, { unique: true, sparse: true }),
     index({ internalReference: 1 }, { unique: true }),
+    index({ shopId: 1, idempotencyKey: 1 }, { unique: true }),
   ],
 });
 

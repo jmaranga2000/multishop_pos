@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
+import { AppError } from "@/lib/errors/app-error";
+import { assertValidMpesaCallback } from "@/lib/mpesa-env";
 import { handleMpesaCallback } from "@/services/shop/mpesa-service";
+
+export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const payload = await request.json();
-    const result = await handleMpesaCallback(payload as Record<string, unknown>);
-    return NextResponse.json({ ok: true, duplicate: result.duplicate, eventId: result.eventId });
+    assertValidMpesaCallback(request);
+    await handleMpesaCallback(await request.json() as Record<string, unknown>);
+    return NextResponse.json({ ResultCode: "0", ResultDesc: "Accepted" });
   } catch (error) {
-    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Unknown error" }, { status: 400 });
+    const status = error instanceof AppError ? error.status : 400;
+    return NextResponse.json({ ResultCode: "1", ResultDesc: error instanceof Error ? error.message : "Invalid M-Pesa timeout callback." }, { status });
   }
 }

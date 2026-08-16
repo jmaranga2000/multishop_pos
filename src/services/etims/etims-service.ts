@@ -92,7 +92,16 @@ async function validateMpesaPayments(shopId: string, payments: EtimsCheckoutInpu
   for (const payment of payments.filter((entry) => entry.method === "MPESA")) {
     if (!payment.reference) throw new AppError("A confirmed M-Pesa reference is required for eTIMS checkout.", "MPESA_REFERENCE_REQUIRED", 400);
     const mpesa = await db.mpesaPayment.findFirst({
-      where: { shopId, internalReference: payment.reference, status: "SUCCESSFUL" },
+      where: {
+        shopId,
+        status: { in: ["SUCCESSFUL", "MATCHED"] },
+        OR: [
+          { id: payment.reference },
+          { internalReference: payment.reference },
+          { transactionId: payment.reference },
+          { receiptNumber: payment.reference },
+        ],
+      },
     });
     if (!mpesa || Number(mpesa.receivedAmountMinor) < payment.amountMinor) {
       throw new AppError("The selected M-Pesa payment has not been confirmed for the required amount.", "MPESA_NOT_CONFIRMED", 409);
@@ -345,11 +354,29 @@ export async function submitEtimsCheckout(user: CheckoutUser, input: EtimsChecko
       where: { id: created.sale.id },
       data: { status: "COMPLETED", etimsStatus: "ETIMS_SUCCESS", etimsTransactionId: transaction.id },
     });
+    for (const payment of input.payments.filter((entry) => entry.method === "MPESA")) {
+      const mpesa = await tx.mpesaPayment.findFirst({
+        where: {
+          shopId: user.shopId,
+          status: { in: ["SUCCESSFUL", "MATCHED"] },
+          OR: [
+            { id: payment.reference },
+            { internalReference: payment.reference },
+            { transactionId: payment.reference },
+            { receiptNumber: payment.reference },
+          ],
+        },
+      });
+      if (!mpesa || Number(mpesa.receivedAmountMinor) < payment.amountMinor) {
+        throw new AppError("The confirmed M-Pesa payment is no longer available for this sale.", "MPESA_NOT_CONFIRMED", 409);
+      }
+      await tx.mpesaPayment.update({ where: { id: mpesa.id }, data: { saleId: sale.id, updatedAt: new Date() } });
+    }
     await tx.payment.createMany({
       data: input.payments.map((payment) => ({
         saleId: sale.id,
         method: payment.method === "CREDIT" ? "CASH" : payment.method,
-        status: payment.method === "CASH" ? "VERIFIED" : "PENDING",
+        status: payment.method === "CASH" || payment.method === "MPESA" ? "VERIFIED" : "PENDING",
         amount: fromMinorUnits(payment.amountMinor),
         reference: payment.reference ?? null,
       })),

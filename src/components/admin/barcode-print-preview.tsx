@@ -9,15 +9,14 @@ type BarcodePrintPreviewProps = {
   sku?: string;
 };
 
-export function BarcodePrintPreview({ barcode, productName, sku }: BarcodePrintPreviewProps) {
+function BarcodeRenderer({ barcode, productName, sku }: BarcodePrintPreviewProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const trimmedBarcode = barcode.trim();
   const [isReady, setIsReady] = useState(false);
-  const [renderError, setRenderError] = useState<string | null>(null);
+  const [renderError, setRenderError] = useState<string | null>(() => trimmedBarcode ? null : "Barcode is missing.");
 
   useEffect(() => {
     let cancelled = false;
-    setRenderError(null);
-    setIsReady(false);
 
     async function renderBarcode() {
       try {
@@ -61,7 +60,7 @@ export function BarcodePrintPreview({ barcode, productName, sku }: BarcodePrintP
     return () => {
       cancelled = true;
     };
-  }, [barcode]);
+  }, [trimmedBarcode]);
 
   return (
     <>
@@ -150,4 +149,7 @@ export function BarcodePrintPreview({ barcode, productName, sku }: BarcodePrintP
       </div>
     </>
   );
+}
+export function BarcodePrintPreview(props: BarcodePrintPreviewProps) {
+  return <BarcodeRenderer key={props.barcode} {...props} />;
 }

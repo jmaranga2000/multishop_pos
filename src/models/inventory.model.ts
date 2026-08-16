@@ -42,6 +42,7 @@ export const StockMovementModel = defineModel<StockMovementDocument>({
   indexes: [
     index({ shopId: 1, productId: 1, createdAt: 1 }),
     index({ referenceType: 1, referenceId: 1 }),
+    index({ goodsReceivedNoteId: 1, productId: 1 }, { sparse: true }),
   ],
   timestamps: false,
 });

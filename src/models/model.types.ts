@@ -226,7 +226,7 @@ export interface SupplierNotificationHistoryDocument extends BaseDocument {
   supplierId: string;
   referenceNumber: string;
   status: "PENDING" | "SENT" | "FAILED";
-  notificationType: "RESTOCK_REQUEST" | "TEST_EMAIL";
+  notificationType: "RESTOCK_REQUEST" | "PURCHASE_ORDER" | "TEST_EMAIL";
   productCount: number;
   emailAddress: string;
   subject: string;
@@ -407,6 +407,11 @@ export interface StockMovementDocument extends BaseDocument {
   quantityAfter: number;
   referenceType?: string | null;
   referenceId?: string | null;
+  supplierId?: string | null;
+  purchaseOrderId?: string | null;
+  goodsReceivedNoteId?: string | null;
+  receivedById?: string | null;
+  unitCost?: number | null;
   note?: string | null;
 }
 
@@ -761,6 +766,191 @@ export interface ScheduledJobLogDocument extends BaseDocument {
   completedAt?: Date | null;
 }
 
+export type PurchaseRequisitionStatus = "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED" | "CONVERTED" | "CANCELLED" | "COMPLETED";
+export type PurchaseOrderStatus = "DRAFT" | "PENDING_APPROVAL" | "APPROVED" | "SENT" | "PARTIALLY_RECEIVED" | "FULLY_RECEIVED" | "CANCELLED" | "CLOSED";
+export type GoodsReceivedStatus = "DRAFT" | "FINALIZED" | "CANCELLED";
+export type SupplierPayableStatus = "OPEN" | "PARTIALLY_PAID" | "PAID" | "VOIDED";
+export type StocktakeStatus = "DRAFT" | "COUNTING" | "SUBMITTED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED" | "COMPLETED" | "CANCELLED";
+export type StocktakeVarianceReason = "DAMAGED_GOODS" | "EXPIRED_GOODS" | "THEFT_LOSS" | "UNRECORDED_SALE" | "RECEIVING_ERROR" | "TRANSFER_ERROR" | "COUNTING_ERROR" | "DATA_ENTRY_ERROR" | "OTHER";
+
+export interface ApprovalHistoryEntry {
+  action: "SUBMITTED" | "APPROVED" | "REJECTED" | "CANCELLED" | "CONVERTED" | "SENT" | "RECEIVED" | "COMPLETED";
+  userId: string;
+  occurredAt: Date;
+  note?: string | null;
+}
+
+export interface PurchaseRequisitionDocument extends BaseDocument {
+  businessId: string;
+  shopId: string;
+  supplierId?: string | null;
+  requisitionNumber: string;
+  status: PurchaseRequisitionStatus;
+  requestedById: string;
+  reason?: string | null;
+  notes?: string | null;
+  submittedAt?: Date | null;
+  approvedById?: string | null;
+  approvedAt?: Date | null;
+  rejectedById?: string | null;
+  rejectedAt?: Date | null;
+  rejectionReason?: string | null;
+  convertedPurchaseOrderId?: string | null;
+  cancelledById?: string | null;
+  cancelledAt?: Date | null;
+  completedAt?: Date | null;
+  approvalHistory: ApprovalHistoryEntry[];
+}
+
+export interface PurchaseRequisitionItemDocument extends BaseDocument {
+  requisitionId: string;
+  productId: string;
+  unitId?: string | null;
+  productName: string;
+  unitName?: string | null;
+  unitSymbol?: string | null;
+  currentQuantity: number;
+  restockThreshold: number;
+  requestedQuantity: number;
+  notes?: string | null;
+}
+
+export interface PurchaseOrderDocument extends BaseDocument {
+  businessId: string;
+  shopId: string;
+  supplierId: string;
+  requisitionId?: string | null;
+  purchaseOrderNumber: string;
+  status: PurchaseOrderStatus;
+  orderDate: Date;
+  expectedDeliveryDate?: Date | null;
+  subtotal: number;
+  taxTotal: number;
+  grandTotal: number;
+  notes?: string | null;
+  createdById: string;
+  approvedById?: string | null;
+  approvedAt?: Date | null;
+  sentById?: string | null;
+  sentAt?: Date | null;
+  deliveryStatus?: string | null;
+  approvalHistory: ApprovalHistoryEntry[];
+}
+
+export interface PurchaseOrderItemDocument extends BaseDocument {
+  purchaseOrderId: string;
+  productId: string;
+  unitId?: string | null;
+  productName: string;
+  unitName?: string | null;
+  unitSymbol?: string | null;
+  orderedQuantity: number;
+  receivedQuantity: number;
+  acceptedQuantity: number;
+  damagedQuantity: number;
+  rejectedQuantity: number;
+  unitCost: number;
+  taxRate: number;
+  taxAmount: number;
+  lineTotal: number;
+}
+
+export interface GoodsReceivedNoteDocument extends BaseDocument {
+  businessId: string;
+  shopId: string;
+  supplierId: string;
+  purchaseOrderId: string;
+  goodsReceivedNumber: string;
+  status: GoodsReceivedStatus;
+  receivedById: string;
+  receivedAt: Date;
+  notes?: string | null;
+  idempotencyKey: string;
+  finalizedAt?: Date | null;
+}
+
+export interface GoodsReceivedNoteItemDocument extends BaseDocument {
+  goodsReceivedNoteId: string;
+  purchaseOrderItemId: string;
+  productId: string;
+  orderedQuantity: number;
+  previouslyReceivedQuantity: number;
+  receivedQuantity: number;
+  damagedQuantity: number;
+  rejectedQuantity: number;
+  acceptedQuantity: number;
+  rejectionReason?: string | null;
+  unitCost: number;
+  taxRate: number;
+  lineTotal: number;
+}
+
+export interface SupplierPayableDocument extends BaseDocument {
+  businessId: string;
+  shopId: string;
+  supplierId: string;
+  purchaseOrderId?: string | null;
+  goodsReceivedNoteId?: string | null;
+  payableNumber: string;
+  status: SupplierPayableStatus;
+  amountDue: number;
+  amountPaid: number;
+  outstandingAmount: number;
+  dueDate?: Date | null;
+  createdById: string;
+  settledAt?: Date | null;
+}
+
+export interface SupplierPaymentDocument extends BaseDocument {
+  supplierPayableId: string;
+  supplierId: string;
+  shopId: string;
+  paymentNumber: string;
+  amount: number;
+  method: "CASH" | "MPESA" | "BANK_TRANSFER" | "CARD";
+  reference?: string | null;
+  paidById: string;
+  paidAt: Date;
+  note?: string | null;
+}
+
+export interface StocktakeDocument extends BaseDocument {
+  businessId: string;
+  shopId: string;
+  stocktakeNumber: string;
+  status: StocktakeStatus;
+  startedById: string;
+  startedAt: Date;
+  submittedById?: string | null;
+  submittedAt?: Date | null;
+  approvedById?: string | null;
+  approvedAt?: Date | null;
+  rejectedById?: string | null;
+  rejectedAt?: Date | null;
+  rejectionReason?: string | null;
+  completedAt?: Date | null;
+  cancelledAt?: Date | null;
+  notes?: string | null;
+  approvalHistory: ApprovalHistoryEntry[];
+}
+
+export interface StocktakeItemDocument extends BaseDocument {
+  stocktakeId: string;
+  productId: string;
+  productName: string;
+  sku: string;
+  unitName?: string | null;
+  unitSymbol?: string | null;
+  systemQuantity: number;
+  physicalQuantity?: number | null;
+  varianceQuantity?: number | null;
+  variancePercentage?: number | null;
+  varianceReason?: StocktakeVarianceReason | null;
+  reasonNote?: string | null;
+  countedById?: string | null;
+  countedAt?: Date | null;
+  adjustmentAppliedAt?: Date | null;
+}
 export type DefaultValue = unknown | (() => unknown);
 export type TimestampMode = "both" | "created" | "updated" | false;
 

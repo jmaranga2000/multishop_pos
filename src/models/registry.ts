@@ -14,6 +14,8 @@ import { mpesaModels } from "./mpesa.model";
 import { notificationModels } from "./notification.model";
 import { offlineModels } from "./offline.model";
 import { reportingModels } from "./reporting.model";
+import { procurementModels } from "./procurement.model";
+import { stocktakeModels } from "./stocktake.model";
 import { salesModels } from "./sales.model";
 import { systemModels } from "./system.model";
 import { customerModels } from "./customer.model";
@@ -29,6 +31,8 @@ export const modelDefinitions = {
   ...mpesaModels,
   ...notificationModels,
   ...supplierModels,
+  ...procurementModels,
+  ...stocktakeModels,
   ...offlineModels,
   ...reportingModels,
   ...etimsModels,
