@@ -25,6 +25,9 @@ export const modelRelations: Record<string, Record<string, RelationDefinition>> 
     expenseCategories: relation("expenseCategory", "id", "businessId", true),
     suppliers: relation("supplier", "id", "businessId", true),
     supplierNotificationHistory: relation("supplierNotificationHistory", "id", "businessId", true),
+    taxSettings: relation("taxSettings", "id", "businessId"),
+    etimsConfigurations: relation("etimsConfiguration", "id", "businessId", true),
+    etimsTransactions: relation("etimsTransaction", "id", "businessId", true),
   },
   shop: {
     business: relation("business", "businessId", "id"),
@@ -50,6 +53,8 @@ export const modelRelations: Record<string, Record<string, RelationDefinition>> 
     idempotency: relation("idempotencyRecord", "id", "shopId", true),
     reportItems: relation("inventoryReportItem", "id", "shopId", true),
     refundRequests: relation("refundRequest", "id", "shopId", true),
+    etimsConfiguration: relation("etimsConfiguration", "id", "shopId"),
+    etimsTransactions: relation("etimsTransaction", "id", "shopId", true),
   },
   user: {
     business: relation("business", "businessId", "id"),
@@ -141,12 +146,16 @@ export const modelRelations: Record<string, Record<string, RelationDefinition>> 
     payments: relation("payment", "id", "saleId", true),
     refundRequests: relation("refundRequest", "id", "saleId", true),
     refunds: relation("refund", "id", "saleId", true),
+    etimsTransaction: relation("etimsTransaction", "id", "saleId"),
   },
   saleItem: {
     sale: relation("sale", "saleId", "id"),
     product: relation("product", "productId", "id"),
   },
   payment: { sale: relation("sale", "saleId", "id") },
+  taxSettings: { business: relation("business", "businessId", "id") },
+  etimsConfiguration: { business: relation("business", "businessId", "id"), shop: relation("shop", "shopId", "id") },
+  etimsTransaction: { sale: relation("sale", "saleId", "id"), shop: relation("shop", "shopId", "id"), business: relation("business", "businessId", "id") },
   stockMovement: {
     shop: relation("shop", "shopId", "id"),
     product: relation("product", "productId", "id"),

@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { catalogModels } from "./catalog.model";
 import { coreModels } from "./core.model";
 import { expenseModels } from "./expense.model";
+import { etimsModels } from "./etims.model";
 import { inventoryModels } from "./inventory.model";
 import type {
   BaseDocument,
@@ -30,6 +31,7 @@ export const modelDefinitions = {
   ...supplierModels,
   ...offlineModels,
   ...reportingModels,
+  ...etimsModels,
   ...systemModels,
 };
 

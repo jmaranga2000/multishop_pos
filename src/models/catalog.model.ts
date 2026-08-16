@@ -63,8 +63,11 @@ export const UnitModel = defineModel<UnitDocument>({
 export const ProductModel = defineModel<ProductDocument>({
   collection: "products",
   required: ["businessId", "name", "sku", "defaultCostPrice", "defaultSellingPrice"],
-  defaults: { taxRate: 0, trackStock: true, status: "ACTIVE" },
-  enums: { status: ["ACTIVE", "INACTIVE"] },
+  defaults: { taxRate: 0, taxTreatment: "STANDARD", etimsItemCode: null, trackStock: true, status: "ACTIVE" },
+  enums: {
+    status: ["ACTIVE", "INACTIVE"],
+    taxTreatment: ["STANDARD", "ZERO_RATED", "EXEMPT"],
+  },
   indexes: [
     index({ businessId: 1, sku: 1 }, { unique: true }),
     index(
@@ -74,7 +77,6 @@ export const ProductModel = defineModel<ProductDocument>({
     index({ businessId: 1, status: 1, name: 1 }),
   ],
 });
-
 export const ProductPricingUnitModel = defineModel<ProductPricingUnitDocument>({
   collection: "productPricingUnits",
   required: ["productId", "unitId", "costPrice", "sellingPrice"],

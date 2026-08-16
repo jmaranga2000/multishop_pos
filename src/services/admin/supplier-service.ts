@@ -1,7 +1,7 @@
 import { randomBytes } from "crypto";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
-import { absoluteUrl } from "@/lib/utils";
+import { absoluteUrl, getStockStatus } from "@/lib/utils";
 import { queueNotification } from "@/lib/notifications/service";
 import { writeAuditLog } from "@/services/shared/audit-service";
 import { renderToBuffer } from "@react-pdf/renderer";
@@ -198,13 +198,26 @@ type SupplierRestockItem = {
   sku: string;
   currentQuantity: number;
   targetQuantity: number;
+  reorderLevel: number;
+  criticalLevel: number;
+  reorderQuantity: number;
   quantityNeeded: number;
-  status: string;
+  status: "IN_STOCK" | "LOW_STOCK" | "CRITICAL" | "OUT_OF_STOCK";
   unit: string;
+  lastNotifiedQuantity: number | null;
+  lastNotifiedStatus: string | null;
 };
 
-export async function getSupplierRestockItems(supplierId: string): Promise<SupplierRestockItem[]> {
-  const supplier = await db.supplier.findFirst({
+type DatabaseClient = typeof db | any;
+
+export function calculateSupplierRestockQuantity(currentQuantity: number, targetQuantity: number, reorderLevel: number, reorderQuantity: number, status: SupplierRestockItem["status"]) {
+  if (targetQuantity > currentQuantity) return targetQuantity - currentQuantity;
+  if (status === "IN_STOCK") return 0;
+  return Math.max(1, reorderQuantity, reorderLevel - currentQuantity);
+}
+
+export async function getSupplierRestockItems(supplierId: string, client: DatabaseClient = db): Promise<SupplierRestockItem[]> {
+  const supplier = await client.supplier.findFirst({
     where: { id: supplierId },
     include: { shop: true, supplierProducts: { include: { product: { include: { unit: true } } } } },
   });
@@ -213,15 +226,20 @@ export async function getSupplierRestockItems(supplierId: string): Promise<Suppl
   if (!supplier.shop) throw new AppError("Supplier shop not found.", "SHOP_NOT_FOUND", 404);
 
   const productIds = supplier.supplierProducts.map((entry: { productId: string }) => entry.productId);
-  const inventoryRows = await db.shopInventory.findMany({ where: { shopId: supplier.shopId, productId: { in: productIds } } });
-  const inventoryByProductId = new Map(inventoryRows.map((entry: { productId: string; quantity: number }) => [entry.productId, entry.quantity]));
+  const inventoryRows = await client.shopInventory.findMany({ where: { shopId: supplier.shopId, productId: { in: productIds } } });
+  const inventoryByProductId = new Map(inventoryRows.map((entry: { productId: string }) => [entry.productId, entry]));
 
   return supplier.supplierProducts
-    .map((entry: { id: string; productId: string; targetQuantity: number; product?: { name?: string | null; sku?: string | null; unit?: { symbol?: string | null } | null } | null }) => {
+    .map((entry: { id: string; productId: string; targetQuantity: number; lastNotifiedQuantity?: number | null; lastNotifiedStatus?: string | null; product?: { name?: string | null; sku?: string | null; status?: string | null; unit?: { symbol?: string | null } | null } | null }) => {
       const product = entry.product;
-      const currentQuantity = inventoryByProductId.get(entry.productId) ?? 0;
-      const targetQuantity = entry.targetQuantity;
-      const quantityNeeded = targetQuantity - currentQuantity;
+      const inventory = inventoryByProductId.get(entry.productId) as { quantity?: number; reorderLevel?: number; criticalLevel?: number; reorderQuantity?: number } | undefined;
+      const currentQuantity = Number(inventory?.quantity ?? 0);
+      const targetQuantity = Math.max(0, Number(entry.targetQuantity ?? 0));
+      const reorderLevel = Math.max(0, Number(inventory?.reorderLevel ?? 0));
+      const criticalLevel = Math.max(0, Number(inventory?.criticalLevel ?? 0));
+      const reorderQuantity = Math.max(0, Number(inventory?.reorderQuantity ?? 0));
+      const status = getStockStatus(currentQuantity, reorderLevel, criticalLevel);
+      const quantityNeeded = calculateSupplierRestockQuantity(currentQuantity, targetQuantity, reorderLevel, reorderQuantity, status);
       return {
         supplierProductId: entry.id,
         productId: entry.productId,
@@ -229,12 +247,92 @@ export async function getSupplierRestockItems(supplierId: string): Promise<Suppl
         sku: product?.sku ?? "-",
         currentQuantity,
         targetQuantity,
+        reorderLevel,
+        criticalLevel,
+        reorderQuantity,
         quantityNeeded,
-        status: currentQuantity <= 0 ? "OUT_OF_STOCK" : "LOW_STOCK",
+        status,
         unit: product?.unit?.symbol ?? "unit",
+        lastNotifiedQuantity: entry.lastNotifiedQuantity ?? null,
+        lastNotifiedStatus: entry.lastNotifiedStatus ?? null,
+        active: product?.status !== "INACTIVE",
       };
     })
-    .filter((item: { quantityNeeded: number }) => item.quantityNeeded > 0);
+    .filter((item: SupplierRestockItem & { active: boolean }) => item.active && item.quantityNeeded > 0)
+    .map(({ active: _active, ...item }: SupplierRestockItem & { active: boolean }) => item);
+}
+
+function escapeEmailHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character] ?? character));
+}
+
+function buildAutomaticRestockEmail(supplierName: string, shopName: string, referenceNumber: string, items: SupplierRestockItem[], pdfUrl: string | null) {
+  const rows = items.map((item) => `<tr><td style="padding:8px;border-bottom:1px solid #e2e8f0">${escapeEmailHtml(item.productName)}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0">${escapeEmailHtml(item.sku)}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0">${item.currentQuantity} ${escapeEmailHtml(item.unit)}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0">${item.quantityNeeded} ${escapeEmailHtml(item.unit)}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0">${item.status.replaceAll("_", " ")}</td></tr>`).join("");
+  const pdfLink = pdfUrl ? `<p><a href="${escapeEmailHtml(pdfUrl)}">Download the current restock request PDF</a></p>` : "";
+  return `<div style="font-family:Arial,sans-serif;color:#111827"><h1>Restock request</h1><p>Hello ${escapeEmailHtml(supplierName)},</p><p>${escapeEmailHtml(shopName)} has products that require restocking.</p><p>Reference: <strong>${escapeEmailHtml(referenceNumber)}</strong></p><table style="width:100%;border-collapse:collapse"><thead><tr><th align="left" style="padding:8px">Product</th><th align="left" style="padding:8px">SKU</th><th align="left" style="padding:8px">Current</th><th align="left" style="padding:8px">Requested</th><th align="left" style="padding:8px">Status</th></tr></thead><tbody>${rows}</tbody></table>${pdfLink}</div>`;
+}
+
+export async function queueAutomaticSupplierRestockRequests(client: DatabaseClient, input: { businessId: string; shopId: string; productId: string; userId: string; shopName: string }) {
+  const assignments = await client.supplierProduct.findMany({
+    where: { shopId: input.shopId, productId: input.productId },
+    include: { supplier: true },
+  });
+  let queued = 0;
+
+  for (const assignment of assignments as Array<{ supplier?: { id: string; businessId: string; name: string; email: string; status: string } | null }>) {
+    const supplier = assignment.supplier;
+    if (!supplier || supplier.businessId !== input.businessId || supplier.status !== "ACTIVE" || !supplier.email?.trim()) continue;
+
+    const items = await getSupplierRestockItems(supplier.id, client);
+    const changedItems = items.filter((item) => item.lastNotifiedQuantity !== item.currentQuantity || item.lastNotifiedStatus !== item.status);
+    if (!changedItems.length) continue;
+
+    const referenceNumber = `RST-AUTO-${Date.now()}-${supplier.id.slice(-6)}-${randomBytes(3).toString("hex")}`;
+    const history = await client.supplierNotificationHistory.create({
+      data: {
+        businessId: input.businessId,
+        shopId: input.shopId,
+        supplierId: supplier.id,
+        referenceNumber,
+        status: "PENDING",
+        notificationType: "RESTOCK_REQUEST",
+        productCount: items.length,
+        emailAddress: supplier.email.trim(),
+        subject: `Restock request from ${input.shopName}`,
+        pdfUrl: null,
+      },
+    });
+    const pdfToken = randomBytes(32).toString("hex");
+    const pdfUrl = process.env.APP_URL?.trim() ? absoluteUrl(`/api/supplier-notifications/${history.id}/pdf?token=${pdfToken}`) : null;
+    await client.supplierNotificationHistory.update({ where: { id: history.id }, data: { pdfUrl, pdfToken } });
+    await queueNotification({
+      tx: client,
+      businessId: input.businessId,
+      userId: input.userId,
+      shopId: input.shopId,
+      type: "SYSTEM",
+      priority: items.some((item) => item.status === "OUT_OF_STOCK") ? "URGENT" : "HIGH",
+      title: `Restock request sent to ${supplier.name}`,
+      message: `${items.length} assigned product${items.length === 1 ? "" : "s"} require restocking at ${input.shopName}.`,
+      actionUrl: `/admin/suppliers/${supplier.id}`,
+      inApp: true,
+      push: false,
+      email: {
+        to: supplier.email.trim(),
+        subject: `Restock request from ${input.shopName}`,
+        html: buildAutomaticRestockEmail(supplier.name, input.shopName, referenceNumber, items, pdfUrl),
+        referenceType: "SUPPLIER_NOTIFICATION_HISTORY",
+        referenceId: history.id,
+      },
+    });
+    await Promise.all(items.map((item) => client.supplierProduct.update({
+      where: { id: item.supplierProductId },
+      data: { lastNotificationAt: new Date(), lastNotifiedQuantity: item.currentQuantity, lastNotifiedStatus: item.status },
+    })));
+    queued += 1;
+  }
+
+  return queued;
 }
 
 export async function generateSupplierRestockRequest(admin: AdminContext, supplierId: string) {

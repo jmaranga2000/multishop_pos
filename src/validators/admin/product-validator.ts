@@ -30,6 +30,9 @@ export const createProductSchema = z.object({
   unitId: z.string().optional(),
   defaultCostPrice: z.coerce.number().nonnegative(),
   defaultSellingPrice: z.coerce.number().positive(),
+  taxTreatment: z.enum(["STANDARD", "ZERO_RATED", "EXEMPT"]).default("STANDARD"),
+  taxRate: z.coerce.number().min(0).max(100).default(0),
+  etimsItemCode: z.string().trim().max(120).optional().transform((value) => value || undefined),
   unitPricing: z.string().optional().transform((value) => {
     if (!value) return [];
     try {
@@ -66,6 +69,9 @@ export const updateProductSchema = z.object({
   unitId: z.string().optional(),
   defaultCostPrice: z.coerce.number().nonnegative(),
   defaultSellingPrice: z.coerce.number().positive(),
+  taxTreatment: z.enum(["STANDARD", "ZERO_RATED", "EXEMPT"]).default("STANDARD"),
+  taxRate: z.coerce.number().min(0).max(100).default(0),
+  etimsItemCode: z.string().trim().max(120).optional().transform((value) => value || undefined),
   unitPricing: z.string().optional().transform((value) => {
     if (!value) return [];
     try {

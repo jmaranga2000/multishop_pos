@@ -50,8 +50,19 @@ export const SaleModel = defineModel<SaleDocument>({
     taxTotal: 0,
     changeDue: 0,
     isOffline: false,
+    checkoutMode: "NORMAL",
+    taxableAmount: 0,
+    vatAmount: 0,
+    vatRate: 0,
+    taxTreatment: "NOT_APPLICABLE",
+    etimsStatus: "NOT_APPLICABLE",
   },
-  enums: { status: ["PENDING", "COMPLETED", "VOIDED", "REFUNDED"] },
+  enums: {
+    status: ["PENDING", "COMPLETED", "VOIDED", "REFUNDED"],
+    checkoutMode: ["NORMAL", "ETIMS"],
+    taxTreatment: ["STANDARD", "ZERO_RATED", "EXEMPT", "MIXED", "NOT_APPLICABLE"],
+    etimsStatus: ["NOT_APPLICABLE", "ETIMS_PENDING", "ETIMS_SUBMITTING", "ETIMS_SUCCESS", "ETIMS_FAILED", "ETIMS_RETRY_REQUIRED", "ETIMS_REJECTED", "ETIMS_CANCELLED"],
+  },
   indexes: [
     index({ receiptNumber: 1 }, { unique: true }),
     index(
@@ -60,6 +71,7 @@ export const SaleModel = defineModel<SaleDocument>({
     ),
     index({ shopId: 1, occurredAt: 1 }),
     index({ salespersonId: 1, occurredAt: 1 }),
+    index({ checkoutMode: 1, etimsStatus: 1, occurredAt: 1 }),
   ],
 });
 
@@ -69,11 +81,11 @@ export const SaleItemModel = defineModel<SaleItemDocument>({
     "saleId", "productId", "productName", "sku", "quantity", "unitCost",
     "unitPrice", "lineTotal",
   ],
-  defaults: { discountTotal: 0, taxTotal: 0 },
+  defaults: { discountTotal: 0, taxTotal: 0, vatRate: 0, taxTreatment: "NOT_APPLICABLE" },
+  enums: { taxTreatment: ["STANDARD", "ZERO_RATED", "EXEMPT", "NOT_APPLICABLE"] },
   indexes: [index({ saleId: 1 }), index({ productId: 1 })],
   timestamps: false,
 });
-
 export const PaymentModel = defineModel<PaymentDocument>({
   collection: "payments",
   required: ["saleId", "method", "amount"],

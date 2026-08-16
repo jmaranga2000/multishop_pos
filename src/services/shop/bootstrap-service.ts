@@ -54,6 +54,8 @@ export async function bootstrapShopDevice(input: {
       categoryName: entry.product.category?.name ?? null,
       imageUrl: entry.product.imageUrl,
       taxRate: Number(entry.product.taxRate ?? 0),
+      taxTreatment: entry.product.taxTreatment ?? 'STANDARD',
+      etimsItemCode: entry.product.etimsItemCode ?? null,
       unitId: entry.product.unitId ?? null,
       unitName: entry.product.unit?.name ?? null,
       unitSymbol: entry.product.unit?.symbol ?? null,

@@ -7,6 +7,8 @@ export type OfflineProduct = {
   imageUrl: string | null;
   /** Percentage included in the selling price, e.g. 16 for Kenya VAT. */
   taxRate: number;
+  taxTreatment: 'STANDARD' | 'ZERO_RATED' | 'EXEMPT';
+  etimsItemCode?: string | null;
   status: "ACTIVE" | "INACTIVE";
   unitId?: string | null;
   unitName?: string | null;

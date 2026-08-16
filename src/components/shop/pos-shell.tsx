@@ -19,6 +19,7 @@ import { buildThermalReceiptHtml, downloadReceiptPdf, type ThermalReceiptData } 
 import { describeSaleLifecycleMessage, type SaleLifecycleStatus } from "@/lib/offline/sale-status";
 import { formatMoney, fromMinorUnits, getStockStatus } from "@/lib/utils";
 import { CreditLimitOverrideModal } from "@/components/shop/credit-limit-override-modal";
+import { calculateVatTotals } from "@/services/tax/tax-service";
 
 type PricingOption = {
   unitId?: string | null;
@@ -41,6 +42,8 @@ type CartLine = {
   unitPriceMinor: number;
   unitCostMinor: number;
   taxRate: number;
+  taxTreatment: 'STANDARD' | 'ZERO_RATED' | 'EXEMPT';
+  etimsItemCode?: string | null;
   available: number;
 };
 
@@ -53,6 +56,8 @@ type FrequentProduct = {
 };
 
 type PaymentMode = "CASH" | "MPESA" | "CARD" | "BANK" | "CREDIT";
+type CheckoutMode = "NORMAL" | "ETIMS";
+type EtimsCheckoutAvailability = { available: boolean; permitted: boolean; reason: string | null; configurationRequired: string[]; vatEnabled: boolean; standardVatRate: number; priceTaxMode: "VAT_EXCLUSIVE" | "VAT_INCLUSIVE"; };
 
 type MpesaFlow = "STK_PUSH" | "PAY_TO_TILL" | null;
 
@@ -69,13 +74,17 @@ type ReceiptSettings = {
 };
 
 async function addReceiptQrCode(data: ThermalReceiptData) {
-  const payload = [
-    "MULTISHOP POS RECEIPT",
-    `Receipt: ${data.receiptNumber}`,
-    `Date: ${data.occurredAt}`,
-    `Total (VAT inclusive): KES ${(data.grandTotalMinor / 100).toFixed(2)}`,
-  ].join("\n");
   try {
+    if (data.checkoutMode === "ETIMS") {
+      if (!data.etims?.qrCodeData) return data;
+      return { ...data, qrCodeDataUrl: await QRCode.toDataURL(data.etims.qrCodeData, { errorCorrectionLevel: "M", margin: 1, width: 160 }) };
+    }
+    const payload = [
+      "MULTISHOP POS RECEIPT",
+      `Receipt: ${data.receiptNumber}`,
+      `Date: ${data.occurredAt}`,
+      `Total: KES ${(data.grandTotalMinor / 100).toFixed(2)}`,
+    ].join("\n");
     return { ...data, qrCodeDataUrl: await QRCode.toDataURL(payload, { errorCorrectionLevel: "M", margin: 1, width: 160 }) };
   } catch {
     return data;
@@ -90,6 +99,7 @@ export function PosShell({
   shopName,
   registerSessionId,
   canReprintReceipts = false,
+  etimsCheckout,
 }: {
   barcodeScanningEnabled?: boolean;
   mpesaEnabled?: boolean;
@@ -99,12 +109,14 @@ export function PosShell({
   shopName?: string;
   registerSessionId?: string | null;
   canReprintReceipts?: boolean;
+  etimsCheckout?: EtimsCheckoutAvailability;
 }) {
   const { shopId, online, pendingCount } = useOffline();
   const offlineActive = !online;
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
   const [cart, setCart] = useState<CartLine[]>([]);
+  const [checkoutMode, setCheckoutMode] = useState<CheckoutMode>("NORMAL");
   const [selectedUnits, setSelectedUnits] = useState<Record<string, string>>({});
   const [unitModalOpen, setUnitModalOpen] = useState(false);
   const [unitModalEntry, setUnitModalEntry] = useState<InventoryEntry | null>(null);
@@ -182,8 +194,19 @@ export function PosShell({
       .filter((item) => item.inventoryEntry) as FrequentProduct[];
   }, [saleItemsQuery, products]);
   const totalMinor = cart.reduce((sum, item) => sum + Math.round(item.quantity * item.unitPriceMinor), 0);
+  const etimsPreview = useMemo(() => calculateVatTotals(
+    cart.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      unitPriceMinor: item.unitPriceMinor,
+      taxTreatment: item.taxTreatment,
+      vatRate: item.taxRate || etimsCheckout?.standardVatRate || 0,
+    })),
+    etimsCheckout?.priceTaxMode ?? 'VAT_EXCLUSIVE',
+  ), [cart, etimsCheckout?.priceTaxMode, etimsCheckout?.standardVatRate]);
+  const checkoutTotalMinor = checkoutMode === 'ETIMS' ? etimsPreview.grossMinor : totalMinor;
   const receivedMinor = Math.round(Number(amountReceived || 0) * 100);
-  const changeDueMinor = receivedMinor - totalMinor;
+  const changeDueMinor = receivedMinor - checkoutTotalMinor;
 
   function setCartQuantity(productId: string, unitId: string | null | undefined, nextQuantity: number) {
     const normalized = Math.round(nextQuantity * 100) / 100;
@@ -253,6 +276,8 @@ export function PosShell({
           unitPriceMinor: pricingOption.sellingPriceMinor,
           unitCostMinor: pricingOption.costPriceMinor,
           taxRate: Number(product.taxRate ?? 0),
+          taxTreatment: product.taxTreatment ?? 'STANDARD',
+          etimsItemCode: product.etimsItemCode ?? null,
           available: entry.projectedQuantity,
         },
       ];
@@ -294,6 +319,8 @@ export function PosShell({
           unitPriceMinor: pricingOption.sellingPriceMinor,
           unitCostMinor: pricingOption.costPriceMinor,
           taxRate: Number(product.taxRate ?? 0),
+          taxTreatment: product.taxTreatment ?? 'STANDARD',
+          etimsItemCode: product.etimsItemCode ?? null,
           available: entry.projectedQuantity,
         },
       ];
@@ -587,12 +614,123 @@ export function PosShell({
     return `KSM-${stamp}-${localId.slice(0, 6).toUpperCase()}`;
   }
 
+  async function checkoutEtims() {
+    if (!registerSessionId || !cart.length || processing) return;
+    if (!online) {
+      toast.error("eTIMS checkout is currently unavailable because an internet connection is required.");
+      return;
+    }
+    if (!etimsCheckout?.available) {
+      toast.error(etimsCheckout?.reason ?? "eTIMS checkout is not configured for this shop.");
+      return;
+    }
+    if (discountMinor > 0) {
+      toast.error("Discounted eTIMS sales require the certified provider discount mapping before use.");
+      return;
+    }
+
+    const total = etimsPreview.grossMinor;
+    let payments: Array<{ method: "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER" | "CREDIT"; amountMinor: number; reference: string | null }>;
+    if (splitPaymentEnabled) {
+      const cashMinor = Math.round(Number(amountReceived || 0) * 100);
+      const secondMinor = Math.round(Number(mpesaAmount || 0) * 100);
+      const secondMethod = splitSecondMethod === "MPESA" ? "MPESA" : "CREDIT";
+      payments = [
+        { method: "CASH", amountMinor: cashMinor, reference: null },
+        { method: secondMethod, amountMinor: secondMinor, reference: secondMethod === "MPESA" ? mpesaReference : null },
+      ].filter((payment): payment is { method: 'CASH' | 'MPESA' | 'CARD' | 'BANK_TRANSFER' | 'CREDIT'; amountMinor: number; reference: string | null } => payment.amountMinor > 0);
+    } else {
+      if (paymentMode !== "CREDIT" && receivedMinor < total) {
+        toast.error("Amount received is lower than the eTIMS total.");
+        return;
+      }
+      payments = [{
+        method: (paymentMode === "BANK" ? "BANK_TRANSFER" : paymentMode) as "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER" | "CREDIT",
+        amountMinor: paymentMode === "CREDIT" ? total : receivedMinor,
+        reference: mpesaReference,
+      }];
+    }
+    if (payments.reduce((sum, payment) => sum + payment.amountMinor, 0) < total) {
+      toast.error("Payment total is lower than the eTIMS total.");
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      const response = await fetch("/api/shop/etims/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          checkoutRequestId: crypto.randomUUID(),
+          registerSessionId,
+          customerId,
+          customerName,
+          discountMinor,
+          note: notes || null,
+          payments,
+          items: cart.map((item) => ({ productId: item.productId, unitId: item.unitId ?? null, quantity: item.quantity })),
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.etims?.errorMessage ?? payload.error ?? "eTIMS submission failed. The sale was not fiscalized.");
+      }
+      const receiptData: ThermalReceiptData = {
+        businessName: receiptSettings?.businessName ?? receiptSettings?.shopName ?? (shopName || "MultiShop POS"),
+        shopLocation: receiptSettings?.shopLocation ?? null,
+        shopContact: receiptSettings?.shopContact ?? null,
+        taxInfo: receiptSettings?.taxInfo ?? null,
+        receiptNumber: payload.receiptNumber,
+        occurredAt: new Date().toISOString(),
+        cashierName: receiptSettings?.cashierName ?? "Current cashier",
+        customerName: customerName || "Walk-in customer",
+        checkoutMode: "ETIMS",
+        taxableMinor: payload.totals.taxableMinor,
+        vatRate: payload.totals.vatRate,
+        etims: payload.etims,
+        items: cart.map((item, index) => ({
+          name: item.name,
+          quantity: item.quantity,
+          unitName: item.unitName,
+          unitSymbol: item.unitSymbol,
+          unitPriceMinor: item.unitPriceMinor,
+          lineTotalMinor: etimsPreview.lines[index]?.grossMinor ?? Math.round(item.quantity * item.unitPriceMinor),
+        })),
+        subtotalMinor: etimsPreview.netMinor,
+        discountMinor: 0,
+        taxMinor: payload.totals.vatMinor,
+        grandTotalMinor: payload.totals.grossMinor,
+        paymentMethod: payments.length === 1 ? payments[0].method : "Split payment",
+        amountPaidMinor: payments.filter((payment) => payment.method !== "CREDIT").reduce((sum, payment) => sum + payment.amountMinor, 0),
+        changeDueMinor: Math.max(0, payments.reduce((sum, payment) => sum + payment.amountMinor, 0) - payload.totals.grossMinor),
+        receiptFooter: receiptSettings?.receiptFooter ?? null,
+        returnPolicy: receiptSettings?.returnPolicy ?? "Returns accepted within 7 days with original receipt.",
+        thankYouMessage: receiptSettings?.thankYouMessage ?? "Thank you for shopping with us.",
+      };
+      setCompletedSale(await addReceiptQrCode(receiptData));
+      setCompletedSaleLocalId(null);
+      setSaleLifecycleStatus("SYNCED");
+      setCart([]);
+      setAmountReceived("");
+      setMpesaAmount("");
+      setSplitPaymentEnabled(false);
+      toast.success("eTIMS sale fiscalized successfully", { description: `Receipt: ${payload.receiptNumber}` });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "eTIMS submission failed. The sale was not fiscalized.");
+    } finally {
+      setProcessing(false);
+    }
+  }
   async function checkout() {
     if (!registerSessionId) {
       toast.error("Open a register session before completing a sale.");
       return;
     }
     if (!cart.length || processing) return;
+    if (checkoutMode === 'ETIMS') {
+      await checkoutEtims();
+      return;
+    }
 
     // Handle split payment validation
     if (splitPaymentEnabled) {
@@ -1228,6 +1366,19 @@ export function PosShell({
           </div>
           <Badge>{cart.length} items</Badge>
         </div>
+        <div className="border-b border-slate-200 bg-slate-50 p-3">
+          <div className="grid grid-cols-2 gap-2" role="group" aria-label="Checkout mode">
+            <button type="button" onClick={() => setCheckoutMode("NORMAL")} className={`rounded-xl border px-3 py-2 text-left text-sm font-bold ${checkoutMode === "NORMAL" ? "border-blue-600 bg-blue-50 text-blue-800" : "border-slate-200 bg-white text-slate-600"}`}>
+              Normal sale
+              <span className="mt-0.5 block text-[11px] font-normal">Offline-capable, no VAT or eTIMS submission</span>
+            </button>
+            <button type="button" onClick={() => setCheckoutMode("ETIMS")} disabled={!online || !etimsCheckout?.available} title={etimsCheckout?.reason ?? undefined} className={`rounded-xl border px-3 py-2 text-left text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50 ${checkoutMode === "ETIMS" ? "border-emerald-600 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-600"}`}>
+              eTIMS / VAT
+              <span className="mt-0.5 block text-[11px] font-normal">Online fiscal checkout only</span>
+            </button>
+          </div>
+          {!etimsCheckout?.available ? <p className="mt-2 text-xs text-amber-700">eTIMS is unavailable: {etimsCheckout?.reason ?? "This shop has not completed its certified eTIMS setup."}</p> : null}
+        </div>
         <div className="cart-scroll flex flex-col p-4">
           {cart.length ? <div className="space-y-3">{cart.map((item) => <div key={`${item.productId}-${item.unitId ?? "default"}`} className="rounded-xl border border-slate-200 p-3"><div className="flex justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-bold">{item.name}</p><p className="text-xs text-slate-500">{(item.unitName ?? item.unitSymbol) ? `${item.unitName ?? item.unitSymbol} • ` : ""}{formatMoney(fromMinorUnits(item.unitPriceMinor))} each</p></div><button onClick={() => setCart((current) => current.filter((line) => line.productId !== item.productId || line.unitId !== item.unitId))}><Trash2 className="h-4 w-4 text-red-500"/></button></div><div className="mt-3 flex items-center justify-between"><div className="flex items-center gap-2"><button className="rounded-lg border p-1" onClick={() => changeQuantity(item.productId, item.unitId, -0.25)}><Minus className="h-4 w-4"/></button><Input type="number" inputMode="decimal" min="0.01" step="0.01" value={String(item.quantity)} onChange={(e) => {
                 const value = Number(e.target.value);
@@ -1238,7 +1389,7 @@ export function PosShell({
             <div className="checkout-summary-grid">
               <div className="checkout-summary-card">
                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sale total</div>
-                <div className="mt-1 text-2xl font-black text-slate-900">{formatMoney(fromMinorUnits(totalMinor))}</div>
+                <div className="mt-1 text-2xl font-black text-slate-900">{formatMoney(fromMinorUnits(checkoutTotalMinor))}</div>
               </div>
               <div className="checkout-summary-card">
                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Cash received</div>
@@ -1286,7 +1437,7 @@ export function PosShell({
                 </div>
               ) : null}
               <label className="mt-3 mb-1 block text-xs font-bold text-slate-600">Discount</label>
-              <Input type="number" min="0" step="0.01" value={discountMinor / 100} onChange={(e) => setDiscountMinor(Math.round(Number(e.target.value || 0) * 100))} placeholder="0.00" />
+              <Input type="number" min="0" step="0.01" disabled={checkoutMode === "ETIMS"} value={discountMinor / 100} onChange={(e) => setDiscountMinor(Math.round(Number(e.target.value || 0) * 100))} placeholder="0.00" />{checkoutMode === "ETIMS" ? <p className="mt-1 text-xs text-amber-700">Discounts remain unavailable until the certified eTIMS provider mapping is configured.</p> : null}
               <label className="mt-3 mb-1 block text-xs font-bold text-slate-600">Notes</label>
               <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Add a note" />
             </div>
@@ -1294,7 +1445,7 @@ export function PosShell({
               <label className="mb-1 block text-xs font-bold text-slate-600">Cash received</label>
               <Input type="number" min="0" step="0.01" value={amountReceived} onChange={(e) => setAmountReceived(e.target.value)} placeholder="0.00" />
               <div className="mt-3 flex flex-wrap gap-2">
-                <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived(String(totalMinor / 100))}>Exact</Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived(String(checkoutTotalMinor / 100))}>Exact</Button>
                 <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived("500")}>KES 500</Button>
                 <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived("1000")}>KES 1,000</Button>
                 <Button type="button" variant="secondary" size="sm" onClick={() => setAmountReceived("2000")}>KES 2,000</Button>
@@ -1346,11 +1497,11 @@ export function PosShell({
               </div>
             ) : null}
             {splitPaymentEnabled ? (
-              <Button onClick={() => void checkout()} isLoading={processing} disabled={!registerSessionId || !cart.length || processing || (Math.round(Number(amountReceived || 0) * 100) + Math.round(Number(mpesaAmount || 0) * 100) < totalMinor)} className="mt-3 w-full" size="lg" loadingText="Completing split sale...">Complete split payment{pendingCount ? ` • ${pendingCount} pending` : ""}</Button>
+              <Button onClick={() => void checkout()} isLoading={processing} disabled={!registerSessionId || !cart.length || processing || (checkoutMode === "ETIMS" && !etimsCheckout?.available) || (Math.round(Number(amountReceived || 0) * 100) + Math.round(Number(mpesaAmount || 0) * 100) < checkoutTotalMinor)} className="mt-3 w-full" size="lg" loadingText="Completing split sale...">Complete split payment{pendingCount ? ` • ${pendingCount} pending` : ""}</Button>
             ) : paymentMode === "CASH" ? (
-              <Button onClick={() => void checkout()} isLoading={processing} disabled={!registerSessionId || !cart.length || processing} className="mt-3 w-full" size="lg" loadingText="Completing sale..."><Banknote className="h-5 w-5"/>Complete cash sale{pendingCount ? ` • ${pendingCount} pending` : ""}</Button>
+              <Button onClick={() => void checkout()} isLoading={processing} disabled={!registerSessionId || !cart.length || processing || (checkoutMode === "ETIMS" && !etimsCheckout?.available)} className="mt-3 w-full" size="lg" loadingText="Completing sale..."><Banknote className="h-5 w-5"/>Complete cash sale{pendingCount ? ` • ${pendingCount} pending` : ""}</Button>
             ) : paymentMode === "CREDIT" ? (
-              <Button onClick={() => void checkout()} isLoading={processing} disabled={!registerSessionId || !cart.length || processing || !customerId} className="mt-3 w-full" size="lg" loadingText="Recording credit sale...">Complete credit sale{pendingCount ? ` • ${pendingCount} pending` : ""}</Button>
+              <Button onClick={() => void checkout()} isLoading={processing} disabled={!registerSessionId || !cart.length || processing || !customerId || (checkoutMode === "ETIMS" && !etimsCheckout?.available)} className="mt-3 w-full" size="lg" loadingText="Recording credit sale...">Complete credit sale{pendingCount ? ` • ${pendingCount} pending` : ""}</Button>
             ) : null}
           </div>
         </div>

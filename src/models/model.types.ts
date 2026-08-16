@@ -11,6 +11,12 @@ export type AccountStatus = "ACTIVE" | "SUSPENDED";
 export type ProductStatus = "ACTIVE" | "INACTIVE";
 export type RegisterSessionStatus = "OPEN" | "CLOSED";
 export type SaleStatus = "PENDING" | "COMPLETED" | "VOIDED" | "REFUNDED";
+export type CheckoutMode = "NORMAL" | "ETIMS";
+export type PriceTaxMode = "VAT_EXCLUSIVE" | "VAT_INCLUSIVE";
+export type ProductTaxTreatment = "STANDARD" | "ZERO_RATED" | "EXEMPT";
+export type SaleTaxTreatment = ProductTaxTreatment | "MIXED" | "NOT_APPLICABLE";
+export type EtimsIntegrationMode = "OSCU" | "VSCU";
+export type EtimsStatus = "NOT_APPLICABLE" | "ETIMS_PENDING" | "ETIMS_SUBMITTING" | "ETIMS_SUCCESS" | "ETIMS_FAILED" | "ETIMS_RETRY_REQUIRED" | "ETIMS_REJECTED" | "ETIMS_CANCELLED";
 export type PaymentMethod = "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER" | "MIXED";
 export type PaymentStatus = "PENDING" | "VERIFIED" | "FAILED";
 export type TransferStatus = "DRAFT" | "DISPATCHED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CANCELLED";
@@ -159,6 +165,8 @@ export interface ProductDocument extends BaseDocument {
   defaultCostPrice: number;
   defaultSellingPrice: number;
   taxRate: number;
+  taxTreatment?: ProductTaxTreatment;
+  etimsItemCode?: string | null;
   trackStock: boolean;
   status: ProductStatus;
 }
@@ -299,6 +307,13 @@ export interface SaleDocument extends BaseDocument {
   isOffline: boolean;
   occurredAt: Date;
   syncedAt?: Date | null;
+  checkoutMode?: CheckoutMode;
+  taxableAmount?: number;
+  vatAmount?: number;
+  vatRate?: number;
+  taxTreatment?: SaleTaxTreatment;
+  etimsTransactionId?: string | null;
+  etimsStatus?: EtimsStatus;
 }
 
 export interface SaleItemDocument extends BaseDocument {
@@ -314,6 +329,8 @@ export interface SaleItemDocument extends BaseDocument {
   unitPrice: number;
   discountTotal: number;
   taxTotal: number;
+  vatRate?: number;
+  taxTreatment?: ProductTaxTreatment | 'NOT_APPLICABLE';
   lineTotal: number;
 }
 
@@ -602,6 +619,48 @@ export interface EmailQueueDocument extends BaseDocument {
   sentAt?: Date | null;
 }
 
+export interface TaxSettingsDocument extends BaseDocument {
+  businessId: string;
+  vatEnabled: boolean;
+  standardVatRate: number;
+  priceTaxMode: PriceTaxMode;
+  allowShopEtimsCheckout: boolean;
+}
+
+export interface EtimsConfigurationDocument extends BaseDocument {
+  businessId: string;
+  shopId: string;
+  enabled: boolean;
+  integrationMode: EtimsIntegrationMode;
+  taxpayerPin?: string | null;
+  branchCode?: string | null;
+  deviceId?: string | null;
+  credentialReference?: string | null;
+}
+
+export interface EtimsTransactionDocument extends BaseDocument {
+  saleId: string;
+  businessId: string;
+  shopId: string;
+  cashierId?: string | null;
+  registerId?: string | null;
+  status: Exclude<EtimsStatus, "NOT_APPLICABLE">;
+  requestReference: string;
+  taxableAmount: number;
+  vatAmount: number;
+  grossAmount: number;
+  vatRate: number;
+  officialInvoiceNumber?: string | null;
+  fiscalDocumentNumber?: string | null;
+  controlCode?: string | null;
+  qrCodeData?: string | null;
+  submittedAt?: Date | null;
+  confirmedAt?: Date | null;
+  responseData?: Record<string, unknown> | null;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  retryCount: number;
+}
 export interface PushSubscriptionDocument extends BaseDocument {
   userId: string;
   endpointHash: string;

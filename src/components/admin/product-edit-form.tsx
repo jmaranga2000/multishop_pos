@@ -22,6 +22,9 @@ export type ProductEditFormProps = {
     unitId?: string | null;
     defaultCostPrice: number;
     defaultSellingPrice: number;
+    taxTreatment?: "STANDARD" | "ZERO_RATED" | "EXEMPT";
+    taxRate?: number;
+    etimsItemCode?: string | null;
     status: string;
     pricingUnits?: Array<{ unitId: string; costPrice: number; sellingPrice: number }>;
   };
@@ -41,6 +44,9 @@ export function ProductEditForm({ product, categories, brands, units }: ProductE
     unitId: product.unitId ?? "",
     defaultCostPrice: product.defaultCostPrice.toString(),
     defaultSellingPrice: product.defaultSellingPrice.toString(),
+    taxTreatment: product.taxTreatment ?? "STANDARD",
+    taxRate: String(product.taxRate ?? 0),
+    etimsItemCode: product.etimsItemCode ?? "",
   });
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -132,7 +138,15 @@ export function ProductEditForm({ product, categories, brands, units }: ProductE
         <Input name="defaultCostPrice" value={values.defaultCostPrice} onChange={(event) => updateField("defaultCostPrice", event.target.value)} type="number" min="0" step="0.01" placeholder="Cost price" required />
         <Input name="defaultSellingPrice" value={values.defaultSellingPrice} onChange={(event) => updateField("defaultSellingPrice", event.target.value)} type="number" min="0.01" step="0.01" placeholder="Selling price" required />
       </div>
-      <div className="flex gap-2">
+      <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-3">
+        <p className="mb-2 text-sm font-bold text-slate-800">eTIMS tax configuration</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <select name="taxTreatment" value={values.taxTreatment} onChange={(event) => updateField("taxTreatment", event.target.value)} className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm"><option value="STANDARD">Standard VAT</option><option value="ZERO_RATED">Zero-rated</option><option value="EXEMPT">Exempt</option></select>
+          <Input name="taxRate" type="number" min="0" max="100" step="0.01" value={values.taxRate} onChange={(event) => updateField("taxRate", event.target.value)} placeholder="VAT rate override (%)" />
+          <Input name="etimsItemCode" value={values.etimsItemCode} onChange={(event) => updateField("etimsItemCode", event.target.value)} placeholder="Official eTIMS item code" />
+        </div>
+        <p className="mt-2 text-xs text-slate-500">The official item code is required before this product can be sold through eTIMS checkout.</p>
+      </div>      <div className="flex gap-2">
         <Button className="w-full" variant={dirty ? "primary" : "secondary"} isLoading={isPending} disabled={!dirty || isPending} loadingText="Saving changes...">
           {saved ? "Saved" : "Save changes"}
         </Button>

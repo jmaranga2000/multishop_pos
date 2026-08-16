@@ -78,7 +78,15 @@ export function ProductCreateForm({ categories, brands, units }: ProductCreateFo
         <Input name="defaultCostPrice" type="number" min="0" step="0.01" placeholder="Cost price" required />
         <Input name="defaultSellingPrice" type="number" min="0.01" step="0.01" placeholder="Selling price" required />
       </div>
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-3">
+        <p className="mb-2 text-sm font-bold text-slate-800">eTIMS tax configuration</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <select name="taxTreatment" defaultValue="STANDARD" className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm"><option value="STANDARD">Standard VAT</option><option value="ZERO_RATED">Zero-rated</option><option value="EXEMPT">Exempt</option></select>
+          <Input name="taxRate" type="number" min="0" max="100" step="0.01" defaultValue="0" placeholder="VAT rate override (%)" />
+          <Input name="etimsItemCode" placeholder="Official eTIMS item code" />
+        </div>
+        <p className="mt-2 text-xs text-slate-500">Normal checkout continues to work without an item code. eTIMS checkout rejects products that are not fully configured.</p>
+      </div>      {error ? <p className="text-sm text-red-600">{error}</p> : null}
       <Button className="w-full" isLoading={isPending} loadingText="Creating product...">
         Create product
       </Button>

@@ -3,12 +3,17 @@ import { getAdminSettingsData } from "@/services/admin/settings-service";
 import { PageHeading } from "@/components/ui/page-heading";
 import { PushSettings } from "@/components/admin/push-settings";
 import { AdminSettingsStatusCard, BusinessSettingsForm, NotificationPreferencesForm } from "@/components/admin/settings-forms";
+import { EtimsConfigurationForm, TaxSettingsForm } from "@/components/admin/etims-settings-forms";
+import { getAdminEtimsSettingsData } from "@/services/admin/etims-settings-service";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const user = await requireAdmin();
-  const business = await getAdminSettingsData(user.businessId);
+  const [business, etims] = await Promise.all([
+    getAdminSettingsData(user.businessId),
+    getAdminEtimsSettingsData(user.businessId),
+  ]);
   const preferences = business.notificationPreference;
 
   return (
@@ -21,6 +26,8 @@ export default async function SettingsPage() {
           <PushSettings />
         </div>
       </div>
+      <TaxSettingsForm settings={etims.taxSettings} />
+      <EtimsConfigurationForm shops={etims.shops} configurations={etims.configurations} />
       <NotificationPreferencesForm preferences={preferences ?? {
         lowStockInApp: true,
         lowStockPush: true,

@@ -3,6 +3,7 @@ import { PosShell } from "@/components/shop/pos-shell";
 import { db } from "@/lib/db";
 import { getMpesaEnvConfig } from "@/lib/mpesa-env";
 import { requireShop } from "@/lib/rbac";
+import { getEtimsCheckoutAvailability } from "@/services/etims/etims-service";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,10 @@ export default async function PosPage() {
     redirect("/shop/register?error=" + encodeURIComponent("Open a register session before using the POS."));
   }
 
-  const envConfig = getMpesaEnvConfig();
+  const [envConfig, etimsCheckout] = await Promise.all([
+    Promise.resolve(getMpesaEnvConfig()),
+    getEtimsCheckoutAvailability({ businessId: user.businessId, shopId: user.shopId, role: user.role }), 
+  ]);
 
   return <PosShell
     barcodeScanningEnabled={Boolean(business.posBarcodeScanningEnabled)}
@@ -40,5 +44,6 @@ export default async function PosPage() {
     shopName={shop.name}
     registerSessionId={openRegisterSession?.id ?? null}
     canReprintReceipts={true}
+    etimsCheckout={etimsCheckout}
   />;
 }

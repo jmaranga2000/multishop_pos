@@ -43,6 +43,12 @@ async function main() {
       timeoutSeconds: 60,
     },
     {
+      id: "multishop-pos-supplier-restock-sweep-v1",
+      path: "/api/jobs/supplier-restock-sweep",
+      cron: process.env.QSTASH_SUPPLIER_RESTOCK_CRON?.trim() || "*/15 * * * *",
+      timeoutSeconds: 60,
+    },
+    {
       id: "multishop-pos-daily-shop-summary-v1",
       path: "/api/jobs/daily-shop-summary",
       cron: process.env.QSTASH_DAILY_SUMMARY_CRON?.trim() || "CRON_TZ=Africa/Nairobi 0 21 * * *",
