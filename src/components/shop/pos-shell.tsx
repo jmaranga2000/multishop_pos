@@ -432,10 +432,10 @@ export function PosShell({
 
     function handleKeyDown(event: KeyboardEvent) {
       const target = event.target as HTMLElement;
-      const isInputField = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
-      const isBarcodeField = target === searchInputRef.current || (barcodeInput !== "" && !cameraActive);
+      const isEditableField = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable;
 
-      if (isInputField && !isBarcodeField) return;
+      // Native input handling owns typing in search, barcode, and notes fields. Hardware scanners are captured only when no editable field has focus.
+      if (isEditableField) return;
       if (event.key === "Escape") {
         if (cameraActive) {
           setCameraActive(false);
@@ -1240,7 +1240,7 @@ export function PosShell({
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[220px]">
               <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
-              <Input ref={searchInputRef} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search product, SKU or scan barcode" className="pl-10" />
+              <Input ref={searchInputRef} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search product or SKU" className="pl-10" />
             </div>
             {barcodeScanningEnabled ? (
               <Button type="button" variant={cameraActive ? "danger" : "secondary"} onClick={() => void startCameraScan()}>
