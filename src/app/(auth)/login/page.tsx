@@ -35,43 +35,52 @@ export default function LoginPage() {
         <p className="text-xs text-blue-200/60">Secure RBAC • MongoDB • PWA • Push notifications</p>
       </section>
 
-      <section className="flex items-center justify-center p-6 sm:p-10">
-        <div className="w-full max-w-md">
-          <div className="mb-8 lg:hidden">
-            <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-blue-700 p-2 text-white"><Store className="h-5 w-5" /></div>
-              <p className="font-extrabold">MultiShop POS</p>
+      <section className="flex min-h-screen flex-col p-6 sm:p-10">
+        <div className="flex flex-1 items-center justify-center">
+          <div className="w-full max-w-md">
+            <div className="mb-8 lg:hidden">
+              <div className="flex items-center gap-3">
+                <div className="rounded-xl bg-blue-700 p-2 text-white"><Store className="h-5 w-5" /></div>
+                <p className="font-extrabold">MultiShop POS</p>
+              </div>
+            </div>
+
+            <p className="text-sm font-bold text-blue-700">WELCOME BACK</p>
+            <h2 className="mt-2 text-3xl font-black tracking-tight">Sign in to your workspace</h2>
+            <p className="mt-2 text-sm text-slate-500">Use the credentials issued by the administrator.</p>
+
+            <div className="surface mt-7 rounded-3xl p-6">
+              <Suspense
+                fallback={
+                  <div>
+                    <p className="mb-4">Loading...</p>
+                    <form method="post" action="/api/auth/login" className="space-y-4">
+                      <div>
+                        <label className="mb-1.5 block text-sm font-semibold text-slate-700">Email address</label>
+                        <input name="email" type="email" className="w-full rounded-md border px-3 py-2" required maxLength={50} />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-sm font-semibold text-slate-700">Password</label>
+                        <input name="password" type="password" className="w-full rounded-md border px-3 py-2" required maxLength={20} />
+                      </div>
+                      <button type="submit" className="w-full rounded-md bg-blue-600 px-4 py-2 text-white">Sign in</button>
+                      <p className="text-xs text-slate-500">If JavaScript is disabled or failed to load, use this form to sign in.</p>
+                    </form>
+                  </div>
+                }
+              >
+                <LoginPanel />
+              </Suspense>
             </div>
           </div>
-
-          <p className="text-sm font-bold text-blue-700">WELCOME BACK</p>
-          <h2 className="mt-2 text-3xl font-black tracking-tight">Sign in to your workspace</h2>
-          <p className="mt-2 text-sm text-slate-500">Use the credentials issued by the administrator.</p>
-
-          <div className="surface mt-7 rounded-3xl p-6">
-            <Suspense
-              fallback={
-                <div>
-                  <p className="mb-4">Loading...</p>
-                  <form method="post" action="/api/auth/login" className="space-y-4">
-                    <div>
-                      <label className="mb-1.5 block text-sm font-semibold text-slate-700">Email address</label>
-                      <input name="email" type="email" className="w-full rounded-md border px-3 py-2" required maxLength={50} />
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-sm font-semibold text-slate-700">Password</label>
-                      <input name="password" type="password" className="w-full rounded-md border px-3 py-2" required maxLength={20} />
-                    </div>
-                    <button type="submit" className="w-full rounded-md bg-blue-600 px-4 py-2 text-white">Sign in</button>
-                    <p className="text-xs text-slate-500">If JavaScript is disabled or failed to load, use this form to sign in.</p>
-                  </form>
-                </div>
-              }
-            >
-              <LoginPanel />
-            </Suspense>
-          </div>
         </div>
+
+        <footer className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-xs text-slate-500">
+          <span>Powered by </span>
+          <span className="font-bold text-slate-700">Digidwel Technologies</span>
+          <span className="mx-2 text-slate-300">•</span>
+          <a href="tel:0788494967" className="font-semibold text-blue-700 hover:text-blue-800 hover:underline">0788494967</a>
+        </footer>
       </section>
     </main>
   );

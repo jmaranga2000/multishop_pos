@@ -17,18 +17,18 @@ export async function listLocalInventoryWithProducts(shopId: string) {
   return inventory.map((item, index) => ({ ...item, product: products[index] })).filter((item) => item.product);
 }
 
-export async function listSynchronizationQueue() {
-  return offlineDb.syncQueue.toArray();
+export async function listSynchronizationQueue(shopId: string) {
+  return offlineDb.syncQueue.where("shopId").equals(shopId).toArray();
 }
 
-export async function getLastSynchronizationTime() {
-  return (await offlineDb.syncMetadata.get("lastSyncAt"))?.value ?? null;
+export async function getLastSynchronizationTime(shopId: string) {
+  return (await offlineDb.syncMetadata.get(`lastSyncAt:${shopId}`))?.value ?? null;
 }
 
-export async function countPendingSynchronizationRecords() {
-  return offlineDb.syncQueue.where("status").anyOf(["PENDING_SYNC", "SYNCING", "FAILED"]).count();
+export async function countPendingSynchronizationRecords(shopId: string) {
+  return offlineDb.syncQueue.where("shopId").equals(shopId).filter((item) => ["PENDING_SYNC", "SYNCING", "FAILED"].includes(item.status)).count();
 }
 
-export async function countSynchronizationConflicts() {
-  return offlineDb.syncQueue.where("status").equals("CONFLICT").count();
+export async function countSynchronizationConflicts(shopId: string) {
+  return offlineDb.syncQueue.where("shopId").equals(shopId).filter((item) => item.status === "CONFLICT").count();
 }

@@ -1,5 +1,6 @@
 export type SyncPendingSalesOptions = {
   retryFailedOnly?: boolean;
+  shopId?: string;
 };
 
 export function getSyncQueueStatuses(options: SyncPendingSalesOptions = {}) {

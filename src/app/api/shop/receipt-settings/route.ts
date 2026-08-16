@@ -10,9 +10,6 @@ export async function GET() {
         where: { id: user.businessId },
         select: {
           name: true,
-          address: true,
-          phone: true,
-          email: true,
           taxPin: true,
           receiptFooter: true,
         },
@@ -22,15 +19,12 @@ export async function GET() {
         select: {
           id: true,
           name: true,
-          address: true,
-          phone: true,
-          email: true,
         },
       }),
     ]);
 
-    const location = [shop?.address, business?.address].find(Boolean) ?? null;
-    const contact = [shop?.phone, shop?.email, business?.phone, business?.email].filter(Boolean).join(" • ") || null;
+    const location = shop?.address ?? null;
+    const contact = [shop?.phone, shop?.email].filter(Boolean).join(" • ") || null;
     const taxInfo = business?.taxPin ? `PIN: ${business.taxPin}` : null;
 
     return NextResponse.json({

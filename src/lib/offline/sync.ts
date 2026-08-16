@@ -30,6 +30,7 @@ export async function bootstrapOfflineData() {
     await offlineDb.syncMetadata.bulkPut([
       { key: "shopId", value: data.shopId },
       { key: "lastSyncAt", value: data.syncedAt },
+      { key: `lastSyncAt:${data.shopId}`, value: data.syncedAt },
       { key: "offlineAccessExpiresAt", value: data.offlineAccessExpiresAt },
     ]);
   });
@@ -130,7 +131,7 @@ export async function createLocalSale(input: {
     await offlineDb.syncQueue.add({ id: crypto.randomUUID(), entityType: "SALE", entityId: localId, idempotencyKey, shopId: input.shopId, deviceId, status: "PENDING_SYNC", attempts: 0, nextAttemptAt: occurredAt, createdAt: occurredAt });
   });
 
-  if (navigator.onLine) await syncPendingSales();
+  if (navigator.onLine) await syncPendingSales({ shopId: input.shopId });
   else if ("serviceWorker" in navigator) {
     const registration = await navigator.serviceWorker.ready;
     const syncManager = (registration as ServiceWorkerRegistration & { sync?: { register: (tag: string) => Promise<void> } }).sync;
@@ -141,8 +142,13 @@ export async function createLocalSale(input: {
 
 export async function syncPendingSales(options: SyncPendingSalesOptions = {}) {
   if (!navigator.onLine) return { synced: 0, conflicts: 0, failed: 0, skipped: 0 };
-  const statuses = getSyncQueueStatuses(options);
-  const pending = await offlineDb.syncQueue.where("status").anyOf(statuses).toArray();
+  const candidates = options.shopId
+    ? await offlineDb.syncQueue.where("shopId").equals(options.shopId).toArray()
+    : await offlineDb.syncQueue.toArray();
+  const pending = candidates.filter((item) => options.retryFailedOnly
+    ? item.status === "FAILED" || item.status === "CONFLICT"
+    : item.status === "PENDING_SYNC" || item.status === "FAILED" || item.status === "CONFLICT");
+  const syncShopId = options.shopId ?? pending[0]?.shopId;
   if (!pending.length) return { synced: 0, conflicts: 0, failed: 0, skipped: 0 };
 
   const payload: Array<{ queueId: string; sale: OfflineSale; items: OfflineSaleItem[] }> = [];
@@ -175,7 +181,7 @@ export async function syncPendingSales(options: SyncPendingSalesOptions = {}) {
           await offlineDb.syncQueue.update(queue.id, { status: "CONFLICT", lastError: item.conflicts.join(", "), nextAttemptAt: new Date(Date.now() + 60_000).toISOString() });
         }
       }
-      await offlineDb.syncMetadata.put({ key: "lastSyncAt", value: new Date().toISOString() });
+      if (syncShopId) await offlineDb.syncMetadata.put({ key: `lastSyncAt:${syncShopId}`, value: new Date().toISOString() });
     });
     await bootstrapOfflineData();
     return { synced: result.results.filter((item) => item.status === "SYNCED").length, conflicts: result.results.filter((item) => item.status === "CONFLICT").length, failed: 0, skipped: 0 };
