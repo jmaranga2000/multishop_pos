@@ -16,6 +16,7 @@ type SidebarNavItem = {
 type SidebarNavProps = {
   items: SidebarNavItem[];
   collapsed?: boolean;
+  onNavigate?: () => void;
 };
 
 export function SidebarNav({ items, collapsed = false, onNavigate }: SidebarNavProps) {
