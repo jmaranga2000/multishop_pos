@@ -1,4 +1,4 @@
-import { endOfDay, startOfDay, subDays } from "date-fns";
+import { eachDayOfInterval, endOfDay, format, startOfDay, subDays } from "date-fns";
 import { db } from "@/lib/db";
 
 type Filters = { shopId?: string; from?: Date; to?: Date };
@@ -69,4 +69,113 @@ export async function getEmployeePerformanceData(businessId: string, filters: Fi
     ...refundRequests.filter((request) => request.sale?.salespersonId).slice(0, 250).map((request) => ({ id: `refund-${request.id}`, at: request.requestedAt, employeeId: request.sale?.salespersonId!, employeeName: request.sale?.salesperson?.name ?? "Unknown cashier", shopName: request.shop?.name ?? "Shop", action: "Refund request", detail: request.reason, status: request.status })),
   ].sort((left, right) => right.at.getTime() - left.at.getTime()).slice(0, 300);
   return { business, shops, performance, timeline, from, to };
+}
+export async function getEmployeePerformanceDetail(businessId: string, employeeId: string, filters: Filters = {}) {
+  const from = startOfDay(filters.from ?? subDays(new Date(), 29));
+  const to = endOfDay(filters.to ?? new Date());
+  const shopScope = filters.shopId ? { shopId: filters.shopId } : {};
+  const [business, employee, sales, sessions, refundRequests] = await Promise.all([
+    db.business.findUniqueOrThrow({ where: { id: businessId } }),
+    db.salespersonProfile.findFirstOrThrow({ where: { id: employeeId, shop: { businessId }, ...shopScope }, include: { shop: true } }),
+    db.sale.findMany({
+      where: { shop: { businessId }, salespersonId: employeeId, ...shopScope, occurredAt: { gte: from, lte: to } },
+      include: { shop: true, payments: true },
+      orderBy: { occurredAt: "desc" },
+      take: 5_000,
+    }),
+    db.registerSession.findMany({
+      where: { shop: { businessId }, salespersonId: employeeId, ...shopScope, openedAt: { gte: from, lte: to } },
+      include: { register: true },
+      orderBy: { openedAt: "desc" },
+      take: 1_000,
+    }),
+    db.refundRequest.findMany({
+      where: { shop: { businessId }, sale: { salespersonId: employeeId }, ...shopScope, requestedAt: { gte: from, lte: to }, status: "COMPLETED" },
+      include: { sale: true },
+      orderBy: { requestedAt: "desc" },
+      take: 1_000,
+    }),
+  ]);
+
+  const payments = emptyPayments();
+  const settledSales = sales.filter((sale) => sale.status === "COMPLETED" || sale.status === "REFUNDED");
+  const completedSales = sales.filter((sale) => sale.status === "COMPLETED");
+  const voidCount = sales.filter((sale) => sale.status === "VOIDED").length;
+  const salesTotal = settledSales.reduce((total, sale) => total + Number(sale.total), 0);
+  const discounts = settledSales.reduce((total, sale) => total + Number(sale.discountTotal), 0);
+  for (const sale of settledSales) {
+    for (const payment of sale.payments) {
+      const method: unknown = payment.method;
+      if (payment.status !== "FAILED" && isTrackedPaymentMethod(method)) payments[method] += Number(payment.amount);
+    }
+  }
+
+  const refunds = refundRequests.reduce((total, request) => total + Number(request.sale?.total ?? 0), 0);
+  const netSales = Math.max(0, salesTotal - refunds);
+  const registerVariance = sessions.reduce((total, session) => total + Number(session.variance ?? 0) + Number(session.mpesaVariance ?? 0), 0);
+  const dailySales = new Map<string, { label: string; sales: number; transactions: number }>();
+  for (const day of eachDayOfInterval({ start: from, end: to })) {
+    const key = format(day, "yyyy-MM-dd");
+    dailySales.set(key, { label: format(day, "MMM d"), sales: 0, transactions: 0 });
+  }
+  for (const sale of settledSales) {
+    const key = format(sale.occurredAt, "yyyy-MM-dd");
+    const point = dailySales.get(key);
+    if (point) {
+      point.sales += Number(sale.total);
+      point.transactions += 1;
+    }
+  }
+
+  const saleIds = settledSales.map((sale) => sale.id);
+  const saleItems = saleIds.length ? await db.saleItem.findMany({ where: { saleId: { in: saleIds } } }) : [];
+  const products = new Map<string, { productName: string; quantity: number; sales: number }>();
+  for (const item of saleItems) {
+    const current = products.get(item.productId) ?? { productName: item.productName, quantity: 0, sales: 0 };
+    current.quantity += Number(item.quantity);
+    current.sales += Number(item.lineTotal);
+    products.set(item.productId, current);
+  }
+
+  const transactionCount = settledSales.length;
+  return {
+    business,
+    employee,
+    from,
+    to,
+    metrics: {
+      netSales,
+      salesTotal,
+      transactionCount,
+      completedSales: completedSales.length,
+      averageTransaction: transactionCount ? salesTotal / transactionCount : 0,
+      discounts,
+      refunds,
+      refundCount: refundRequests.length,
+      voidCount,
+      registerVariance,
+      registerSessions: sessions.length,
+      attention: reviewStatus({ netSales, refunds, discounts, voids: voidCount, registerVariance }),
+    },
+    payments,
+    dailySales: [...dailySales.values()],
+    topProducts: [...products.values()].sort((left, right) => right.sales - left.sales).slice(0, 8),
+    recentSales: sales.slice(0, 12).map((sale) => ({
+      id: sale.id,
+      receiptNumber: sale.receiptNumber,
+      customerName: sale.customerName ?? "Walk-in customer",
+      status: sale.status,
+      total: Number(sale.total),
+      occurredAt: sale.occurredAt,
+      shopName: sale.shop?.name ?? "Shop",
+    })),
+    recentSessions: sessions.slice(0, 8).map((session) => ({
+      id: session.id,
+      registerName: session.register?.name ?? "Register",
+      status: session.status,
+      openedAt: session.openedAt,
+      closedAt: session.closedAt ?? null,
+      variance: Number(session.variance ?? 0) + Number(session.mpesaVariance ?? 0),
+    })),
+  };
 }
