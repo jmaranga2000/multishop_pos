@@ -102,6 +102,10 @@ export async function synchronizeOfflineSales(user: ShopSyncContext, payload: Of
           return response;
         }
 
+        const registerSession = entry.sale.registerSessionId ? await tx.registerSession.findFirst({ where: { id: entry.sale.registerSessionId, shopId: user.shopId } }) : null;
+        if (!registerSession?.salespersonId) throw new AppError("Each sale must be linked to a register session with an active cashier.", "SALESPERSON_CONTEXT_REQUIRED", 409);
+        const salespersonId = registerSession.salespersonId;
+
         if (detectMixedUnitSaleConflict(entry.items)) {
           const conflictType = "MIXED_UNIT_SALE" as const;
           await tx.offlineSyncConflict.create({
@@ -188,7 +192,7 @@ export async function synchronizeOfflineSales(user: ShopSyncContext, payload: Of
           data: {
             shopId: user.shopId,
             registerSessionId: entry.sale.registerSessionId,
-            salespersonId: entry.sale.salespersonId,
+            salespersonId,
             receiptNumber: receipt,
             clientReference: entry.sale.localId,
             status: "COMPLETED",

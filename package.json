@@ -11,6 +11,8 @@
     "db:init": "tsx scripts/init-db.ts",
     "db:seed": "tsx scripts/seed.ts",
     "db:migrate:add-isArchived": "tsx scripts/migrate-add-isArchived.ts",
+    "data:backfill:salespeople:dry-run": "tsx scripts/backfill-sale-salespeople.ts",
+    "data:backfill:salespeople": "tsx scripts/backfill-sale-salespeople.ts --apply",
     "qstash:schedules:upsert": "tsx scripts/upsert-qstash-schedules.ts",
     "secrets:generate": "node scripts/generate-local-secrets.mjs",
     "verify:integration": "node scripts/verify-integration.mjs",

@@ -129,6 +129,7 @@ export async function submitEtimsCheckout(user: CheckoutUser, input: EtimsChecko
     db.etimsConfiguration.findFirstOrThrow({ where: { businessId: user.businessId, shopId: user.shopId, enabled: true } }),
     db.registerSession.findFirstOrThrow({ where: { id: input.registerSessionId, shopId: user.shopId, status: "OPEN" } }),
   ]);
+  if (!session.salespersonId) throw new AppError("The open register session does not have an active cashier.", "SALESPERSON_CONTEXT_REQUIRED", 409);
   await validateMpesaPayments(user.shopId, input.payments);
 
   const productIds = [...new Set(input.items.map((item) => item.productId))];
@@ -219,7 +220,7 @@ export async function submitEtimsCheckout(user: CheckoutUser, input: EtimsChecko
         id: saleId,
         shopId: user.shopId,
         registerSessionId: session.id,
-        salespersonId: null,
+        salespersonId: session.salespersonId,
         receiptNumber: saleReceipt,
         clientReference: ref,
         status: "PENDING",
@@ -264,7 +265,7 @@ export async function submitEtimsCheckout(user: CheckoutUser, input: EtimsChecko
         saleId: sale.id,
         businessId: user.businessId,
         shopId: user.shopId,
-        cashierId: user.id,
+        cashierId: session.salespersonId,
         registerId: session.registerId,
         status: "ETIMS_SUBMITTING",
         requestReference: ref,
