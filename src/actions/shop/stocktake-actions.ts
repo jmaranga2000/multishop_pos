@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireShop } from "@/lib/rbac";
+import { AppError } from "@/lib/errors/app-error";
 import { cancelStocktake, recordStocktakeCounts, startStocktake, submitStocktake } from "@/services/stocktake/stocktake-service";
 import { createStocktakeSchema, recordStocktakeCountsSchema, stocktakeIdSchema } from "@/validators/stocktake/stocktake-validator";
 
@@ -26,10 +27,18 @@ export async function startShopStocktakeAction(formData: FormData) {
 }
 
 export async function recordStocktakeCountsAction(formData: FormData) {
-  const shop = await requireShop();
-  const input = recordStocktakeCountsSchema.parse({ ...Object.fromEntries(formData), items: jsonField(formData, "itemsJson") });
-  await recordStocktakeCounts(shop, input);
-  refresh();
+  try {
+    const shop = await requireShop();
+    const input = recordStocktakeCountsSchema.parse({ ...Object.fromEntries(formData), items: jsonField(formData, "itemsJson") });
+    await recordStocktakeCounts(shop, input);
+    refresh();
+    return { success: true as const };
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof AppError ? error.message : "Unable to save this stock count. Please try again.",
+    };
+  }
 }
 
 export async function submitStocktakeAction(formData: FormData) {

@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { type FormEvent, useMemo, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-type FormAction = (formData: FormData) => void | Promise<void>;
+type FormActionResult = void | { success?: boolean; error?: string };
+type FormAction = (formData: FormData) => FormActionResult | Promise<FormActionResult>;
 type Product = { id: string; name: string; sku?: string | null; unitId?: string | null; defaultCostPrice?: number };
 type Supplier = { id: string; name: string; shopId: string };
 type Shop = { id: string; name: string };
@@ -146,10 +147,32 @@ export function GoodsReceiptForm({ action, order }: { action: FormAction; order:
 
 type StocktakeItem = { id: string; productName: string; sku: string; barcode?: string | null; systemQuantity: number; physicalQuantity?: number | null; varianceReason?: string | null; reasonNote?: string | null };
 export function StocktakeCountForm({ action, stocktakeId, item }: { action: FormAction; stocktakeId: string; item: StocktakeItem }) {
-  const [physicalQuantity, setPhysicalQuantity] = useState(item.physicalQuantity?.toString() ?? ""); const [varianceReason, setVarianceReason] = useState(item.varianceReason ?? ""); const [reasonNote, setReasonNote] = useState(item.reasonNote ?? ""); const quantity = Number(physicalQuantity); const items = Number.isFinite(quantity) && physicalQuantity !== "" ? [{ stocktakeItemId: item.id, physicalQuantity: quantity, varianceReason: varianceReason || undefined, reasonNote: reasonNote || undefined }] : [];
-  return <form action={action} data-stocktake-barcode={item.barcode ?? ""} className="grid items-end gap-2 border-t py-3 md:grid-cols-[1fr_120px_180px_1fr_auto]"><div><p className="font-medium">{item.productName}</p><p className="text-xs text-slate-500">{item.sku} · System snapshot: {item.systemQuantity}</p></div><Input id={`stocktake-count-${item.id}`} type="number" min="0" step="0.01" value={physicalQuantity} onChange={(event) => setPhysicalQuantity(event.target.value)} placeholder="Count" /><select value={varianceReason} onChange={(event) => setVarianceReason(event.target.value)} className="rounded-lg border bg-white px-3 py-2 text-sm"><option value="">Variance reason</option>{["DAMAGED_GOODS", "EXPIRED_GOODS", "THEFT_LOSS", "UNRECORDED_SALE", "RECEIVING_ERROR", "TRANSFER_ERROR", "COUNTING_ERROR", "DATA_ENTRY_ERROR", "OTHER"].map((reason) => <option key={reason} value={reason}>{reason.replaceAll("_", " ")}</option>)}</select><Input value={reasonNote} onChange={(event) => setReasonNote(event.target.value)} placeholder="Reason note" /><input type="hidden" name="stocktakeId" value={stocktakeId} /><input type="hidden" name="itemsJson" value={JSON.stringify(items)} /><Button size="sm" variant="secondary" disabled={!items.length}>Save count</Button></form>;
-}
-export function StocktakeBarcodeLookup() {
+  const [physicalQuantity, setPhysicalQuantity] = useState(item.physicalQuantity?.toString() ?? "");
+  const [varianceReason, setVarianceReason] = useState(item.varianceReason ?? "");
+  const [reasonNote, setReasonNote] = useState(item.reasonNote ?? "");
+  const [error, setError] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const quantity = Number(physicalQuantity);
+  const items = Number.isFinite(quantity) && physicalQuantity !== "" ? [{ stocktakeItemId: item.id, physicalQuantity: quantity, varianceReason: varianceReason || undefined, reasonNote: reasonNote || undefined }] : [];
+  const significantVariance = items.length > 0 && Math.abs(quantity - item.systemQuantity) >= Math.max(1, Math.abs(item.systemQuantity) * 0.05);
+
+  function saveCount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    if (!items.length) return;
+    if (significantVariance && !varianceReason) {
+      setError("This count has a significant variance. Select a variance reason before saving.");
+      return;
+    }
+    const formData = new FormData(event.currentTarget);
+    startTransition(async () => {
+      const result = await action(formData);
+      if (result && result.error) setError(result.error);
+    });
+  }
+
+  return <form onSubmit={saveCount} data-stocktake-barcode={item.barcode ?? ""} className="grid items-end gap-2 border-t py-3 md:grid-cols-[1fr_120px_180px_1fr_auto]"><div><p className="font-medium">{item.productName}</p><p className="text-xs text-slate-500">{item.sku} · System snapshot: {item.systemQuantity}</p></div><Input id={`stocktake-count-${item.id}`} type="number" min="0" step="0.01" value={physicalQuantity} onChange={(event) => setPhysicalQuantity(event.target.value)} placeholder="Count" disabled={isPending} /><select value={varianceReason} onChange={(event) => setVarianceReason(event.target.value)} disabled={isPending} className="rounded-lg border bg-white px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"><option value="">Variance reason</option>{["DAMAGED_GOODS", "EXPIRED_GOODS", "THEFT_LOSS", "UNRECORDED_SALE", "RECEIVING_ERROR", "TRANSFER_ERROR", "COUNTING_ERROR", "DATA_ENTRY_ERROR", "OTHER"].map((reason) => <option key={reason} value={reason}>{reason.replaceAll("_", " ")}</option>)}</select><Input value={reasonNote} onChange={(event) => setReasonNote(event.target.value)} placeholder="Reason note" disabled={isPending} /><input type="hidden" name="stocktakeId" value={stocktakeId} /><input type="hidden" name="itemsJson" value={JSON.stringify(items)} /><Button type="submit" size="sm" variant="secondary" disabled={!items.length || isPending} isLoading={isPending} loadingText="Saving...">Save count</Button>{error ? <p className="text-sm text-red-700 md:col-span-5">{error}</p> : null}</form>;
+}export function StocktakeBarcodeLookup() {
   const [barcode, setBarcode] = useState("");
   const [message, setMessage] = useState("");
   const focusProduct = () => {
