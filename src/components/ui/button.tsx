@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import * as React from "react";
+import { useFormStatus } from "react-dom";
 import { cn } from "@/lib/utils";
 
 type ButtonVariants = "primary" | "secondary" | "ghost" | "danger" | "success";
@@ -39,8 +40,7 @@ export const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, Bu
   },
   ref,
 ) {
-  const [loading, setLoading] = React.useState(false);
-  const innerRef = React.useRef<HTMLButtonElement | HTMLAnchorElement | null>(null);
+  const { pending } = useFormStatus();
 
   const variants: Record<ButtonVariants, string> = {
     primary: "bg-[#173b89] text-white hover:bg-[#102f73] shadow-sm",
@@ -63,19 +63,8 @@ export const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, Bu
     if (text.includes("update") || text.includes("save")) return "Updating...";
     return "Processing...";
   }, [children, loadingText]);
-  const isLoading = externalLoading ?? loading;
+  const isLoading = externalLoading ?? (autoLoading && !href && pending);
 
-  React.useEffect(() => {
-    if (!autoLoading || href || typeof window === "undefined") return;
-    const element = innerRef.current;
-    if (!element) return;
-    let parent: HTMLElement | null = element.parentElement;
-    while (parent && parent.tagName !== "FORM") parent = parent.parentElement;
-    if (!parent) return;
-    const handleSubmit = () => setLoading(true);
-    parent.addEventListener("submit", handleSubmit);
-    return () => parent.removeEventListener("submit", handleSubmit);
-  }, [autoLoading, href]);
 
   const buttonClassName = cn(
     "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
@@ -90,7 +79,6 @@ export const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, Bu
     </span>
   ) : children;
   const setRef = (node: HTMLButtonElement | HTMLAnchorElement | null) => {
-    innerRef.current = node;
     if (typeof ref === "function") ref(node);
     else if (ref) ref.current = node;
   };
