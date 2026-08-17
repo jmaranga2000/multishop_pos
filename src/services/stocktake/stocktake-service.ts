@@ -125,7 +125,7 @@ export async function recordStocktakeCounts(actor: StocktakeActor, input: CountI
       const item = itemsById.get(count.stocktakeItemId)!;
       const varianceQuantity = count.physicalQuantity - item.systemQuantity;
       const variancePercentage = item.systemQuantity === 0 ? (count.physicalQuantity === 0 ? 0 : 100) : (varianceQuantity / item.systemQuantity) * 100;
-      await tx.stocktakeItem.update({ where: { id: item.id }, data: { physicalQuantity: count.physicalQuantity, varianceQuantity, variancePercentage, varianceReason: count.varianceReason ?? null, reasonNote: count.reasonNote ?? null, countedById: actor.id, countedAt: new Date() } });
+      await tx.stocktakeItem.update({ where: { id: item.id }, data: { physicalQuantity: count.physicalQuantity, varianceQuantity, variancePercentage, varianceReason: count.varianceReason || undefined, reasonNote: count.reasonNote ?? null, countedById: actor.id, countedAt: new Date() } });
     }
     const updated = await tx.stocktake.update({ where: { id: stocktake.id }, data: { status: "COUNTING" } });
     await writeAuditLog(tx, { userId: actor.id, shopId: stocktake.shopId, action: "STOCKTAKE_COUNTS_RECORDED", entityType: "STOCKTAKE", entityId: stocktake.id, description: `Recorded ${input.items.length} count${input.items.length === 1 ? "" : "s"} for ${stocktake.stocktakeNumber}.` });
