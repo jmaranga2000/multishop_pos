@@ -18,7 +18,7 @@ type SidebarNavProps = {
   collapsed?: boolean;
 };
 
-export function SidebarNav({ items, collapsed = false }: SidebarNavProps) {
+export function SidebarNav({ items, collapsed = false, onNavigate }: SidebarNavProps) {
   const pathname = usePathname() ?? "";
 
   return (
@@ -40,6 +40,7 @@ export function SidebarNav({ items, collapsed = false }: SidebarNavProps) {
             title={collapsed ? item.label : undefined}
             aria-label={item.label}
             className={active ? "nav-link relative active" : "nav-link relative"}
+            onClick={onNavigate}
           >
             {Icon ? <Icon className="h-[18px] w-[18px]" /> : <span className="inline-block h-[18px] w-[18px]" />}
             {!collapsed && <span>{item.label}</span>}
