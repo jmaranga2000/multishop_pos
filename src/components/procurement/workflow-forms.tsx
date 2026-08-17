@@ -4,8 +4,9 @@ import { type FormEvent, useMemo, useRef, useState, useTransition } from "react"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-type FormActionResult = void | { success?: boolean; error?: string };
-type FormAction = (formData: FormData) => FormActionResult | Promise<FormActionResult>;
+type FormAction = (formData: FormData) => void | Promise<void>;
+type StocktakeCountActionResult = { success?: boolean; error?: string };
+type StocktakeCountAction = (formData: FormData) => StocktakeCountActionResult | Promise<StocktakeCountActionResult>;
 type Product = { id: string; name: string; sku?: string | null; unitId?: string | null; defaultCostPrice?: number };
 type Supplier = { id: string; name: string; shopId: string };
 type Shop = { id: string; name: string };
@@ -146,7 +147,7 @@ export function GoodsReceiptForm({ action, order }: { action: FormAction; order:
 }
 
 type StocktakeItem = { id: string; productName: string; sku: string; barcode?: string | null; systemQuantity: number; physicalQuantity?: number | null; varianceReason?: string | null; reasonNote?: string | null };
-export function StocktakeCountForm({ action, stocktakeId, item }: { action: FormAction; stocktakeId: string; item: StocktakeItem }) {
+export function StocktakeCountForm({ action, stocktakeId, item }: { action: StocktakeCountAction; stocktakeId: string; item: StocktakeItem }) {
   const [physicalQuantity, setPhysicalQuantity] = useState(item.physicalQuantity?.toString() ?? "");
   const [varianceReason, setVarianceReason] = useState(item.varianceReason ?? "");
   const [reasonNote, setReasonNote] = useState(item.reasonNote ?? "");
