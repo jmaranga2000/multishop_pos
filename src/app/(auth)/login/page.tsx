@@ -35,10 +35,10 @@ export default function LoginPage() {
         <p className="text-xs text-blue-200/60">Secure RBAC • MongoDB • PWA • Push notifications</p>
       </section>
 
-      <section className="flex min-h-screen flex-col p-6 sm:p-10">
-        <div className="flex flex-1 items-center justify-center">
+      <section className="flex min-h-dvh flex-col px-6 pb-3 pt-2 sm:p-10">
+        <div className="flex items-start justify-center py-2 sm:flex-1 sm:items-center sm:py-0">
           <div className="w-full max-w-md">
-            <div className="mb-8 lg:hidden">
+            <div className="mb-4 lg:hidden">
               <div className="flex items-center gap-3">
                 <div className="rounded-xl bg-blue-700 p-2 text-white"><Store className="h-5 w-5" /></div>
                 <p className="font-extrabold">MultiShop POS</p>
@@ -75,7 +75,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <footer className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-xs text-slate-500">
+        <footer className="sticky bottom-3 z-10 mt-auto shrink-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-xs text-slate-500 shadow-sm">
           <span>Powered by </span>
           <span className="font-bold text-slate-700">Digidwel Technologies</span>
           <span className="mx-2 text-slate-300">•</span>
