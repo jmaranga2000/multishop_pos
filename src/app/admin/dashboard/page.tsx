@@ -149,55 +149,35 @@ export default async function AdminDashboard() {
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
-              <div className="flex items-center gap-2 text-slate-700">
-                <Truck className="h-4 w-4" />
-                <span className="text-sm font-medium">Pending transfers</span>
-              </div>
-              <Badge tone="warning">{operational.pendingTransfers}</Badge>
-            </div>
-            <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
-              <Link href="/admin/procurement" className="flex items-center justify-between rounded-xl border border-slate-200 p-3 transition hover:bg-slate-50">
-              <div className="flex items-center gap-2 text-slate-700">
-                <Truck className="h-4 w-4" />
-                <span className="text-sm font-medium">Requisitions awaiting approval</span>
-              </div>
-              <Badge tone={operational.pendingRequisitions ? "warning" : "success"}>{operational.pendingRequisitions}</Badge>
-            </Link>
-            <Link href="/admin/procurement" className="flex items-center justify-between rounded-xl border border-slate-200 p-3 transition hover:bg-slate-50">
-              <div className="flex items-center gap-2 text-slate-700">
-                <Truck className="h-4 w-4" />
-                <span className="text-sm font-medium">Orders and deliveries to review</span>
-              </div>
-              <Badge tone={operational.pendingPurchaseOrders ? "warning" : "success"}>{operational.pendingPurchaseOrders}</Badge>
-            </Link>
-            <Link href="/admin/stocktakes" className="flex items-center justify-between rounded-xl border border-slate-200 p-3 transition hover:bg-slate-50">
-              <div className="flex items-center gap-2 text-slate-700">
-                <PackageCheck className="h-4 w-4" />
-                <span className="text-sm font-medium">Stocktakes awaiting approval</span>
-              </div>
-              <Badge tone={operational.pendingStocktakes ? "warning" : "success"}>{operational.pendingStocktakes}</Badge>
-            </Link>
-            <Link href="/admin/procurement" className="flex items-center justify-between rounded-xl border border-slate-200 p-3 transition hover:bg-slate-50">
-              <div className="flex items-center gap-2 text-slate-700">
-                <Wallet className="h-4 w-4" />
-                <span className="text-sm font-medium">Open supplier payables</span>
-              </div>
-              <Badge tone={operational.openSupplierPayables ? "warning" : "success"}>{operational.openSupplierPayables}</Badge>
-            </Link>            <div className="flex items-center gap-2 text-slate-700">
-                <PackageCheck className="h-4 w-4" />
-                <span className="text-sm font-medium">Stock at risk</span>
-              </div>
-              <Badge tone="danger">{attentionCount}</Badge>
-            </div>
-            <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
-              <div className="flex items-center gap-2 text-slate-700">
-                <ShoppingCart className="h-4 w-4" />
-                <span className="text-sm font-medium">Approval queue</span>
-              </div>
-              <Badge tone="info">{operational.pendingExpenses + operational.pendingRefunds}</Badge>
-            </div>
-          </CardContent>
+  <Link href="/admin/transfers" className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-slate-200 p-3 transition hover:bg-slate-50">
+    <div className="flex min-w-0 items-center gap-2 text-slate-700"><Truck className="h-4 w-4 shrink-0" /><span className="min-w-0 break-words text-sm font-medium">Pending transfers</span></div>
+    <Badge tone="warning" className="shrink-0">{operational.pendingTransfers}</Badge>
+  </Link>
+  <Link href="/admin/procurement" className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-slate-200 p-3 transition hover:bg-slate-50">
+    <div className="flex min-w-0 items-center gap-2 text-slate-700"><Truck className="h-4 w-4 shrink-0" /><span className="min-w-0 break-words text-sm font-medium">Requisitions awaiting approval</span></div>
+    <Badge tone={operational.pendingRequisitions ? "warning" : "success"} className="shrink-0">{operational.pendingRequisitions}</Badge>
+  </Link>
+  <Link href="/admin/procurement" className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-slate-200 p-3 transition hover:bg-slate-50">
+    <div className="flex min-w-0 items-center gap-2 text-slate-700"><Truck className="h-4 w-4 shrink-0" /><span className="min-w-0 break-words text-sm font-medium">Orders and deliveries to review</span></div>
+    <Badge tone={operational.pendingPurchaseOrders ? "warning" : "success"} className="shrink-0">{operational.pendingPurchaseOrders}</Badge>
+  </Link>
+  <Link href="/admin/stocktakes" className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-slate-200 p-3 transition hover:bg-slate-50">
+    <div className="flex min-w-0 items-center gap-2 text-slate-700"><PackageCheck className="h-4 w-4 shrink-0" /><span className="min-w-0 break-words text-sm font-medium">Stocktakes awaiting approval</span></div>
+    <Badge tone={operational.pendingStocktakes ? "warning" : "success"} className="shrink-0">{operational.pendingStocktakes}</Badge>
+  </Link>
+  <Link href="/admin/procurement" className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-slate-200 p-3 transition hover:bg-slate-50">
+    <div className="flex min-w-0 items-center gap-2 text-slate-700"><Wallet className="h-4 w-4 shrink-0" /><span className="min-w-0 break-words text-sm font-medium">Open supplier payables</span></div>
+    <Badge tone={operational.openSupplierPayables ? "warning" : "success"} className="shrink-0">{operational.openSupplierPayables}</Badge>
+  </Link>
+  <Link href="/admin/reports/stock" className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-slate-200 p-3 transition hover:bg-slate-50">
+    <div className="flex min-w-0 items-center gap-2 text-slate-700"><PackageCheck className="h-4 w-4 shrink-0" /><span className="min-w-0 break-words text-sm font-medium">Stock at risk</span></div>
+    <Badge tone="danger" className="shrink-0">{attentionCount}</Badge>
+  </Link>
+  <Link href="/admin/expenses" className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-slate-200 p-3 transition hover:bg-slate-50">
+    <div className="flex min-w-0 items-center gap-2 text-slate-700"><ShoppingCart className="h-4 w-4 shrink-0" /><span className="min-w-0 break-words text-sm font-medium">Approval queue</span></div>
+    <Badge tone="info" className="shrink-0">{operational.pendingExpenses + operational.pendingRefunds}</Badge>
+  </Link>
+</CardContent>
         </Card>
 
         <Card>
