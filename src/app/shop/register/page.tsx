@@ -31,7 +31,7 @@ export default async function RegisterPage() {
     <>
       <PageHeading title="Register session" description="Open a register before selling and reconcile Cash, M-Pesa and other payment channels when the shift closes." />
       <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
-        <Card>
+        <Card className="md:flex md:h-[calc(100vh-13rem)] md:min-h-0 md:flex-col md:overflow-hidden">
           <CardHeader>
             <div>
               <h2 className="font-extrabold">{openSessions.length > 0 ? "Register sessions open" : "Open register session"}</h2>
@@ -42,7 +42,7 @@ export default async function RegisterPage() {
               </p>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="md:min-h-0 md:flex-1 md:overflow-y-auto">
             {openSessions.length > 0 ? (
               <div className="mb-6 space-y-4">
                 {openSessions.map((session) => (
@@ -90,9 +90,9 @@ export default async function RegisterPage() {
             ) : <EmptyState title="No active register" description="Ask the administrator to configure a register for this shop." />}
           </CardContent>
         </Card>
-        <Card className="overflow-hidden">
+        <Card className="overflow-hidden md:flex md:h-[calc(100vh-13rem)] md:min-h-0 md:flex-col">
           <CardHeader><div><h2 className="font-extrabold">Recent sessions</h2><p className="text-sm text-slate-500">Opening, closing and reconciliation history for this shop.</p></div></CardHeader>
-          {recentSessions.length ? <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Counter</th><th>Register</th><th>Operator</th><th>Opened</th><th>Closed</th><th>Cash opening</th><th>M-Pesa opening</th><th>Expected cash</th><th>Variance</th><th>Status</th></tr></thead><tbody>{recentSessions.map((session) => <tr key={session.id}><td>{session.counterId ? counters.find(c => c.id === session.counterId)?.name || "Unknown" : "Default"}</td><td><div className="flex items-center gap-2"><Banknote className="h-4 w-4 text-slate-400" />{session.register.name}</div></td><td>{session.salesperson?.name ?? "Shop account"}</td><td>{formatSessionTimestamp(session.openedAt)}</td><td>{session.closedAt ? formatSessionTimestamp(session.closedAt) : "—"}</td><td>{formatMoney(session.openingCash.toString(), business.currency)}</td><td>{formatMoney((session.openingMpesaBalance ?? 0).toString(), business.currency)}</td><td>{formatMoney((session.expectedCash ?? 0).toString(), business.currency)}</td><td>{session.variance !== null && session.variance !== undefined ? formatMoney(session.variance.toString(), business.currency) : "—"}</td><td><Badge tone={session.status === "OPEN" ? "warning" : session.variance && session.variance !== 0 ? "danger" : "success"}>{session.status}</Badge></td></tr>)}</tbody></table></div> : <EmptyState icon={<CircleDollarSign className="h-7 w-7" />} title="No register history" description="Open the first shift to begin register tracking." />}
+          {recentSessions.length ? <div className="min-h-0 flex-1 overflow-auto"><table className="data-table"><thead><tr><th>Counter</th><th>Register</th><th>Operator</th><th>Opened</th><th>Closed</th><th>Cash opening</th><th>M-Pesa opening</th><th>Expected cash</th><th>Variance</th><th>Status</th></tr></thead><tbody>{recentSessions.map((session) => <tr key={session.id}><td>{session.counterId ? counters.find(c => c.id === session.counterId)?.name || "Unknown" : "Default"}</td><td><div className="flex items-center gap-2"><Banknote className="h-4 w-4 text-slate-400" />{session.register.name}</div></td><td>{session.salesperson?.name ?? "Shop account"}</td><td>{formatSessionTimestamp(session.openedAt)}</td><td>{session.closedAt ? formatSessionTimestamp(session.closedAt) : "—"}</td><td>{formatMoney(session.openingCash.toString(), business.currency)}</td><td>{formatMoney((session.openingMpesaBalance ?? 0).toString(), business.currency)}</td><td>{formatMoney((session.expectedCash ?? 0).toString(), business.currency)}</td><td>{session.variance !== null && session.variance !== undefined ? formatMoney(session.variance.toString(), business.currency) : "—"}</td><td><Badge tone={session.status === "OPEN" ? "warning" : session.variance && session.variance !== 0 ? "danger" : "success"}>{session.status}</Badge></td></tr>)}</tbody></table></div> : <EmptyState icon={<CircleDollarSign className="h-7 w-7" />} title="No register history" description="Open the first shift to begin register tracking." />}
         </Card>
       </div>
     </>
