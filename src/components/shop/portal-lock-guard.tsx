@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Fingerprint, LockKeyhole, ShieldCheck } from "lucide-react";
+import { Delete, Eye, EyeOff, Fingerprint, LockKeyhole, ShieldCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { unlockShopPortalAction } from "@/actions/shop/register-actions";
@@ -16,6 +16,7 @@ export function ShopPortalLockGuard({ salespersonId, salespersonName, counterId,
   const [locked, setLocked] = useState(false);
   const [counterLocked, setCounterLocked] = useState(!counterAccessGranted);
   const [counterPin, setCounterPin] = useState("");
+  const [showCounterPin, setShowCounterPin] = useState(false);
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [fingerprintSupported, setFingerprintSupported] = useState(false);
@@ -117,7 +118,23 @@ export function ShopPortalLockGuard({ salespersonId, salespersonName, counterId,
     }
   }
 
-  if (!salespersonId) return null;
+  function appendCounterDigit(digit: string) {
+    if (isPending || counterPin.length >= 6) return;
+    setCounterPin((current) => `${current}${digit}`);
+    setError(null);
+  }
+
+  function removeCounterDigit() {
+    if (isPending) return;
+    setCounterPin((current) => current.slice(0, -1));
+    setError(null);
+  }
+
+  function clearCounterPin() {
+    if (isPending) return;
+    setCounterPin("");
+    setError(null);
+  }
 
   return (
     <>
@@ -126,14 +143,30 @@ export function ShopPortalLockGuard({ salespersonId, salespersonName, counterId,
           <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
             <div className="mb-4 flex items-center gap-3"><div className="rounded-xl bg-blue-50 p-3 text-blue-700"><LockKeyhole className="h-5 w-5" /></div><div><h2 className="text-lg font-extrabold text-slate-900">Enter counter PIN</h2><p className="text-sm text-slate-500">Identify this terminal before opening the shop portal.</p></div></div>
             <form onSubmit={onCounterUnlockSubmit} className="space-y-3">
-              <Input type="password" inputMode="numeric" value={counterPin} onChange={(event) => { setCounterPin(event.target.value); setError(null); }} placeholder="Six-digit counter PIN" maxLength={6} pattern="[0-9]{6}" required autoFocus />
+              <div className="relative">
+                <Input type={showCounterPin ? "text" : "password"} inputMode="numeric" value={counterPin} onChange={(event) => { setCounterPin(event.target.value.replace(/\D/g, "").slice(0, 6)); setError(null); }} placeholder="Six-digit counter PIN" maxLength={6} pattern="[0-9]{6}" required autoFocus className="pr-11 text-center text-xl tracking-[0.45em]" />
+                <button type="button" aria-label={showCounterPin ? "Hide counter PIN" : "Show counter PIN"} onClick={() => setShowCounterPin((visible) => !visible)} className="absolute right-3 top-3 text-slate-400 hover:text-slate-700">
+                  {showCounterPin ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+              <div className="hidden grid-cols-3 gap-3 md:grid" aria-label="Counter PIN keypad">
+                {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((digit) => (
+                  <button key={digit} type="button" onClick={() => appendCounterDigit(digit)} disabled={isPending || counterPin.length >= 6} className="h-14 rounded-xl border border-slate-200 bg-slate-50 text-2xl font-bold text-slate-800 shadow-sm transition hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
+                    {digit}
+                  </button>
+                ))}
+                <button type="button" onClick={clearCounterPin} disabled={isPending} className="h-14 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Clear</button>
+                <button type="button" onClick={() => appendCounterDigit("0")} disabled={isPending || counterPin.length >= 6} className="h-14 rounded-xl border border-slate-200 bg-slate-50 text-2xl font-bold text-slate-800 shadow-sm transition hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50">0</button>
+                <button type="button" onClick={removeCounterDigit} disabled={isPending || counterPin.length === 0} aria-label="Delete last counter PIN digit" className="flex h-14 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"><Delete className="h-6 w-6" /></button>
+              </div>
               {error ? <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
-              <Button className="w-full" isLoading={isPending} disabled={isPending} loadingText="Verifying...">Enter counter</Button>
+              <Button className="w-full" isLoading={isPending} disabled={isPending || counterPin.length !== 6} loadingText="Verifying...">Enter counter</Button>
+              {isPending ? <p className="text-center text-xs font-semibold text-blue-700" role="status" aria-live="polite">Verifying counter PIN...</p> : null}
             </form>
           </div>
         </div>
       )}
-      {locked && (
+      {locked && salespersonId && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 px-4">
           <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl shadow-slate-950/25">
             <div className="mb-4 flex items-center gap-3">

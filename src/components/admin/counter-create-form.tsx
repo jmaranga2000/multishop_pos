@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
 import { createCounterAction } from "@/actions/admin/counter-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,7 @@ export function CounterCreateForm({ shopId, onCreated }: { shopId: string; onCre
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isOpen, setIsOpen] = useState(false);
+  const [showPin, setShowPin] = useState(false);
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -51,6 +53,12 @@ export function CounterCreateForm({ shopId, onCreated }: { shopId: string; onCre
         <Input name="code" placeholder="Code, e.g. C02" required minLength={1} maxLength={20} />
         <Input name="deviceId" placeholder="Device ID (optional)" maxLength={100} />
         <Input name="description" placeholder="Description (optional)" maxLength={500} />
+        <div className="relative sm:col-span-2">
+          <Input name="pin" type={showPin ? "text" : "password"} inputMode="numeric" placeholder="Unique 6-digit counter PIN" minLength={6} maxLength={6} pattern="[0-9]{6}" required className="pr-11" />
+          <button type="button" aria-label={showPin ? "Hide counter PIN" : "Show counter PIN"} onClick={() => setShowPin((visible) => !visible)} className="absolute right-3 top-3 text-slate-400 hover:text-slate-700">
+            {showPin ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
       <div className="flex gap-2">
         <Button type="submit" size="sm" isLoading={isPending} disabled={isPending} loadingText="Creating...">Create counter</Button>

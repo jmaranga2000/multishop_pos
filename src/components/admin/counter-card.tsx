@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreVertical, AlertCircle } from "lucide-react";
+import { MoreVertical, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { updateCounterAction, deactivateCounterAction } from "@/actions/admin/counter-actions";
@@ -25,6 +25,7 @@ export function CounterCard({ counter }: CounterCardProps) {
   const [editing, setEditing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [showPin, setShowPin] = useState(false);
 
   function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -35,6 +36,7 @@ export function CounterCard({ counter }: CounterCardProps) {
         code: String(form.get("code") ?? "").trim().toUpperCase(),
         description: String(form.get("description") ?? "").trim(),
         deviceId: String(form.get("deviceId") ?? "").trim(),
+        pin: String(form.get("pin") ?? "").trim() || undefined,
         status: counter.status,
       });
       if (!result.success) {
@@ -71,7 +73,12 @@ export function CounterCard({ counter }: CounterCardProps) {
           <Input name="code" defaultValue={counter.code} placeholder="Counter code" required />
           <Input name="deviceId" defaultValue={counter.deviceId ?? ""} placeholder="Device ID" />
           <Input name="description" defaultValue={counter.description ?? ""} placeholder="Description" />
-          <Input name="pin" type="password" inputMode="numeric" placeholder="New 6-digit PIN (optional)" minLength={6} maxLength={6} pattern="[0-9]{6}" />
+          <div className="relative">
+            <Input name="pin" type={showPin ? "text" : "password"} inputMode="numeric" placeholder="New 6-digit PIN (optional)" minLength={6} maxLength={6} pattern="[0-9]{6}" className="pr-11" />
+            <button type="button" aria-label={showPin ? "Hide counter PIN" : "Show counter PIN"} onClick={() => setShowPin((visible) => !visible)} className="absolute right-3 top-3 text-slate-400 hover:text-slate-700">
+              {showPin ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            </button>
+          </div>
           <div className="flex gap-2">
             <Button size="sm" type="submit" isLoading={pending} disabled={pending}>Save</Button>
             <Button size="sm" type="button" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
