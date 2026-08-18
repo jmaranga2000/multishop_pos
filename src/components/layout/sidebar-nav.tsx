@@ -14,17 +14,19 @@ type SidebarNavItem = {
 };
 
 type SidebarNavProps = {
-  items: SidebarNavItem[];
+  groups: { label: string; items: SidebarNavItem[] }[];
   collapsed?: boolean;
   onNavigate?: () => void;
 };
 
-export function SidebarNav({ items, collapsed = false, onNavigate }: SidebarNavProps) {
+export function SidebarNav({ groups, collapsed = false, onNavigate }: SidebarNavProps) {
   const pathname = usePathname() ?? "";
 
   return (
     <nav className="mt-7 space-y-1">
-      {items.map((item) => {
+      {groups.map((group) => <div key={group.label} className="mb-5 last:mb-0">
+        {!collapsed && <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-300">{group.label}</p>}
+        {group.items.map((item) => {
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
         const Icon = (Icons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[item.icon];
         const count = item.count ?? 0;
@@ -58,7 +60,8 @@ export function SidebarNav({ items, collapsed = false, onNavigate }: SidebarNavP
             )}
           </Link>
         );
-      })}
+        })}
+      </div>)}
     </nav>
   );
 }
