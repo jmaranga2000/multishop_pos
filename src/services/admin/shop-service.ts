@@ -82,14 +82,10 @@ export async function createShopWithAccount(admin: { id: string; businessId: str
         },
       });
     }
-    const counterNames = Array.from(new Set((input.counters ?? ["Main counter"]).map((name) => name.trim()).filter(Boolean)));
-    const resolvedCounterNames = counterNames.length ? counterNames : ["Main counter"];
-
-    for (const [index, counterName] of resolvedCounterNames.entries()) {
-      const normalizedCode = counterName.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "COUNTER";
-      const code = `${normalizedCode.slice(0, 20)}${index > 0 ? `-${index + 1}` : ""}`;
-      await tx.register.create({ data: { shopId: shop.id, name: counterName, code } });
-    }
+    await tx.counter.create({
+      data: { shopId: shop.id, name: "Counter 1", code: "C01", status: "ACTIVE" },
+    });
+    await tx.register.create({ data: { shopId: shop.id, name: "Register 1", code: "R01" } });
     await writeAuditLog(tx, {
       userId: admin.id,
       shopId: shop.id,
@@ -212,30 +208,6 @@ export async function updateShopAndAccount(admin: { id: string; businessId: stri
       });
     }
 
-    const counterNames = Array.from(new Set(input.counters.map((name) => name.trim()).filter(Boolean)));
-    const existingRegisters = [...shop.registers].sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime());
-    const usedCodes = new Set(existingRegisters.map((register) => register.code));
-
-    for (const [index, counterName] of counterNames.entries()) {
-      const existingRegister = existingRegisters[index];
-      if (existingRegister) {
-        if (existingRegister.name !== counterName) {
-          await tx.register.update({ where: { id: existingRegister.id }, data: { name: counterName } });
-        }
-        continue;
-      }
-
-      const normalizedCode = counterName.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "COUNTER";
-      const codeBase = normalizedCode.slice(0, 20);
-      let counter = 1;
-      let code = codeBase;
-      while (usedCodes.has(code)) {
-        counter += 1;
-        code = `${codeBase.slice(0, Math.max(1, 27 - String(counter).length))}-${counter}`;
-      }
-      usedCodes.add(code);
-      await tx.register.create({ data: { shopId: shop.id, name: counterName, code } });
-    }
     await writeAuditLog(tx, {
       userId: admin.id,
       shopId: shop.id,

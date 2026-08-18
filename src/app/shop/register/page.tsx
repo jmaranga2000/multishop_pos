@@ -40,12 +40,13 @@ export default async function RegisterPage() {
           </CardHeader>
           <CardContent>
             {openSessions.length > 0 ? (
-              <div className="space-y-4">
+              <div className="mb-6 space-y-4">
                 {openSessions.map((session) => (
                   <RegisterCloseForm key={session.id} openSession={session} currency={business.currency} />
                 ))}
               </div>
-            ) : registers.length ? (
+            ) : null}
+            {registers.length ? (
               <form action={openRegisterAction} className="space-y-4">
                 <div className="rounded-2xl border border-slate-200 p-3">
                   <p className="text-xs font-semibold uppercase text-slate-500">Shop</p>

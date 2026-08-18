@@ -3,16 +3,15 @@ import assert from "node:assert/strict";
 import { createShopSchema } from "./shop-validator";
 import { createSalespersonSchema } from "./salesperson-validator";
 
-test("createShopSchema normalizes counter names from a textarea", () => {
+test("createShopSchema accepts shop details without counter configuration", () => {
   const parsed = createShopSchema.parse({
     name: "Kisii Shop",
     code: "",
     email: "shop@example.com",
     password: "Secret123!",
-    counters: "Main counter\nCounter 1, Counter 3",
   });
 
-  assert.deepEqual(parsed.counters, ["Main counter", "Counter 1", "Counter 3"]);
+  assert.equal(parsed.name, "Kisii Shop");
 });
 
 test("createSalespersonSchema accepts an optional register assignment", () => {

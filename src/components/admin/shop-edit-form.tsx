@@ -17,7 +17,6 @@ export type ShopEditFormProps = {
     phone?: string | null;
     address?: string | null;
     isActive: boolean;
-    registers?: Array<{ id: string; name: string; code: string; isActive?: boolean }>;
   };
 };
 
@@ -29,7 +28,6 @@ export function ShopEditForm({ shop }: ShopEditFormProps) {
     password: "",
     phone: shop.phone ?? "",
     address: shop.address ?? "",
-    counters: shop.registers?.filter((register) => register.isActive !== false).map((register) => register.name).join("\n") || "Main counter",
   });
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -71,17 +69,9 @@ export function ShopEditForm({ shop }: ShopEditFormProps) {
         placeholder="Physical address"
         className="min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-blue-500"
       />
-      <label className="block text-sm font-semibold text-slate-700">
-        Counters / registers
-        <textarea
-          name="counters"
-          value={values.counters}
-          onChange={(event) => updateField("counters", event.target.value)}
-          placeholder="Main counter&#10;Counter 2"
-          className="mt-2 min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-blue-500"
-        />
-      </label>
-      <p className="text-xs text-slate-500">Use one counter name per line. Existing register history is retained when names are changed.</p>
+      <p className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs text-blue-800">
+        Physical counters and their register sessions are managed from the Physical counters module.
+      </p>
       <div className="flex gap-2">
         <Button className="w-full" variant={dirty ? "primary" : "secondary"} isLoading={isPending} disabled={!dirty || isPending} loadingText="Saving changes...">
           {saved ? "Saved" : "Save changes"}

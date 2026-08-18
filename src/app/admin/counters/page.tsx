@@ -1,4 +1,4 @@
-import { Plus, MoreVertical, AlertCircle } from "lucide-react";
+import { MoreVertical, AlertCircle } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
 import { getCountersByShop } from "@/services/admin/counter-service";
 import { PageHeading } from "@/components/ui/page-heading";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { db } from "@/lib/db";
+import { CounterCreateForm } from "@/components/admin/counter-create-form";
 
 export const dynamic = "force-dynamic";
 
@@ -46,10 +47,7 @@ export default async function CountersPage() {
                     <h3 className="font-bold text-lg">{shop.name}</h3>
                     <p className="text-sm text-slate-500">{counters.length} counter{counters.length === 1 ? "" : "s"} configured</p>
                   </div>
-                  <Button size="sm" variant="secondary">
-                    <Plus className="h-4 w-4" />
-                    Add counter
-                  </Button>
+                  <CounterCreateForm shopId={shop.id} />
                 </div>
               </CardHeader>
 
@@ -97,10 +95,10 @@ export default async function CountersPage() {
                         )}
 
                         <div className="mt-4 flex items-center gap-2 border-t border-slate-200 pt-3">
-                          <Button size="sm" variant="ghost" className="flex-1">
+                          <Button type="button" size="sm" variant="ghost" className="flex-1" disabled>
                             Edit
                           </Button>
-                          <Button size="sm" variant="ghost" className="px-2">
+                          <Button type="button" size="sm" variant="ghost" className="px-2" disabled aria-label="More counter actions">
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </div>

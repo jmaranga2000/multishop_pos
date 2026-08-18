@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/rbac";
 import { AppError } from "@/lib/errors/app-error";
@@ -34,7 +35,7 @@ const updateCounterSchema = z.object({
 /**
  * Create a new counter for the admin's shop
  */
-export async function createCounterAction(input: CreateCounterInput) {
+export async function createCounterAction(shopId: string, input: CreateCounterInput) {
   try {
     const user = await requireAdmin();
 
@@ -46,16 +47,16 @@ export async function createCounterAction(input: CreateCounterInput) {
     // Validate input
     const validated = createCounterSchema.parse(input);
 
-    // Verify admin has access to a shop (or system-level admin)
-    const adminShop = user.shopId
-      ? await db.shop.findFirst({ where: { id: user.shopId, businessId: user.businessId } })
-      : await db.shop.findFirst({ where: { businessId: user.businessId } });
+    const adminShop = await db.shop.findFirst({
+      where: { id: shopId, businessId: user.businessId, isActive: true },
+    });
 
     if (!adminShop) {
-      throw new AppError("No authorized shop found");
+      throw new AppError("Shop not found or no access");
     }
 
     const counter = await createCounter(adminShop.id, user.id, validated);
+    revalidatePath("/admin/counters");
 
     return { success: true, data: counter };
   } catch (error) {
