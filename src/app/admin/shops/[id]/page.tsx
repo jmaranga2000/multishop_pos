@@ -44,7 +44,7 @@ export default async function ShopDetailsPage({ params }: { params: Promise<{ id
         <Card>
           <CardHeader><h2 className="font-extrabold">Edit shop</h2></CardHeader>
           <CardContent>
-            <ShopEditForm shop={shop} />
+            <ShopEditForm shop={{ ...shop, registers: shop.registers.map((register) => ({ id: register.id, name: register.name, code: register.code, isActive: register.isActive })) }} />
           </CardContent>
         </Card>
       </div>
