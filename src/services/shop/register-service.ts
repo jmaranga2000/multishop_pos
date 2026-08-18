@@ -643,7 +643,16 @@ export async function closeRegisterSession(shopUser: ShopContext, input: CloseRe
       entityType: "REGISTER_SESSION",
       entityId: session.id,
       description: `Closed ${session.register.name} with cash variance ${variance.toFixed(2)} and M-Pesa variance ${mpesaVariance.toFixed(2)}.`,
-      metadata: { expectedCash, actualCash: input.actualCash, variance, expectedMpesa, actualMpesaBalance, mpesaVariance, unresolvedPayments },
+      metadata: { 
+        counterId: session.counterId,
+        expectedCash, 
+        actualCash: input.actualCash, 
+        variance, 
+        expectedMpesa, 
+        actualMpesaBalance, 
+        mpesaVariance, 
+        unresolvedPayments 
+      },
     });
     return updated;
   });

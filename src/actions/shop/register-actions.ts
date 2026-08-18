@@ -9,6 +9,7 @@ import { AppError } from "@/lib/errors/app-error";
 import { closeRegisterSession, openRegisterSession } from "@/services/shop/register-service";
 import { consumeBiometricAuthentication } from "@/services/shop/biometric-service";
 import { closeRegisterSchema, openRegisterSchema } from "@/validators/shop/register-validator";
+import { getCountersByShop } from "@/services/admin/counter-service";
 
 export async function openRegisterAction(formData: FormData) {
   const shopUser = await requireShop();
@@ -35,6 +36,19 @@ export async function closeRegisterAction(formData: FormData) {
     if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
     const message = error instanceof AppError ? error.message : "Unable to close the register session.";
     redirect(`/shop/register?error=${encodeURIComponent(message)}`);
+  }
+}
+
+export async function getCountersForShopAction() {
+  try {
+    const shopUser = await requireShop();
+    const counters = await getCountersByShop(shopUser.shopId);
+    return { success: true, data: counters };
+  } catch (error) {
+    if (error instanceof AppError) {
+      return { success: false, error: error.message };
+    }
+    throw error;
   }
 }
 

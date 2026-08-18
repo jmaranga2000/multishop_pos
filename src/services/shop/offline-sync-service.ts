@@ -191,6 +191,7 @@ export async function synchronizeOfflineSales(user: ShopSyncContext, payload: Of
         const sale = await tx.sale.create({
           data: {
             shopId: user.shopId,
+            counterId: registerSession.counterId || undefined,
             registerSessionId: entry.sale.registerSessionId,
             salespersonId,
             receiptNumber: receipt,

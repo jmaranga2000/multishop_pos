@@ -236,7 +236,7 @@ export async function startMpesaPayment(input: StartMpesaPaymentInput) {
 
   const [shop, session] = await Promise.all([
     db.shop.findUnique({ where: { id: input.shopId }, select: { id: true, name: true, code: true } }),
-    db.registerSession.findFirst({ where: { id: input.registerSessionId, shopId: input.shopId, status: "OPEN" }, select: { id: true } }),
+    db.registerSession.findFirst({ where: { id: input.registerSessionId, shopId: input.shopId, status: "OPEN" }, select: { id: true, counterId: true } }),
   ]);
   if (!shop) throw new AppError("Shop was not found.", "SHOP_NOT_FOUND", 404);
   if (!session) throw new AppError("Open a register session before starting an M-Pesa payment.", "REGISTER_SESSION_INVALID", 409);
@@ -264,6 +264,7 @@ export async function startMpesaPayment(input: StartMpesaPaymentInput) {
   const payment = await db.mpesaPayment.create({
     data: {
       shopId: input.shopId,
+      counterId: session.counterId || undefined,
       saleId: input.saleLocalReference,
       cashierId: input.cashierId,
       shiftId: input.registerSessionId,
