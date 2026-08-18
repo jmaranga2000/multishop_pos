@@ -75,7 +75,7 @@ export function CounterCard({ counter }: CounterCardProps) {
           <Input name="description" defaultValue={counter.description ?? ""} placeholder="Description" />
           <div className="relative">
             <Input name="pin" type={showPin ? "text" : "password"} inputMode="numeric" placeholder="New 6-digit PIN (optional)" minLength={6} maxLength={6} pattern="[0-9]{6}" className="pr-11" />
-            <button type="button" aria-label={showPin ? "Hide counter PIN" : "Show counter PIN"} onClick={() => setShowPin((visible) => !visible)} className="absolute right-3 top-3 text-slate-400 hover:text-slate-700">
+            <button type="button" title={showPin ? "Hide counter PIN" : "Show counter PIN"} aria-label={showPin ? "Hide counter PIN" : "Show counter PIN"} onClick={() => setShowPin((visible) => !visible)} className="absolute right-3 top-3 text-slate-400 hover:text-slate-700">
               {showPin ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
           </div>

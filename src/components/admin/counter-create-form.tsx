@@ -55,7 +55,7 @@ export function CounterCreateForm({ shopId, onCreated }: { shopId: string; onCre
         <Input name="description" placeholder="Description (optional)" maxLength={500} />
         <div className="relative sm:col-span-2">
           <Input name="pin" type={showPin ? "text" : "password"} inputMode="numeric" placeholder="Unique 6-digit counter PIN" minLength={6} maxLength={6} pattern="[0-9]{6}" required className="pr-11" />
-          <button type="button" aria-label={showPin ? "Hide counter PIN" : "Show counter PIN"} onClick={() => setShowPin((visible) => !visible)} className="absolute right-3 top-3 text-slate-400 hover:text-slate-700">
+          <button type="button" title={showPin ? "Hide counter PIN" : "Show counter PIN"} aria-label={showPin ? "Hide counter PIN" : "Show counter PIN"} onClick={() => setShowPin((visible) => !visible)} className="absolute right-3 top-3 text-slate-400 hover:text-slate-700">
             {showPin ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
           </button>
         </div>
