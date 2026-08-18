@@ -29,6 +29,10 @@ export const RegisterSessionModel = defineModel<RegisterSessionDocument>({
       { unique: true, partialFilterExpression: { localReference: { $type: "string" } } },
     ),
     index({ shopId: 1, status: 1 }),
+    index(
+      { counterId: 1, status: 1 },
+      { unique: true, partialFilterExpression: { counterId: { $type: "string" }, status: "OPEN" } },
+    ),
   ],
 });
 
@@ -70,6 +74,7 @@ export const SaleModel = defineModel<SaleDocument>({
       { unique: true, partialFilterExpression: { clientReference: { $type: "string" } } },
     ),
     index({ shopId: 1, occurredAt: 1 }),
+    index({ counterId: 1, occurredAt: 1 }),
     index({ salespersonId: 1, occurredAt: 1 }),
     index({ checkoutMode: 1, etimsStatus: 1, occurredAt: 1 }),
   ],

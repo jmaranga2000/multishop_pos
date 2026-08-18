@@ -237,6 +237,15 @@ export interface SupplierNotificationHistoryDocument extends BaseDocument {
   failureReason?: string | null;
 }
 
+export interface CounterDocument extends BaseDocument {
+  shopId: string;
+  name: string;
+  code: string;
+  description?: string | null;
+  status: "ACTIVE" | "INACTIVE";
+  deviceId?: string | null;
+}
+
 export interface RegisterDocument extends BaseDocument {
   shopId: string;
   name: string;
@@ -246,6 +255,7 @@ export interface RegisterDocument extends BaseDocument {
 
 export interface RegisterSessionDocument extends BaseDocument {
   shopId: string;
+  counterId?: string | null;
   registerId: string;
   salespersonId?: string | null;
   status: RegisterSessionStatus;
@@ -291,6 +301,7 @@ export interface RegisterTransactionDocument extends BaseDocument {
 
 export interface SaleDocument extends BaseDocument {
   shopId: string;
+  counterId?: string | null;
   registerSessionId?: string | null;
   salespersonId?: string | null;
   receiptNumber: string;
@@ -348,6 +359,7 @@ export type MpesaMatchStatus = "PENDING" | "MATCHED" | "AMBIGUOUS" | "UNMATCHED"
 
 export interface MpesaPaymentDocument extends BaseDocument {
   shopId: string;
+  counterId?: string | null;
   saleId: string;
   cashierId?: string | null;
   shiftId?: string | null;

@@ -3,6 +3,7 @@ import type {
   BusinessDocument,
   ShopDocument,
   UserDocument,
+  CounterDocument,
 } from "./model.types";
 
 export const BusinessModel = defineModel<BusinessDocument>({
@@ -39,6 +40,16 @@ export const ShopModel = defineModel<ShopDocument>({
   ],
 });
 
+export const CounterModel = defineModel<CounterDocument>({
+  collection: "counters",
+  required: ["shopId", "name", "code"],
+  defaults: { status: "ACTIVE" },
+  indexes: [
+    index({ shopId: 1, code: 1 }, { unique: true }),
+    index({ shopId: 1, status: 1 }),
+  ],
+});
+
 export const UserModel = defineModel<UserDocument>({
   collection: "users",
   required: ["businessId", "name", "email", "passwordHash", "role"],
@@ -65,5 +76,6 @@ export const UserModel = defineModel<UserDocument>({
 export const coreModels = {
   business: BusinessModel,
   shop: ShopModel,
+  counter: CounterModel,
   user: UserModel,
 };

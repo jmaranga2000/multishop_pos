@@ -3,6 +3,7 @@ import { z } from "zod";
 const denominationSchema = z.coerce.number().nonnegative().optional();
 
 export const openRegisterSchema = z.object({
+  counterId: z.string().min(1),
   registerId: z.string().min(1),
   openingCash: z.coerce.number().nonnegative(),
   salespersonId: z.string().min(1),

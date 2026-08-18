@@ -149,12 +149,13 @@ export function validateRegisterClosingInput(input: {
 }
 
 export async function getShopRegisterData(shopId: string, businessId: string) {
-  const [business, shop, registers, salespeople, openSession, recentSessions] = await Promise.all([
+  const [business, shop, counters, registers, salespeople, openSessions, recentSessions] = await Promise.all([
     db.business.findUniqueOrThrow({ where: { id: businessId } }),
     db.shop.findUniqueOrThrow({ where: { id: shopId } }),
+    db.counter.findMany({ where: { shopId, status: "ACTIVE" }, orderBy: { name: "asc" } }),
     db.register.findMany({ where: { shopId, isActive: true }, orderBy: { name: "asc" } }),
     db.salespersonProfile.findMany({ where: { shopId, isActive: true }, orderBy: { name: "asc" } }),
-    db.registerSession.findFirst({
+    db.registerSession.findMany({
       where: { shopId, status: "OPEN" },
       include: { register: true, salesperson: true },
       orderBy: { openedAt: "desc" },
@@ -167,15 +168,16 @@ export async function getShopRegisterData(shopId: string, businessId: string) {
     }),
   ]);
 
-  const openSessionDetails = openSession ? await buildSessionViewModel(openSession, shopId) : null;
+  const openSessionDetails = await Promise.all(openSessions.map((session) => buildSessionViewModel(session, shopId)));
   const recentSessionDetails = await Promise.all(recentSessions.map((session) => buildSessionViewModel(session, shopId)));
 
   return {
     business,
     shop,
+    counters,
     registers,
     salespeople,
-    openSession: openSessionDetails,
+    openSessions: openSessionDetails,
     recentSessions: recentSessionDetails,
     paymentChannels: buildEnabledPaymentChannels(shop),
     paymentWarnings: getPaymentChannelWarnings(shop),
@@ -402,14 +404,19 @@ export function buildMpesaLedgerEntries(session: any, mpesaPayments: any[] = [])
 }
 
 export async function openRegisterSession(shopUser: ShopContext, input: OpenRegisterInput) {
-  const existing = await db.registerSession.findFirst({ where: { shopId: shopUser.shopId, status: "OPEN" } });
-  if (existing) throw new AppError("This shop already has an open register session.");
+  // Validate counter exists and belongs to this shop
+  const counter = await db.counter.findFirst({ where: { id: input.counterId, shopId: shopUser.shopId, status: "ACTIVE" } });
+  if (!counter) throw new AppError("Counter was not found or is inactive.");
+
+  // Check for existing OPEN session on THIS COUNTER (not the shop)
+  const existing = await db.registerSession.findFirst({ where: { counterId: input.counterId, status: "OPEN" } });
+  if (existing) throw new AppError(`Counter ${counter.name} already has an open register session.`);
 
   const register = await db.register.findFirst({ where: { id: input.registerId, shopId: shopUser.shopId, isActive: true } });
   if (!register) throw new AppError("Register was not found.");
 
-  const idempotencyKey = input.idempotencyKey || `register-open-${register.id}-${Date.now()}`;
-  const duplicate = await db.registerSession.findFirst({ where: { shopId: shopUser.shopId, idempotencyKey } });
+  const idempotencyKey = input.idempotencyKey || `register-open-${register.id}-${counter.id}-${Date.now()}`;
+  const duplicate = await db.registerSession.findFirst({ where: { counterId: input.counterId, idempotencyKey } });
   if (duplicate) throw new AppError("This opening request has already been processed.");
 
   if (!input.salespersonId) {
@@ -461,6 +468,7 @@ export async function openRegisterSession(shopUser: ShopContext, input: OpenRegi
   const session = await db.registerSession.create({
     data: {
       shopId: shopUser.shopId,
+      counterId: input.counterId,
       registerId: register.id,
       salespersonId,
       openingCash,
@@ -491,8 +499,9 @@ export async function openRegisterSession(shopUser: ShopContext, input: OpenRegi
     action: "REGISTER_OPENED",
     entityType: "REGISTER_SESSION",
     entityId: session.id,
-    description: `Opened ${register.name} with opening cash ${openingCash} and M-Pesa balance ${input.openingMpesaBalance ?? 0}.`,
+    description: `Opened ${counter.name} - ${register.name} with opening cash ${openingCash} and M-Pesa balance ${input.openingMpesaBalance ?? 0}.`,
     metadata: {
+      counterId: input.counterId,
       registerId: register.id,
       openingCash,
       openingMpesaBalance: input.openingMpesaBalance ?? 0,
