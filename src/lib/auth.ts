@@ -164,6 +164,15 @@ export function buildLogoutResponse() {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
   });
+  response.cookies.set({
+    name: COUNTER_ACCESS_COOKIE_NAME,
+    value: "",
+    path: "/",
+    expires: new Date(0),
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
   return response;
 }
 
