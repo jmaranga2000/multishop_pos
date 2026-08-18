@@ -74,11 +74,12 @@ export function CounterCard({ counter }: CounterCardProps) {
           <Input name="deviceId" defaultValue={counter.deviceId ?? ""} placeholder="Device ID" />
           <Input name="description" defaultValue={counter.description ?? ""} placeholder="Description" />
           <div className="relative">
-            <Input name="pin" type={showPin ? "text" : "password"} inputMode="numeric" placeholder="New 6-digit PIN (optional)" minLength={6} maxLength={6} pattern="[0-9]{6}" className="pr-11" />
+            <Input name="pin" type={showPin ? "text" : "password"} inputMode="numeric" placeholder="New 6-digit PIN (optional)" minLength={6} maxLength={6} pattern="[0-9]{6}" className="pr-11" onChange={(event) => { event.currentTarget.value = event.currentTarget.value.replace(/\D/g, "").slice(0, 6); }} />
             <button type="button" title={showPin ? "Hide counter PIN" : "Show counter PIN"} aria-label={showPin ? "Hide counter PIN" : "Show counter PIN"} onClick={() => setShowPin((visible) => !visible)} className="absolute right-3 top-3 text-slate-400 hover:text-slate-700">
               {showPin ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
           </div>
+          <p className="text-xs text-slate-500">PINs are write-only. Leave blank to keep the current PIN, or enter six digits to replace it.</p>
           <div className="flex gap-2">
             <Button size="sm" type="submit" isLoading={pending} disabled={pending}>Save</Button>
             <Button size="sm" type="button" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
