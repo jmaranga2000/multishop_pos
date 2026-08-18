@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Delete, Eye, EyeOff, Fingerprint, LockKeyhole, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Delete, Eye, EyeOff, Fingerprint, LockKeyhole, ShieldCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { unlockShopPortalAction } from "@/actions/shop/register-actions";
@@ -17,6 +17,7 @@ export function ShopPortalLockGuard({ salespersonId, salespersonName, counterId,
   const [counterLocked, setCounterLocked] = useState(!counterAccessGranted);
   const [counterPin, setCounterPin] = useState("");
   const [showCounterPin, setShowCounterPin] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [fingerprintSupported, setFingerprintSupported] = useState(false);
@@ -136,6 +137,15 @@ export function ShopPortalLockGuard({ salespersonId, salespersonName, counterId,
     setError(null);
   }
 
+  async function backToLogin() {
+    setLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+    } finally {
+      window.location.href = "/login";
+    }
+  }
+
   return (
     <>
       {counterLocked && (
@@ -162,6 +172,9 @@ export function ShopPortalLockGuard({ salespersonId, salespersonName, counterId,
               {error ? <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
               <Button className="w-full" isLoading={isPending} disabled={isPending || counterPin.length !== 6} loadingText="Verifying...">Enter counter</Button>
               {isPending ? <p className="text-center text-xs font-semibold text-blue-700" role="status" aria-live="polite">Verifying counter PIN...</p> : null}
+              <Button type="button" variant="ghost" className="w-full" onClick={backToLogin} disabled={isPending || loggingOut} isLoading={loggingOut} loadingText="Returning...">
+                <ArrowLeft className="h-4 w-4" />Back to login
+              </Button>
             </form>
           </div>
         </div>

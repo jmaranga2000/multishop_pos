@@ -50,7 +50,7 @@ export default async function RegisterPage() {
                 ))}
               </div>
             ) : null}
-            {registers.length ? (
+            {openSessions.length === 0 && registers.length ? (
               <form action={openRegisterAction} className="space-y-4">
                 <div className="rounded-2xl border border-slate-200 p-3">
                   <p className="text-xs font-semibold uppercase text-slate-500">Shop</p>
