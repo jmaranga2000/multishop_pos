@@ -15,7 +15,10 @@ export const RegisterModel = defineModel<RegisterDocument>({
   collection: "registers",
   required: ["shopId", "name", "code"],
   defaults: { isActive: true },
-  indexes: [index({ shopId: 1, code: 1 }, { unique: true })],
+  indexes: [
+    index({ shopId: 1, code: 1 }, { unique: true }),
+    index({ counterId: 1 }, { unique: true, partialFilterExpression: { counterId: { $type: "string" } } }),
+  ],
 });
 
 export const RegisterSessionModel = defineModel<RegisterSessionDocument>({

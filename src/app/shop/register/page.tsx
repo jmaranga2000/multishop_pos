@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FingerprintRegisterControls } from "@/components/shop/fingerprint-register-controls";
 import { RegisterCloseForm } from "@/components/shop/register-close-form";
+import { CounterRegisterSelect } from "@/components/shop/counter-register-select";
 
 export const dynamic = "force-dynamic";
 
@@ -52,24 +53,7 @@ export default async function RegisterPage() {
                   <p className="text-xs font-semibold uppercase text-slate-500">Shop</p>
                   <p className="mt-1 font-semibold">{shop.name}</p>
                 </div>
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">Counter</label>
-                  <select name="counterId" required className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm">
-                    <option value="">Select counter</option>
-                    {counters.map((counter) => (
-                      <option key={counter.id} value={counter.id} disabled={counter.currentSession !== null}>
-                        {counter.name} {counter.status === "INACTIVE" ? "(Inactive)" : ""} {counter.currentSession ? "(In use)" : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">Register</label>
-                  <select name="registerId" required className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm">
-                    <option value="">Select register</option>
-                    {registers.map((register) => <option key={register.id} value={register.id}>{register.name}</option>)}
-                  </select>
-                </div>
+                <div><CounterRegisterSelect counters={counters} /></div>
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-slate-700">Cashier</label>
                   <select id="register-salesperson-id" name="salespersonId" required className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm">

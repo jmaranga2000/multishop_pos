@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createCounterAction } from "@/actions/admin/counter-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export function CounterCreateForm({ shopId, onCreated }: { shopId: string; onCreated?: () => void }) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -29,6 +31,7 @@ export function CounterCreateForm({ shopId, onCreated }: { shopId: string; onCre
       toast.success("Counter created");
       setIsOpen(false);
       onCreated?.();
+      router.refresh();
     });
   }
 

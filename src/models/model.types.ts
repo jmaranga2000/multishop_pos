@@ -248,6 +248,7 @@ export interface CounterDocument extends BaseDocument {
 
 export interface RegisterDocument extends BaseDocument {
   shopId: string;
+  counterId?: string | null;
   name: string;
   code: string;
   isActive: boolean;

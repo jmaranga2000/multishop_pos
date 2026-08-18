@@ -4,6 +4,7 @@ import { AppError } from "@/lib/errors/app-error";
 import { fromMinorUnits } from "@/lib/utils";
 import { consumeBiometricAuthentication } from "@/services/shop/biometric-service";
 import { writeAuditLog } from "@/services/shared/audit-service";
+import { getCountersByShop } from "@/services/admin/counter-service";
 import type { z } from "zod";
 import type { openRegisterSchema, closeRegisterSchema } from "@/validators/shop/register-validator";
 
@@ -152,7 +153,7 @@ export async function getShopRegisterData(shopId: string, businessId: string) {
   const [business, shop, counters, registers, salespeople, openSessions, recentSessions] = await Promise.all([
     db.business.findUniqueOrThrow({ where: { id: businessId } }),
     db.shop.findUniqueOrThrow({ where: { id: shopId } }),
-    db.counter.findMany({ where: { shopId, status: "ACTIVE" }, orderBy: { name: "asc" } }),
+    getCountersByShop(shopId),
     db.register.findMany({ where: { shopId, isActive: true }, orderBy: { name: "asc" } }),
     db.salespersonProfile.findMany({ where: { shopId, isActive: true }, orderBy: { name: "asc" } }),
     db.registerSession.findMany({

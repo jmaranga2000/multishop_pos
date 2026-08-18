@@ -18,13 +18,22 @@ export interface UpdateCounterInput {
   status?: "ACTIVE" | "INACTIVE";
 }
 
+export type CounterWithStatus = CounterDocument & {
+  registerId: string | null;
+  registerName: string | null;
+  currentSession: {
+    id: string;
+    salesperson: string;
+    register: string;
+    openedAt: Date;
+    openingCash: number;
+  } | null;
+};
+
 /**
  * Create a new counter for a shop
  */
 export async function createCounter(shopId: string, userId: string, input: CreateCounterInput): Promise<CounterDocument> {
-  // Validate that shop exists
-  const shop = await db.shop.findUniqueOrThrow({ where: { id: shopId } });
-
   // Validate counter code is unique within the shop
   const existing = await db.counter.findFirst({
     where: { shopId, code: input.code },
@@ -43,6 +52,16 @@ export async function createCounter(shopId: string, userId: string, input: Creat
       description: input.description || null,
       deviceId: input.deviceId || null,
       status: "ACTIVE",
+    },
+  });
+
+  await db.register.create({
+    data: {
+      shopId,
+      counterId: counter.id,
+      name: `${counter.name} Register`,
+      code: `${counter.code}-REG`,
+      isActive: true,
     },
   });
 
@@ -163,7 +182,7 @@ export async function deactivateCounter(shopId: string, counterId: string, userI
 /**
  * Get all counters for a shop with their current session status
  */
-export async function getCountersByShop(shopId: string): Promise<any[]> {
+export async function getCountersByShop(shopId: string): Promise<CounterWithStatus[]> {
   const counters = await db.counter.findMany({
     where: { shopId },
     orderBy: { name: "asc" },
@@ -175,11 +194,27 @@ export async function getCountersByShop(shopId: string): Promise<any[]> {
     include: { salesperson: true, register: true },
   });
 
+  const registers = await db.register.findMany({ where: { shopId, isActive: true } });
+
+  const registersByCounterId = new Map(registers.filter((register) => register.counterId).map((register) => [register.counterId, register]));
+  for (const counter of counters) {
+    if (registersByCounterId.has(counter.id)) continue;
+    const code = `${counter.code}-REG`;
+    const existingRegister = registers.find((register) => register.code === code);
+    const register = existingRegister ?? await db.register.create({
+      data: { shopId, counterId: counter.id, name: `${counter.name} Register`, code, isActive: true },
+    });
+    registersByCounterId.set(counter.id, register);
+  }
+
   // Combine counters with their current session info
   return counters.map((counter) => {
     const currentSession = sessions.find((s) => s.counterId === counter.id);
     return {
       ...counter,
+      status: counter.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
+      registerId: registersByCounterId.get(counter.id)?.id ?? null,
+      registerName: registersByCounterId.get(counter.id)?.name ?? null,
       currentSession: currentSession
         ? {
             id: currentSession.id,
@@ -196,7 +231,7 @@ export async function getCountersByShop(shopId: string): Promise<any[]> {
 /**
  * Get a single counter with its current session details
  */
-export async function getCounterStatus(shopId: string, counterId: string): Promise<any> {
+export async function getCounterStatus(shopId: string, counterId: string): Promise<CounterWithStatus> {
   const counter = await db.counter.findUniqueOrThrow({ where: { id: counterId } });
 
   if (counter.shopId !== shopId) {
@@ -210,6 +245,8 @@ export async function getCounterStatus(shopId: string, counterId: string): Promi
 
   return {
     ...counter,
+    registerId: currentSession?.register?.id ?? null,
+    registerName: currentSession?.register?.name ?? null,
     currentSession: currentSession
       ? {
           id: currentSession.id,

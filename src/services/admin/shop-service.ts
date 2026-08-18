@@ -82,10 +82,12 @@ export async function createShopWithAccount(admin: { id: string; businessId: str
         },
       });
     }
-    await tx.counter.create({
+    const counter = await tx.counter.create({
       data: { shopId: shop.id, name: "Counter 1", code: "C01", status: "ACTIVE" },
     });
-    await tx.register.create({ data: { shopId: shop.id, name: "Register 1", code: "R01" } });
+    await tx.register.create({
+      data: { shopId: shop.id, counterId: counter.id, name: "Counter 1 Register", code: "C01-REG" },
+    });
     await writeAuditLog(tx, {
       userId: admin.id,
       shopId: shop.id,
