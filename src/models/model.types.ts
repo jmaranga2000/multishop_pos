@@ -244,6 +244,8 @@ export interface CounterDocument extends BaseDocument {
   description?: string | null;
   status: "ACTIVE" | "INACTIVE";
   deviceId?: string | null;
+  pinHash?: string | null;
+  pinFingerprint?: string | null;
 }
 
 export interface RegisterDocument extends BaseDocument {

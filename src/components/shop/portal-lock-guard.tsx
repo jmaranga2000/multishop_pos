@@ -5,14 +5,17 @@ import { Fingerprint, LockKeyhole, ShieldCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { unlockShopPortalAction } from "@/actions/shop/register-actions";
+import { unlockCounterAction } from "@/actions/shop/register-actions";
 import { authenticateSalespersonFingerprint, canUseBiometrics } from "@/lib/biometric-client";
 
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 
 type UnlockResult = { success: boolean; error?: string };
 
-export function ShopPortalLockGuard({ salespersonId, salespersonName }: { salespersonId?: string | null; salespersonName?: string | null }) {
+export function ShopPortalLockGuard({ salespersonId, salespersonName, counterId, counterName, counterAccessGranted }: { salespersonId?: string | null; salespersonName?: string | null; counterId?: string | null; counterName?: string | null; counterAccessGranted: boolean }) {
   const [locked, setLocked] = useState(false);
+  const [counterLocked, setCounterLocked] = useState(!counterAccessGranted);
+  const [counterPin, setCounterPin] = useState("");
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [fingerprintSupported, setFingerprintSupported] = useState(false);
@@ -75,6 +78,20 @@ export function ShopPortalLockGuard({ salespersonId, salespersonName }: { salesp
     });
   }
 
+  async function onCounterUnlockSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    startTransition(async () => {
+      const result = await unlockCounterAction(counterPin);
+      if (result.success) {
+        setCounterLocked(false);
+        setCounterPin("");
+        window.location.reload();
+      } else {
+        setError(result.error ?? "The counter PIN is incorrect.");
+      }
+    });
+  }
+
   async function unlockWithFingerprint() {
     if (!salespersonId) return;
 
@@ -104,6 +121,18 @@ export function ShopPortalLockGuard({ salespersonId, salespersonName }: { salesp
 
   return (
     <>
+      {counterLocked && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 px-4">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-center gap-3"><div className="rounded-xl bg-blue-50 p-3 text-blue-700"><LockKeyhole className="h-5 w-5" /></div><div><h2 className="text-lg font-extrabold text-slate-900">Enter counter PIN</h2><p className="text-sm text-slate-500">Identify this terminal before opening the shop portal.</p></div></div>
+            <form onSubmit={onCounterUnlockSubmit} className="space-y-3">
+              <Input type="password" inputMode="numeric" value={counterPin} onChange={(event) => { setCounterPin(event.target.value); setError(null); }} placeholder="Six-digit counter PIN" maxLength={6} pattern="[0-9]{6}" required autoFocus />
+              {error ? <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
+              <Button className="w-full" isLoading={isPending} disabled={isPending} loadingText="Verifying...">Enter counter</Button>
+            </form>
+          </div>
+        </div>
+      )}
       {locked && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 px-4">
           <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl shadow-slate-950/25">

@@ -22,6 +22,7 @@ const createCounterSchema = z.object({
   code: z.string().min(1).max(20),
   description: z.string().max(500).optional(),
   deviceId: z.string().max(100).optional(),
+  pin: z.string().regex(/^\d{6}$/, "Counter PIN must be exactly six digits."),
 });
 
 const updateCounterSchema = z.object({
@@ -30,7 +31,9 @@ const updateCounterSchema = z.object({
   description: z.string().max(500).optional(),
   deviceId: z.string().max(100).optional(),
   status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+  pin: z.string().regex(/^\d{6}$/, "Counter PIN must be exactly six digits.").optional(),
 });
+
 
 /**
  * Create a new counter for the admin's shop

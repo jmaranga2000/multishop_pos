@@ -49,6 +49,11 @@ export function RegisterCloseForm({ openSession, currency }: RegisterCloseFormPr
           {errorMessage}
         </div>
       ) : null}
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+        <label className="mb-2 block text-sm font-semibold text-amber-950">Cashier PIN required to close</label>
+        <Input name="pin" type="password" inputMode="numeric" autoComplete="one-time-code" placeholder="Enter your personal PIN" maxLength={6} required />
+        <p className="mt-1 text-xs text-amber-800">Only the cashier assigned to this register session can close it.</p>
+      </div>
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
           <p className="text-sm font-bold text-slate-900">Register close summary</p>

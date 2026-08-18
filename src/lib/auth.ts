@@ -12,6 +12,7 @@ const credentialsSchema = z.object({
 });
 
 const SESSION_COOKIE_NAME = "multishop-pos-session";
+const COUNTER_ACCESS_COOKIE_NAME = "multishop-pos-counter-access";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 12;
 const AUTH_SECRET = process.env.AUTH_SECRET as string;
 
@@ -22,6 +23,12 @@ if (!AUTH_SECRET) {
 type SessionPayload = {
   userId: string;
   passwordVersion: number;
+  issuedAt: number;
+};
+
+type CounterAccessPayload = {
+  userId: string;
+  counterId: string;
   issuedAt: number;
 };
 
@@ -37,14 +44,18 @@ function signPayload(payload: string) {
   return crypto.createHmac("sha256", AUTH_SECRET).update(payload).digest("base64url");
 }
 
-function createSessionToken(payload: Omit<SessionPayload, "issuedAt">) {
+function createSignedToken<T extends object>(payload: T) {
   const data = JSON.stringify({ ...payload, issuedAt: Date.now() });
   const encoded = base64UrlEncode(data);
   const signature = signPayload(encoded);
   return `${encoded}.${signature}`;
 }
 
-function verifySessionToken(token: string) {
+function createSessionToken(payload: Omit<SessionPayload, "issuedAt">) {
+  return createSignedToken(payload);
+}
+
+function verifySignedToken(token: string) {
   const [encoded, signature] = token.split(".");
   if (!encoded || !signature) return null;
   const expected = signPayload(encoded);
@@ -55,16 +66,17 @@ function verifySessionToken(token: string) {
   }
 
   const raw = base64UrlDecode(encoded);
-  const payload = JSON.parse(raw) as SessionPayload;
-  if (!payload || typeof payload.userId !== "string" || typeof payload.passwordVersion !== "number" || typeof payload.issuedAt !== "number") {
-    return null;
-  }
-
+  const payload = JSON.parse(raw) as { issuedAt?: number };
+  if (!payload || typeof payload.issuedAt !== "number") return null;
   if (Date.now() - payload.issuedAt > SESSION_MAX_AGE_SECONDS * 1000) {
     return null;
   }
-
   return payload;
+}
+
+function verifySessionToken(token: string) {
+  const payload = verifySignedToken(token) as SessionPayload | null;
+  return payload && typeof payload.userId === "string" && typeof payload.passwordVersion === "number" ? payload : null;
 }
 
 export type AuthUser = {
@@ -133,6 +145,14 @@ export function buildLoginResponse(user: AuthUser, redirectAfter = false) {
   return response;
 }
 
+export function createCounterAccessToken(userId: string, counterId: string) {
+  return createSignedToken({ userId, counterId });
+}
+
+export function counterAccessCookieName() {
+  return COUNTER_ACCESS_COOKIE_NAME;
+}
+
 export function buildLogoutResponse() {
   const response = NextResponse.json({ ok: true });
   response.cookies.set({
@@ -195,6 +215,19 @@ export async function getCurrentUser() {
   }
 
   return result;
+}
+
+export async function getCounterAccess(user: Pick<AuthUser, "id" | "shopId">) {
+  if (!user.shopId) return null;
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COUNTER_ACCESS_COOKIE_NAME)?.value;
+  if (!token) return null;
+  const payload = verifySignedToken(token) as CounterAccessPayload | null;
+  if (!payload || typeof payload.userId !== "string" || typeof payload.counterId !== "string" || payload.userId !== user.id) return null;
+  const counter = await db.counter.findFirst({
+    where: { id: payload.counterId, shopId: user.shopId, status: "ACTIVE" },
+  });
+  return counter ? { counter, counterId: counter.id } : null;
 }
 
 export async function requireUser() {

@@ -46,6 +46,7 @@ export const CounterModel = defineModel<CounterDocument>({
   defaults: { status: "ACTIVE" },
   indexes: [
     index({ shopId: 1, code: 1 }, { unique: true }),
+    index({ shopId: 1, pinFingerprint: 1 }, { unique: true, partialFilterExpression: { pinFingerprint: { $type: "string" } } }),
     index({ shopId: 1, status: 1 }),
   ],
 });

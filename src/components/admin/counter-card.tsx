@@ -71,6 +71,7 @@ export function CounterCard({ counter }: CounterCardProps) {
           <Input name="code" defaultValue={counter.code} placeholder="Counter code" required />
           <Input name="deviceId" defaultValue={counter.deviceId ?? ""} placeholder="Device ID" />
           <Input name="description" defaultValue={counter.description ?? ""} placeholder="Description" />
+          <Input name="pin" type="password" inputMode="numeric" placeholder="New 6-digit PIN (optional)" minLength={6} maxLength={6} pattern="[0-9]{6}" />
           <div className="flex gap-2">
             <Button size="sm" type="submit" isLoading={pending} disabled={pending}>Save</Button>
             <Button size="sm" type="button" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>

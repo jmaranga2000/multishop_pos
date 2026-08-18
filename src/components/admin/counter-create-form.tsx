@@ -20,6 +20,7 @@ export function CounterCreateForm({ shopId, onCreated }: { shopId: string; onCre
       code: String(form.get("code") ?? "").trim().toUpperCase(),
       description: String(form.get("description") ?? "").trim() || undefined,
       deviceId: String(form.get("deviceId") ?? "").trim() || undefined,
+      pin: String(form.get("pin") ?? "").trim(),
     };
 
     startTransition(async () => {

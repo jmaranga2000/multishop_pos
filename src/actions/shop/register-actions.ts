@@ -10,6 +10,28 @@ import { closeRegisterSession, openRegisterSession } from "@/services/shop/regis
 import { consumeBiometricAuthentication } from "@/services/shop/biometric-service";
 import { closeRegisterSchema, openRegisterSchema } from "@/validators/shop/register-validator";
 import { getCountersByShop } from "@/services/admin/counter-service";
+import crypto from "crypto";
+import { cookies } from "next/headers";
+import { createCounterAccessToken, counterAccessCookieName } from "@/lib/auth";
+
+export async function unlockCounterAction(pin: string) {
+  const shopUser = await requireShop();
+  if (!/^\d{6}$/.test(pin)) return { success: false, error: "Enter the six-digit counter PIN." };
+  const fingerprint = crypto.createHmac("sha256", process.env.AUTH_SECRET as string).update(`${shopUser.shopId}:${pin}`).digest("hex");
+  const counter = await db.counter.findFirst({ where: { shopId: shopUser.shopId, pinFingerprint: fingerprint, status: "ACTIVE" } });
+  if (!counter || !counter.pinHash || !(await argon2.verify(counter.pinHash, pin))) {
+    return { success: false, error: "The counter PIN is incorrect or inactive." };
+  }
+  const cookieStore = await cookies();
+  cookieStore.set(counterAccessCookieName(), createCounterAccessToken(shopUser.id, counter.id), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 12,
+  });
+  return { success: true, counterName: counter.name };
+}
 
 export async function openRegisterAction(formData: FormData) {
   const shopUser = await requireShop();

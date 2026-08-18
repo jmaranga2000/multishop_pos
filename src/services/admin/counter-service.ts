@@ -2,12 +2,15 @@ import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
 import { CounterDocument } from "@/models/model.types";
 import { writeAuditLog } from "@/services/shared/audit-service";
+import argon2 from "argon2";
+import crypto from "crypto";
 
 export interface CreateCounterInput {
   name: string;
   code: string;
   description?: string;
   deviceId?: string;
+  pin: string;
 }
 
 export interface UpdateCounterInput {
@@ -16,6 +19,11 @@ export interface UpdateCounterInput {
   description?: string;
   deviceId?: string;
   status?: "ACTIVE" | "INACTIVE";
+  pin?: string;
+}
+
+function pinFingerprint(shopId: string, pin: string) {
+  return crypto.createHmac("sha256", process.env.AUTH_SECRET as string).update(`${shopId}:${pin}`).digest("hex");
 }
 
 export type CounterWithStatus = CounterDocument & {
@@ -34,6 +42,7 @@ export type CounterWithStatus = CounterDocument & {
  * Create a new counter for a shop
  */
 export async function createCounter(shopId: string, userId: string, input: CreateCounterInput): Promise<CounterDocument> {
+  if (!/^\d{6}$/.test(input.pin)) throw new AppError("Counter PIN must be exactly six digits.");
   // Validate counter code is unique within the shop
   const existing = await db.counter.findFirst({
     where: { shopId, code: input.code },
@@ -42,6 +51,10 @@ export async function createCounter(shopId: string, userId: string, input: Creat
   if (existing) {
     throw new AppError(`A counter with code '${input.code}' already exists in this shop.`);
   }
+
+  const fingerprint = pinFingerprint(shopId, input.pin);
+  const existingPin = await db.counter.findFirst({ where: { shopId, pinFingerprint: fingerprint } });
+  if (existingPin) throw new AppError("That counter PIN is already assigned in this shop.");
 
   // Create the counter
   const counter = await db.counter.create({
@@ -52,6 +65,8 @@ export async function createCounter(shopId: string, userId: string, input: Creat
       description: input.description || null,
       deviceId: input.deviceId || null,
       status: "ACTIVE",
+      pinHash: await argon2.hash(input.pin),
+      pinFingerprint: fingerprint,
     },
   });
 
@@ -106,6 +121,15 @@ export async function updateCounter(
     }
   }
 
+  let pinData: { pinHash?: string; pinFingerprint?: string } = {};
+  if (input.pin) {
+    if (!/^\d{6}$/.test(input.pin)) throw new AppError("Counter PIN must be exactly six digits.");
+    const fingerprint = pinFingerprint(shopId, input.pin);
+    const existingPin = await db.counter.findFirst({ where: { shopId, pinFingerprint: fingerprint } });
+    if (existingPin && existingPin.id !== counterId) throw new AppError("That counter PIN is already assigned in this shop.");
+    pinData = { pinHash: await argon2.hash(input.pin), pinFingerprint: fingerprint };
+  }
+
   // Update the counter
   const updated = await db.counter.update({
     where: { id: counterId },
@@ -115,6 +139,7 @@ export async function updateCounter(
       description: input.description !== undefined ? input.description : counter.description,
       deviceId: input.deviceId !== undefined ? input.deviceId : counter.deviceId,
       status: input.status || counter.status,
+      ...pinData,
     },
   });
 

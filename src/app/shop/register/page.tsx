@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { FingerprintRegisterControls } from "@/components/shop/fingerprint-register-controls";
 import { RegisterCloseForm } from "@/components/shop/register-close-form";
 import { CounterRegisterSelect } from "@/components/shop/counter-register-select";
+import { getCounterAccess } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,9 @@ function formatSessionTimestamp(value: Date | string) {
 
 export default async function RegisterPage() {
   const user = await requireShop();
-  const { business, shop, counters, registers, salespeople, openSessions, recentSessions, paymentChannels, paymentWarnings } = await getShopRegisterData(user.shopId, user.businessId);
+  const counterAccess = await getCounterAccess(user);
+  const { business, shop, counters, registers, salespeople, openSessions, recentSessions, paymentChannels, paymentWarnings } = await getShopRegisterData(user.shopId, user.businessId, counterAccess?.counterId);
+  const terminalCounters = counters.filter((counter) => counter.id === counterAccess?.counterId);
 
   return (
     <>
@@ -53,7 +56,7 @@ export default async function RegisterPage() {
                   <p className="text-xs font-semibold uppercase text-slate-500">Shop</p>
                   <p className="mt-1 font-semibold">{shop.name}</p>
                 </div>
-                <div><CounterRegisterSelect counters={counters} /></div>
+                <div><CounterRegisterSelect counters={terminalCounters} /></div>
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-slate-700">Cashier</label>
                   <select id="register-salesperson-id" name="salespersonId" required className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm">

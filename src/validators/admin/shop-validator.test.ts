@@ -9,6 +9,7 @@ test("createShopSchema accepts shop details without counter configuration", () =
     code: "",
     email: "shop@example.com",
     password: "Secret123!",
+      counterPin: "123456",
   });
 
   assert.equal(parsed.name, "Kisii Shop");

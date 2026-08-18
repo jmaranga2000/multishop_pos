@@ -4,6 +4,7 @@ import { AppError } from "@/lib/errors/app-error";
 import { fromMinorUnits } from "@/lib/utils";
 import { consumeBiometricAuthentication } from "@/services/shop/biometric-service";
 import { writeAuditLog } from "@/services/shared/audit-service";
+import { getCounterAccess } from "@/lib/auth";
 import { getCountersByShop } from "@/services/admin/counter-service";
 import type { z } from "zod";
 import type { openRegisterSchema, closeRegisterSchema } from "@/validators/shop/register-validator";
@@ -149,7 +150,7 @@ export function validateRegisterClosingInput(input: {
   return issues;
 }
 
-export async function getShopRegisterData(shopId: string, businessId: string) {
+export async function getShopRegisterData(shopId: string, businessId: string, counterId?: string) {
   const [business, shop, counters, registers, salespeople, openSessions, recentSessions] = await Promise.all([
     db.business.findUniqueOrThrow({ where: { id: businessId } }),
     db.shop.findUniqueOrThrow({ where: { id: shopId } }),
@@ -157,12 +158,12 @@ export async function getShopRegisterData(shopId: string, businessId: string) {
     db.register.findMany({ where: { shopId, isActive: true }, orderBy: { name: "asc" } }),
     db.salespersonProfile.findMany({ where: { shopId, isActive: true }, orderBy: { name: "asc" } }),
     db.registerSession.findMany({
-      where: { shopId, status: "OPEN" },
+      where: { shopId, status: "OPEN", ...(counterId ? { counterId } : {}) },
       include: { register: true, salesperson: true },
       orderBy: { openedAt: "desc" },
     }),
     db.registerSession.findMany({
-      where: { shopId },
+      where: { shopId, ...(counterId ? { counterId } : {}) },
       include: { register: true, salesperson: true },
       orderBy: { openedAt: "desc" },
       take: 20,
@@ -405,6 +406,10 @@ export function buildMpesaLedgerEntries(session: any, mpesaPayments: any[] = [])
 }
 
 export async function openRegisterSession(shopUser: ShopContext, input: OpenRegisterInput) {
+  const counterAccess = await getCounterAccess(shopUser);
+  if (!counterAccess || counterAccess.counterId !== input.counterId) {
+    throw new AppError("Unlock this terminal with its counter PIN before opening a register.", "COUNTER_ACCESS_REQUIRED", 403);
+  }
   // Validate counter exists and belongs to this shop
   const counter = await db.counter.findFirst({ where: { id: input.counterId, shopId: shopUser.shopId, status: "ACTIVE" } });
   if (!counter) throw new AppError("Counter was not found or is inactive.");
@@ -523,11 +528,18 @@ function parseEnabledPaymentChannels(value?: string | null) {
 }
 
 export async function closeRegisterSession(shopUser: ShopContext, input: CloseRegisterInput) {
+  const counterAccess = await getCounterAccess(shopUser);
   const session = await db.registerSession.findFirst({
     where: { id: input.sessionId, shopId: shopUser.shopId, status: "OPEN" },
-    include: { register: true },
+    include: { register: true, salesperson: true },
   });
   if (!session) throw new AppError("Open register session was not found.");
+  if (!counterAccess || session.counterId !== counterAccess.counterId) {
+    throw new AppError("This register belongs to another counter terminal.", "COUNTER_ACCESS_REQUIRED", 403);
+  }
+  if (!session.salesperson?.pinHash || !(await argon2.verify(session.salesperson.pinHash, input.pin))) {
+    throw new AppError("The cashier PIN is incorrect. The register was not closed.", "CASHIER_PIN_INVALID", 403);
+  }
 
   const idempotencyKey = input.idempotencyKey || `register-close-${session.id}-${Date.now()}`;
   const duplicate = await db.registerSession.findFirst({ where: { shopId: shopUser.shopId, idempotencyKey } });

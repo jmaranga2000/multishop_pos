@@ -29,10 +29,11 @@ export default async function NewShopPage() {
             <p className="text-xs text-slate-500">Leave blank to auto-generate a unique shop code.</p>
             <Input name="email" type="email" placeholder="Shop login email" required />
             <PasswordInput name="password" minLength={8} placeholder="Temporary password" required />
+              <Input name="counterPin" type="password" inputMode="numeric" placeholder="Unique 6-digit Counter 1 PIN" minLength={6} maxLength={6} pattern="[0-9]{6}" required />
             <Input name="phone" placeholder="Phone (optional)" />
             <textarea name="address" placeholder="Physical address" className="min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-blue-500" />
             <p className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs text-blue-800">
-              A default Counter 1 and Register 1 are created automatically. Manage additional physical counters from the Physical counters module.
+              Counter 1 and Register 1 are created automatically. The counter PIN identifies this terminal; manage additional counters from the Physical counters module.
             </p>
             <Button className="w-full">Create shop and account</Button>
           </form>

@@ -4,13 +4,18 @@ import { OfflineProvider } from "@/components/shop/offline-provider";
 import { ConnectivityStatus } from "@/components/shop/connectivity-status";
 import { ShopPortalLockGuard } from "@/components/shop/portal-lock-guard";
 import { requireShop } from "@/lib/rbac";
+import { getCounterAccess } from "@/lib/auth";
 import { getShopRegisterData } from "@/services/shop/register-service";
 
 export const dynamic = "force-dynamic";
 
 export default async function ShopLayout({children}:{children:React.ReactNode}){
  const user=await requireShop();
- const { openSessions } = await getShopRegisterData(user.shopId, user.businessId);
+ const counterAccess = await getCounterAccess(user);
+ if (!counterAccess) {
+  return <ShopPortalLockGuard counterAccessGranted={false} />;
+ }
+ const { openSessions } = await getShopRegisterData(user.shopId, user.businessId, counterAccess?.counterId ?? undefined);
  const openSession = openSessions[0] ?? null;
 const nav=[
 	{ href: "/shop/dashboard", label: "Dashboard", icon: "Gauge" },
@@ -36,8 +41,8 @@ const nav=[
   userEmail={user.email}
   accountLabel={`Shop account • ${user.shop.code}`}
   headerUserName={cashierName}
-  headerAccountLabel={`Counter • ${counterName}`}
+	headerAccountLabel={`Counter • ${counterAccess?.counter.name ?? "Not selected"}`}
   headerExtra={<ConnectivityStatus/>}
   showNotifications={false}
-><ShopPortalLockGuard salespersonId={openSession?.salespersonId ?? null} salespersonName={openSession?.salesperson?.name ?? null} />{children}</AppShell></OfflineProvider>;
+><ShopPortalLockGuard counterId={counterAccess.counterId} counterName={counterAccess.counter.name} counterAccessGranted salespersonId={openSession?.salespersonId ?? null} salespersonName={openSession?.salesperson?.name ?? null} />{children}</AppShell></OfflineProvider>;
 }

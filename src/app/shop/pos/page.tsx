@@ -3,12 +3,15 @@ import { PosShell } from "@/components/shop/pos-shell";
 import { db } from "@/lib/db";
 import { getMpesaEnvConfig } from "@/lib/mpesa-env";
 import { requireShop } from "@/lib/rbac";
+import { getCounterAccess } from "@/lib/auth";
 import { getEtimsCheckoutAvailability } from "@/services/etims/etims-service";
 
 export const dynamic = "force-dynamic";
 
 export default async function PosPage() {
   const user = await requireShop();
+  const counterAccess = await getCounterAccess(user);
+  if (!counterAccess) redirect("/shop/register?error=" + encodeURIComponent("Unlock this terminal with its counter PIN first."));
   const business = await db.business.findUniqueOrThrow({
     where: { id: user.businessId },
     select: { posBarcodeScanningEnabled: true },
@@ -21,7 +24,7 @@ export default async function PosPage() {
     },
   });
   const openRegisterSession = await db.registerSession.findFirst({
-    where: { shopId: user.shopId, status: "OPEN" },
+    where: { shopId: user.shopId, counterId: counterAccess.counterId, status: "OPEN" },
     select: { id: true },
     orderBy: { openedAt: "desc" },
   });

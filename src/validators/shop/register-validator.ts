@@ -30,6 +30,7 @@ export const openRegisterSchema = z.object({
 
 export const closeRegisterSchema = z.object({
   sessionId: z.string().min(1),
+  pin: z.string().trim().min(1, "Cashier PIN is required."),
   actualCash: z.coerce.number().nonnegative(),
   actualMpesaBalance: z.coerce.number().nonnegative().optional(),
   closingNote: z.string().trim().max(500).optional(),

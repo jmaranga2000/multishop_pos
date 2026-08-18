@@ -1,4 +1,5 @@
 import argon2 from "argon2";
+import crypto from "crypto";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
 import { writeAuditLog } from "@/services/shared/audit-service";
@@ -82,8 +83,9 @@ export async function createShopWithAccount(admin: { id: string; businessId: str
         },
       });
     }
+    const pinFingerprint = crypto.createHmac("sha256", process.env.AUTH_SECRET as string).update(`${shop.id}:${input.counterPin}`).digest("hex");
     const counter = await tx.counter.create({
-      data: { shopId: shop.id, name: "Counter 1", code: "C01", status: "ACTIVE" },
+      data: { shopId: shop.id, name: "Counter 1", code: "C01", status: "ACTIVE", pinHash: await argon2.hash(input.counterPin), pinFingerprint },
     });
     await tx.register.create({
       data: { shopId: shop.id, counterId: counter.id, name: "Counter 1 Register", code: "C01-REG" },
