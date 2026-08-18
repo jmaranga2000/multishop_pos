@@ -24,7 +24,7 @@ async function main() {
 
     for (const shop of shops) {
       // Check if shop already has counters
-      const existingCounters = await db.counter.countDocuments({ shopId: shop.id });
+      const existingCounters = await db.counter.count({ where: { shopId: shop.id } });
 
       if (existingCounters > 0) {
         console.log(`✓ Shop "${shop.name}" already has ${existingCounters} counter(s) - skipping`);
@@ -52,8 +52,8 @@ async function main() {
           data: { counterId: counter.id },
         });
 
-        if (updateResult.modifiedCount > 0) {
-          console.log(`  ✓ Linked ${updateResult.modifiedCount} existing register session(s) to Counter 1`);
+        if (updateResult.count > 0) {
+          console.log(`  ✓ Linked ${updateResult.count} existing register session(s) to Counter 1`);
         }
 
         // Link all existing sales (if any) without counterId to this counter
@@ -62,8 +62,8 @@ async function main() {
           data: { counterId: counter.id },
         });
 
-        if (salesUpdateResult.modifiedCount > 0) {
-          console.log(`  ✓ Linked ${salesUpdateResult.modifiedCount} existing sale(s) to Counter 1`);
+        if (salesUpdateResult.count > 0) {
+          console.log(`  ✓ Linked ${salesUpdateResult.count} existing sale(s) to Counter 1`);
         }
 
         // Link all existing M-Pesa payments (if any) without counterId to this counter
@@ -72,8 +72,8 @@ async function main() {
           data: { counterId: counter.id },
         });
 
-        if (mpesaUpdateResult.modifiedCount > 0) {
-          console.log(`  ✓ Linked ${mpesaUpdateResult.modifiedCount} existing M-Pesa payment(s) to Counter 1`);
+        if (mpesaUpdateResult.count > 0) {
+          console.log(`  ✓ Linked ${mpesaUpdateResult.count} existing M-Pesa payment(s) to Counter 1`);
         }
 
         createdCount++;

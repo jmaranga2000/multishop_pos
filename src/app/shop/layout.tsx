@@ -10,7 +10,8 @@ export const dynamic = "force-dynamic";
 
 export default async function ShopLayout({children}:{children:React.ReactNode}){
  const user=await requireShop();
- const { openSession } = await getShopRegisterData(user.shopId, user.businessId);
+ const { openSessions } = await getShopRegisterData(user.shopId, user.businessId);
+ const openSession = openSessions[0] ?? null;
 const nav=[
 	{ href: "/shop/dashboard", label: "Dashboard", icon: "Gauge" },
 	{ href: "/shop/pos", label: "Point of sale", icon: "ShoppingCart" },

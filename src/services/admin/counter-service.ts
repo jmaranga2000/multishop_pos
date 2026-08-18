@@ -1,8 +1,7 @@
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
-import { ShopContext } from "@/lib/auth";
 import { CounterDocument } from "@/models/model.types";
-import { writeAuditLog } from "@/services/shared/audit-log-service";
+import { writeAuditLog } from "@/services/shared/audit-service";
 
 export interface CreateCounterInput {
   name: string;

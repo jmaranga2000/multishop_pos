@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { authenticate, ShopContext } from "@/lib/auth";
+import { requireAdmin } from "@/lib/rbac";
 import { AppError } from "@/lib/errors/app-error";
 import {
   createCounter,
@@ -36,8 +36,7 @@ const updateCounterSchema = z.object({
  */
 export async function createCounterAction(input: CreateCounterInput) {
   try {
-    const user = await authenticate();
-    if (!user) throw new AppError("Unauthorized");
+    const user = await requireAdmin();
 
     // Admin check
     if (user.role !== "ADMIN") {
@@ -72,8 +71,7 @@ export async function createCounterAction(input: CreateCounterInput) {
  */
 export async function updateCounterAction(counterId: string, input: UpdateCounterInput) {
   try {
-    const user = await authenticate();
-    if (!user) throw new AppError("Unauthorized");
+    const user = await requireAdmin();
 
     // Admin check
     if (user.role !== "ADMIN") {
@@ -109,8 +107,7 @@ export async function updateCounterAction(counterId: string, input: UpdateCounte
  */
 export async function deactivateCounterAction(counterId: string) {
   try {
-    const user = await authenticate();
-    if (!user) throw new AppError("Unauthorized");
+    const user = await requireAdmin();
 
     // Admin check
     if (user.role !== "ADMIN") {
@@ -143,8 +140,7 @@ export async function deactivateCounterAction(counterId: string) {
  */
 export async function getCountersAction(shopId: string) {
   try {
-    const user = await authenticate();
-    if (!user) throw new AppError("Unauthorized");
+    const user = await requireAdmin();
 
     // Admin check
     if (user.role !== "ADMIN") {
@@ -176,8 +172,7 @@ export async function getCountersAction(shopId: string) {
  */
 export async function getCounterAction(counterId: string) {
   try {
-    const user = await authenticate();
-    if (!user) throw new AppError("Unauthorized");
+    const user = await requireAdmin();
 
     // Admin check
     if (user.role !== "ADMIN") {
@@ -210,8 +205,7 @@ export async function getCounterAction(counterId: string) {
  */
 export async function ensureDefaultCounterAction(shopId: string) {
   try {
-    const user = await authenticate();
-    if (!user) throw new AppError("Unauthorized");
+    const user = await requireAdmin();
 
     // System admin check only
     if (user.role !== "ADMIN" || user.businessId !== user.businessId) {

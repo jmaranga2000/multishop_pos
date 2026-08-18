@@ -46,7 +46,7 @@ export default async function CountersPage() {
                     <h3 className="font-bold text-lg">{shop.name}</h3>
                     <p className="text-sm text-slate-500">{counters.length} counter{counters.length === 1 ? "" : "s"} configured</p>
                   </div>
-                  <Button size="sm" variant="outline">
+                  <Button size="sm" variant="secondary">
                     <Plus className="h-4 w-4" />
                     Add counter
                   </Button>
@@ -71,7 +71,7 @@ export default async function CountersPage() {
                               <p className="mt-2 text-xs text-slate-600">{counter.description}</p>
                             )}
                           </div>
-                          <Badge tone={counter.status === "ACTIVE" ? "success" : "default"}>
+                          <Badge tone={counter.status === "ACTIVE" ? "success" : "neutral"}>
                             {counter.status}
                           </Badge>
                         </div>
