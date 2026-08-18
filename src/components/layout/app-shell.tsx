@@ -6,7 +6,7 @@ import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { SignOutButton } from "@/components/layout/sign-out-button";
 import { Button } from "@/components/ui/button";
 
-export function AppShell({ children, navItems, userName, userEmail, accountLabel, notificationCount = 0, headerExtra, headerUserName, headerAccountLabel }: {
+export function AppShell({ children, navItems, userName, userEmail, accountLabel, notificationCount = 0, headerExtra, headerUserName, headerAccountLabel, showNotifications = true }: {
   children: React.ReactNode;
   navItems: { href: string; label: string; icon: string; count?: number; countTone?: "danger" | "warning" | "success" }[];
   userName: string;
@@ -16,6 +16,7 @@ export function AppShell({ children, navItems, userName, userEmail, accountLabel
   headerExtra?: React.ReactNode;
   headerUserName?: string;
   headerAccountLabel?: string;
+  showNotifications?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -49,18 +50,22 @@ export function AppShell({ children, navItems, userName, userEmail, accountLabel
           </div>
         </div>
         <div className="relative flex items-center gap-3">
-          <button type="button" aria-label="Notifications" aria-expanded={notificationOpen} onClick={() => setNotificationOpen((open) => !open)} className="relative inline-flex h-10 w-10 items-center justify-center overflow-visible rounded-xl border border-slate-200 bg-white text-slate-800 transition hover:bg-slate-50">
-            <Bell className="h-5 w-5" />
-            {notificationCount > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">{notificationCount > 99 ? "99+" : notificationCount}</span>}
-          </button>
-          {notificationOpen && (
-            <div className="absolute right-0 top-12 z-50 w-72 rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl shadow-slate-900/10">
-              <p className="text-sm font-bold text-slate-900">Notifications</p>
-              <p className="mt-1 text-xs text-slate-500">{notificationCount > 0 ? `${notificationCount} unread notifications` : "No unread notifications"}</p>
-              <Button href="/admin/notifications" variant="primary" size="sm" className="mt-3 w-full" onClick={() => setNotificationOpen(false)}>
-                Open notifications
-              </Button>
-            </div>
+          {showNotifications && (
+            <>
+              <button type="button" aria-label="Notifications" aria-expanded={notificationOpen} onClick={() => setNotificationOpen((open) => !open)} className="relative inline-flex h-10 w-10 items-center justify-center overflow-visible rounded-xl border border-slate-200 bg-white text-slate-800 transition hover:bg-slate-50">
+                <Bell className="h-5 w-5" />
+                {notificationCount > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">{notificationCount > 99 ? "99+" : notificationCount}</span>}
+              </button>
+              {notificationOpen && (
+                <div className="absolute right-0 top-12 z-50 w-72 rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl shadow-slate-900/10">
+                  <p className="text-sm font-bold text-slate-900">Notifications</p>
+                  <p className="mt-1 text-xs text-slate-500">{notificationCount > 0 ? `${notificationCount} unread notifications` : "No unread notifications"}</p>
+                  <Button href="/admin/notifications" variant="primary" size="sm" className="mt-3 w-full" onClick={() => setNotificationOpen(false)}>
+                    Open notifications
+                  </Button>
+                </div>
+              )}
+            </>
           )}
           <div className="hidden text-right sm:block"><p className="text-sm font-bold text-slate-900">{headerUserName ?? userName}</p><p className="text-xs text-slate-500">{headerAccountLabel ?? accountLabel}</p></div>
         </div>

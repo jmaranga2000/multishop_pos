@@ -37,5 +37,6 @@ const nav=[
   headerUserName={cashierName}
   headerAccountLabel={`Counter • ${counterName}`}
   headerExtra={<ConnectivityStatus/>}
+  showNotifications={false}
 ><ShopPortalLockGuard salespersonId={openSession?.salespersonId ?? null} salespersonName={openSession?.salesperson?.name ?? null} />{children}</AppShell></OfflineProvider>;
 }

@@ -27,7 +27,9 @@ export function RequisitionForm({ action, shops, suppliers, products, fixedShopI
     {fixedShopId ? <input type="hidden" name="shopId" value={fixedShopId} /> : <label className="grid gap-1 text-sm font-medium">Shop<select name="shopId" value={shopId} onChange={(event) => { setShopId(event.target.value); setSupplierId(""); }} className="rounded-lg border bg-white px-3 py-2" required><option value="">Select shop</option>{shops?.map((shop) => <option key={shop.id} value={shop.id}>{shop.name}</option>)}</select></label>}
     <label className="grid gap-1 text-sm font-medium">Supplier <span className="font-normal text-slate-500">(optional)</span><select name="supplierId" value={supplierId} onChange={(event) => setSupplierId(event.target.value)} className="rounded-lg border bg-white px-3 py-2"><option value="">Choose later</option>{suppliers.filter((supplier) => !shopId || supplier.shopId === shopId).map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}</select></label>
     <label className="grid gap-1 text-sm font-medium">Reason<Input name="reason" maxLength={1000} placeholder="Why this stock is needed" /></label>
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_96px] lg:grid-cols-[minmax(0,1fr)_110px_auto]"><select value={productId} onChange={(event) => setProductId(event.target.value)} className="min-w-0 rounded-lg border bg-white px-3 py-2"><option value="">Select product</option>{products.map((product) => <option key={product.id} value={product.id}>{product.name} {product.sku ? `(${product.sku})` : ""}</option>)}</select><Input type="number" min="0.01" step="0.01" value={quantity} onChange={(event) => setQuantity(event.target.value)} /><Button type="button" variant="secondary" className="w-full sm:col-span-2 lg:col-span-1 lg:w-auto" onClick={addItem}>Add item</Button></div>
+    <label className="grid gap-1 text-sm font-medium">Items to request
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_96px] lg:grid-cols-[minmax(0,1fr)_110px_auto]"><select value={productId} onChange={(event) => setProductId(event.target.value)} className="min-w-0 rounded-lg border bg-white px-3 py-2"><option value="">Select product</option>{products.map((product) => <option key={product.id} value={product.id}>{product.name} {product.sku ? `(${product.sku})` : ""}</option>)}</select><Input type="number" min="0.01" step="0.01" value={quantity} onChange={(event) => setQuantity(event.target.value)} placeholder="Quantity" /><Button type="button" variant="secondary" className="w-full sm:col-span-2 lg:col-span-1 lg:w-auto" onClick={addItem}>Add item</Button></div>
+    </label>
     {items.length ? <div className="rounded-lg border bg-slate-50 p-3 text-sm">{items.map((item) => <div key={item.productId} className="flex justify-between gap-2 py-1"><span>{productById.get(item.productId)?.name ?? "Product"} × {item.requestedQuantity}</span><button type="button" onClick={() => setItems((current) => current.filter((entry) => entry.productId !== item.productId))} className="text-red-600">Remove</button></div>)}</div> : <p className="text-xs text-slate-500">Add one or more products before submitting.</p>}
     <input type="hidden" name="itemsJson" value={JSON.stringify(items)} /><Button disabled={!shopId || !items.length}>Submit requisition</Button>
   </form>;
@@ -122,15 +124,17 @@ export function PurchaseOrderForm({ action, shops, suppliers, products, requisit
     </label>
     {requisitionId ? <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-800">The approved request’s products are locked into this order. Select “Create standalone order” to build a different order.</p> : null}
     <label className="grid gap-1 text-sm font-medium">Expected delivery<Input name="expectedDeliveryDate" type="date" /></label>
-    <div className="grid gap-2 lg:grid-cols-[1fr_100px_110px_90px_auto]">
-      <select value={productId} onChange={(event) => { setProductId(event.target.value); setUnitCost(String(productById.get(event.target.value)?.defaultCostPrice ?? 0)); }} className="rounded-lg border bg-white px-3 py-2" disabled={Boolean(requisitionId)}>
-        <option value="">Select product</option>{products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
-      </select>
-      <Input type="number" min="0.01" step="0.01" value={quantity} onChange={(event) => setQuantity(event.target.value)} placeholder="Qty" disabled={Boolean(requisitionId)} />
-      <Input type="number" min="0" step="0.01" value={unitCost} onChange={(event) => setUnitCost(event.target.value)} placeholder="Cost" disabled={Boolean(requisitionId)} />
-      <Input type="number" min="0" max="100" step="0.01" value={taxRate} onChange={(event) => setTaxRate(event.target.value)} placeholder="VAT %" disabled={Boolean(requisitionId)} />
-      <Button type="button" variant="secondary" onClick={addItem} disabled={Boolean(requisitionId)}>Add</Button>
-    </div>
+    <label className="grid gap-1 text-sm font-medium">Order lines
+      <div className="grid gap-2 lg:grid-cols-[1fr_100px_110px_90px_auto]">
+        <select value={productId} onChange={(event) => { setProductId(event.target.value); setUnitCost(String(productById.get(event.target.value)?.defaultCostPrice ?? 0)); }} className="rounded-lg border bg-white px-3 py-2" disabled={Boolean(requisitionId)}>
+          <option value="">Select product</option>{products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
+        </select>
+        <Input type="number" min="0.01" step="0.01" value={quantity} onChange={(event) => setQuantity(event.target.value)} placeholder="Qty" disabled={Boolean(requisitionId)} />
+        <Input type="number" min="0" step="0.01" value={unitCost} onChange={(event) => setUnitCost(event.target.value)} placeholder="Cost" disabled={Boolean(requisitionId)} />
+        <Input type="number" min="0" max="100" step="0.01" value={taxRate} onChange={(event) => setTaxRate(event.target.value)} placeholder="VAT %" disabled={Boolean(requisitionId)} />
+        <Button type="button" variant="secondary" onClick={addItem} disabled={Boolean(requisitionId)}>Add</Button>
+      </div>
+    </label>
     {items.length ? <div className="rounded-lg border bg-slate-50 p-3 text-sm">{items.map((item) => <div key={item.productId} className="flex justify-between gap-2 py-1"><span>{productById.get(item.productId)?.name ?? "Product"} × {item.quantity} @ KES {item.unitCost.toFixed(2)} + {item.taxRate}% VAT</span>{requisitionId ? <span className="text-xs text-slate-500">Requested line</span> : <button type="button" onClick={() => setItems((current) => current.filter((entry) => entry.productId !== item.productId))} className="text-red-600">Remove</button>}</div>)}</div> : <p className="text-xs text-slate-500">Build the order from one or more product lines.</p>}
     <input type="hidden" name="itemsJson" value={JSON.stringify(items)} />
     <label className="grid gap-1 text-sm font-medium">Notes<Input name="notes" maxLength={1000} /></label>
