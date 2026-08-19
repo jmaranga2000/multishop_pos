@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
 import { writeAuditLog } from "@/services/shared/audit-service";
+import { queueNotification } from "@/lib/notifications/service";
 import type { z } from "zod";
 import type { createExpenseSchema } from "@/validators/shop/expense-validator";
 
@@ -32,15 +33,16 @@ export async function createShopExpense(shopUser: ShopContext, input: CreateExpe
     });
     const admin = await tx.user.findFirst({ where: { businessId: shopUser.businessId, role: "ADMIN", status: "ACTIVE" } });
     if (admin) {
-      await tx.notification.create({
-        data: {
-          userId: admin.id,
-          shopId: shopUser.shopId,
-          type: "SYSTEM",
-          title: "Expense awaiting approval",
-          message: `${category.name}: ${input.amount.toFixed(2)} requires review.`,
-          actionUrl: "/admin/expenses",
-        },
+      await queueNotification({
+        tx,
+        businessId: shopUser.businessId,
+        userId: admin.id,
+        shopId: shopUser.shopId,
+        type: "SYSTEM",
+        title: "Expense awaiting approval",
+        message: `${category.name}: ${input.amount.toFixed(2)} requires review.`,
+        actionUrl: "/admin/expenses",
+        push: true,
       });
     }
     await writeAuditLog(tx, {

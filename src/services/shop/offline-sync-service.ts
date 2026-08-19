@@ -4,6 +4,7 @@ import { detectMixedUnitSaleConflict } from "@/lib/offline/conflicts";
 import { fromMinorUnits } from "@/lib/utils";
 import { reconcileStockAlert } from "@/lib/stock-alerts";
 import { writeAuditLog } from "@/services/shared/audit-service";
+import { queueNotification } from "@/lib/notifications/service";
 import { AppError } from "@/lib/errors/app-error";
 import type { z } from "zod";
 import type { offlineSyncPayloadSchema } from "@/validators/shop/offline-sync-validator";
@@ -123,16 +124,17 @@ export async function synchronizeOfflineSales(user: ShopSyncContext, payload: Of
               },
             },
           });
-          await tx.notification.create({
-            data: {
-              userId: admin.id,
-              shopId: user.shopId,
-              type: "SYNC_CONFLICT",
-              priority: "HIGH",
-              title: `Mixed unit sale at ${user.shop.name}`,
-              message: `${entry.sale.localId} contains more than one unit option for the same product and requires review.`,
-              actionUrl: "/admin/synchronization",
-            },
+          await queueNotification({
+            tx,
+            businessId: user.businessId,
+            userId: admin.id,
+            shopId: user.shopId,
+            type: "SYNC_CONFLICT",
+            priority: "HIGH",
+            title: `Mixed unit sale at ${user.shop.name}`,
+            message: `${entry.sale.localId} contains more than one unit option for the same product and requires review.`,
+            actionUrl: "/admin/synchronization",
+            push: true,
           });
           throw new AppError("A single product cannot be sold in multiple unit options in the same sale.", "MIXED_UNIT_SALE", 409);
         }
@@ -370,16 +372,17 @@ export async function synchronizeOfflineSales(user: ShopSyncContext, payload: Of
         }
 
         if (conflicts.length) {
-          await tx.notification.create({
-            data: {
-              userId: admin.id,
-              shopId: user.shopId,
-              type: "SYNC_CONFLICT",
-              priority: "HIGH",
-              title: `Offline reconciliation needed at ${user.shop.name}`,
-              message: `${receipt} synchronized with ${conflicts.length} inventory conflict${conflicts.length === 1 ? "" : "s"}.`,
-              actionUrl: "/admin/synchronization",
-            },
+          await queueNotification({
+            tx,
+            businessId: user.businessId,
+            userId: admin.id,
+            shopId: user.shopId,
+            type: "SYNC_CONFLICT",
+            priority: "HIGH",
+            title: `Offline reconciliation needed at ${user.shop.name}`,
+            message: `${receipt} synchronized with ${conflicts.length} inventory conflict${conflicts.length === 1 ? "" : "s"}.`,
+            actionUrl: "/admin/synchronization",
+            push: true,
           });
         }
 
