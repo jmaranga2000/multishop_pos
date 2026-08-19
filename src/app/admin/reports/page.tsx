@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Download, FileSpreadsheet, Signal, Clock3 } from "lucide-react";
+import { FileSpreadsheet, Signal, Clock3 } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
 import { formatMoney } from "@/lib/utils";
 import { getAdminReportsOverview } from "@/services/admin/report-service";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { getStockStatusMeta } from "@/lib/stock-status";
+import { ReportPdfExportButton } from "@/components/admin/report-pdf-export-button";
 
 export const dynamic = "force-dynamic";
 
@@ -57,10 +58,7 @@ export default async function ReportsPage() {
                   <FileSpreadsheet className="h-4 w-4" />
                   Excel
                 </Button>
-                <Button href={`/api/reports/inventory/${data.latestReport.id}/pdf`} target="_blank" rel="noreferrer" size="sm" variant="ghost">
-                  <Download className="h-4 w-4" />
-                  PDF
-                </Button>
+                <ReportPdfExportButton url={`/api/reports/inventory/${data.latestReport.id}/pdf`} fileName={`weekly-inventory-${data.latestReport.periodStart.toISOString().slice(0, 10)}.pdf`} label="PDF" variant="ghost" />
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
                 <Card className="rounded-3xl border border-slate-200 p-5">

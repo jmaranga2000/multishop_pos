@@ -1,4 +1,4 @@
-import { CalendarDays, Clock3, Download, FileText } from "lucide-react";
+import { CalendarDays, Clock3, FileText } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
 import { formatMoney } from "@/lib/utils";
 import { getDailySnapshotData } from "@/services/admin/report-service";
@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
+import { ReportPdfExportButton } from "@/components/admin/report-pdf-export-button";
 
 export const dynamic = "force-dynamic";
 
@@ -28,10 +29,7 @@ export default async function DailySnapshotPage() {
           <Button href="/admin/reports/inventory" size="sm" variant="ghost">
             Weekly inventory
           </Button>
-          <Button href="/api/reports/sales/today/pdf" target="_blank" rel="noreferrer" size="sm" variant="secondary">
-            <Download className="h-4 w-4" />
-            Sales PDF
-          </Button>
+          <ReportPdfExportButton url="/api/reports/sales/today/pdf" fileName={`sales-today-${new Date().toISOString().slice(0, 10)}.pdf`} label="Sales PDF" variant="secondary" />
         </div>
       </div>
 

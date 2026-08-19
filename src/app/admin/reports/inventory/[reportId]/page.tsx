@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Download, FileSpreadsheet } from "lucide-react";
+import { FileSpreadsheet } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
 import { formatMoney } from "@/lib/utils";
 import { getInventoryReportDetail } from "@/services/admin/report-service";
@@ -8,6 +8,7 @@ import { PageHeading } from "@/components/ui/page-heading";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ReportPdfExportButton } from "@/components/admin/report-pdf-export-button";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export default async function ReportDetail({ params }: { params: Promise<{ repor
       <PageHeading
         title="Weekly inventory report"
         description={`${report.periodStart.toLocaleDateString("en-KE")} – ${report.periodEnd.toLocaleDateString("en-KE")}`}
-        actions={<div className="flex gap-2"><Link href={`/api/reports/inventory/${report.id}/excel`}><Button variant="secondary"><FileSpreadsheet className="h-4 w-4" />Excel</Button></Link><Link href={`/api/reports/inventory/${report.id}/pdf`}><Button><Download className="h-4 w-4" />PDF</Button></Link></div>}
+        actions={<div className="flex gap-2"><Link href={`/api/reports/inventory/${report.id}/excel`}><Button variant="secondary"><FileSpreadsheet className="h-4 w-4" />Excel</Button></Link><ReportPdfExportButton url={`/api/reports/inventory/${report.id}/pdf`} fileName={`weekly-inventory-${report.periodStart.toISOString().slice(0, 10)}.pdf`} label="PDF" /></div>}
       />
       <div className="mb-4">
         <Link href="/admin/reports/inventory" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
