@@ -85,16 +85,12 @@ export function SupplierRestockPdf({
         <View style={styles.table}>
           <View style={styles.tableHeader}>
             <Text style={styles.tableHeaderCell}>Product</Text>
-            <Text style={styles.tableHeaderCell}>Needed</Text>
-            <Text style={styles.tableHeaderCell}>Stock</Text>
-            <Text style={styles.tableHeaderCell}>Unit</Text>
+            <Text style={styles.tableHeaderCell}>Needed number</Text>
           </View>
           {products.map((product, index) => (
             <View key={`${product.productName}-${index}`} style={styles.tableRow}>
               <Text style={styles.tableCell}>{product.productName}</Text>
               <Text style={styles.tableCell}>{product.quantityNeeded}</Text>
-              <Text style={styles.tableCell}>{product.currentQuantity}</Text>
-              <Text style={styles.tableCell}>{product.unit}</Text>
             </View>
           ))}
         </View>
