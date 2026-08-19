@@ -1174,26 +1174,28 @@ export function PosShell({
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-black">Point of sale</h1><p className="text-sm text-slate-500">{online ? "Connected to the central system" : "Using the latest synchronized shop snapshot"}</p></div>{!online && <Badge tone="warning"><WifiOff className="mr-1 h-3.5 w-3.5" />Offline</Badge>}</div>
     {offlineActive ? <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Offline mode is active. Cash sales are stored locally and synced once the connection returns. Online-only payments such as M-Pesa and card are unavailable until you reconnect.</div> : null}
     {activeCompletedSale ? (
-      <Card className="mb-4 border-emerald-200 bg-emerald-50 p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="text-lg font-black text-emerald-800">Payment successful</div>
-            <div className="mt-1 text-sm text-emerald-700">Receipt #{activeCompletedSale.receiptNumber}</div>
-            <div className="mt-1 text-sm text-emerald-700">Total paid: {formatMoney(fromMinorUnits(activeCompletedSale.grandTotalMinor))}</div>
-            <div className="mt-1 text-sm text-emerald-700">Payment method: {activeCompletedSale.paymentMethod}</div>
-            <div className="mt-1 text-sm font-semibold text-emerald-700">{describeSaleLifecycleMessage(activeSaleLifecycleStatus, online)}</div>
+      <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="payment-success-title">
+        <Card className="max-h-[calc(100vh-3rem)] w-full max-w-2xl overflow-y-auto border-emerald-200 bg-emerald-50 p-5 shadow-2xl shadow-slate-950/30 sm:p-7">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div id="payment-success-title" className="text-xl font-black text-emerald-800">Payment successful</div>
+              <div className="mt-1 text-sm text-emerald-700">Receipt #{activeCompletedSale.receiptNumber}</div>
+              <div className="mt-1 text-sm text-emerald-700">Total paid: {formatMoney(fromMinorUnits(activeCompletedSale.grandTotalMinor))}</div>
+              <div className="mt-1 text-sm text-emerald-700">Payment method: {activeCompletedSale.paymentMethod}</div>
+              <div className="mt-1 text-sm font-semibold text-emerald-700">{describeSaleLifecycleMessage(activeSaleLifecycleStatus, online)}</div>
+            </div>
+            <Button type="button" variant="primary" onClick={resetSaleState}>Start new sale</Button>
           </div>
-          <Button type="button" variant="secondary" onClick={resetSaleState}>Start new sale</Button>
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button type="button" variant="secondary" onClick={handlePrintReceipt}>Print receipt</Button>
-          <Button type="button" variant="secondary" onClick={() => void handleDownloadReceiptPdf()}>Download PDF</Button>
-          <Button type="button" variant="secondary" onClick={handleSendSms}>Send SMS</Button>
-          <Button type="button" variant="secondary" onClick={handleSendEmail}>Send email</Button>
-          <Button type="button" variant="secondary" onClick={handleShareWhatsapp}>Share WhatsApp</Button>
-          {canReprintReceipts ? <Button type="button" variant="ghost" onClick={() => void handleReprintReceipt()} isLoading={reprintInFlight} disabled={reprintInFlight} loadingText="Reprinting...">Reprint receipt</Button> : null}
-        </div>
-      </Card>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Button type="button" variant="secondary" onClick={handlePrintReceipt}>Print receipt</Button>
+            <Button type="button" variant="secondary" onClick={() => void handleDownloadReceiptPdf()}>Download PDF</Button>
+            <Button type="button" variant="secondary" onClick={handleSendSms}>Send SMS</Button>
+            <Button type="button" variant="secondary" onClick={handleSendEmail}>Send email</Button>
+            <Button type="button" variant="secondary" onClick={handleShareWhatsapp}>Share WhatsApp</Button>
+            {canReprintReceipts ? <Button type="button" variant="ghost" onClick={() => void handleReprintReceipt()} isLoading={reprintInFlight} disabled={reprintInFlight} loadingText="Reprinting...">Reprint receipt</Button> : null}
+          </div>
+        </Card>
+      </div>
     ) : null}
     <div className="pos-layout">
       <section className="min-w-0">
