@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ type ProductCreateFormProps = {
 };
 
 export function ProductCreateForm({ categories, brands, units }: ProductCreateFormProps) {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [barcode, setBarcode] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -29,6 +31,7 @@ export function ProductCreateForm({ categories, brands, units }: ProductCreateFo
       try {
         await createProductAction(formData);
         toast.success("Product created");
+        router.push("/admin/products");
       } catch (uploadError) {
         setError(uploadError instanceof Error ? uploadError.message : "Unable to create product.");
       }

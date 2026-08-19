@@ -2,7 +2,7 @@ import Link from "next/link";
 import { SlidersHorizontal } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
 import { getInventoryManagementData } from "@/services/admin/inventory-service";
-import { adjustStockAction, updateInventoryAction } from "@/actions/admin/inventory-actions";
+import { adjustStockAction, removeInventoryAction, updateInventoryAction } from "@/actions/admin/inventory-actions";
 import { InventoryDuplicateGuard as ClientInventoryDuplicateGuard } from "@/components/admin/inventory-duplicate-guard";
 import { PageHeading } from "@/components/ui/page-heading";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -90,6 +90,10 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
                     <Link href="/admin/inventory" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm">Cancel</Link>
                   </div>
                 </div>
+              </form>
+              <form action={removeInventoryAction} className="mt-4 border-t border-red-100 pt-4" onSubmit={(event) => { if (!window.confirm(`Remove ${productName} from ${item.shop.name}? This will not delete the catalog product.`)) event.preventDefault(); }}>
+                <input type="hidden" name="inventoryId" value={item.id} />
+                <Button type="submit" variant="danger" className="w-full">Remove product from this shop</Button>
               </form>
             </div>
           </CardContent>

@@ -199,3 +199,25 @@ export async function updateInventory(admin: AdminContext, input: z.infer<typeof
     return updated;
   });
 }
+
+export async function removeInventoryFromShop(admin: AdminContext, inventoryId: string) {
+  const inventory = await db.shopInventory.findFirst({
+    where: { id: inventoryId, shop: { businessId: admin.businessId } },
+    include: { shop: true, product: true },
+  });
+  if (!inventory) throw new AppError("Inventory record was not found.", "INVENTORY_NOT_FOUND", 404);
+
+  await db.$transaction(async (tx) => {
+    await tx.shopInventory.deleteMany({ where: { id: inventory.id } });
+    await tx.inventoryAlert.deleteMany({ where: { shopId: inventory.shopId, productId: inventory.productId } });
+    await writeAuditLog(tx, {
+      userId: admin.id,
+      shopId: inventory.shopId,
+      action: "INVENTORY_REMOVED_FROM_SHOP",
+      entityType: "SHOP_INVENTORY",
+      entityId: inventory.id,
+      description: `Removed ${inventory.product.name} from ${inventory.shop.name}.`,
+      metadata: { productId: inventory.productId, quantityAtRemoval: inventory.quantity },
+    });
+  });
+}

@@ -25,7 +25,7 @@ export async function createProductAction(formData: FormData) {
   const input = createProductSchema.parse(Object.fromEntries(formData));
   await createProduct(admin, input);
   revalidatePath("/admin/products");
-  redirect("/admin/products");
+  return { success: true };
 }
 
 export async function updateProductAction(formData: FormData) {
@@ -34,7 +34,7 @@ export async function updateProductAction(formData: FormData) {
   await updateProduct(admin, input);
   revalidatePath(`/admin/products/${input.productId}`);
   revalidatePath("/admin/products");
-  redirect("/admin/products");
+  return { success: true };
 }
 
 export async function deleteProductAction(formData: FormData) {

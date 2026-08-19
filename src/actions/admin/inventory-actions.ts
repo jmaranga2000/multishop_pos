@@ -1,9 +1,10 @@
 "use server";
 
+import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/rbac";
-import { addStock, adjustStock } from "@/services/admin/inventory-service";
+import { addStock, adjustStock, removeInventoryFromShop } from "@/services/admin/inventory-service";
 import { addStockSchema, adjustStockSchema } from "@/validators/admin/inventory-validator";
 import { updateInventorySchema } from "@/validators/admin/inventory-validator";
 import { updateInventory } from "@/services/admin/inventory-service";
@@ -33,4 +34,13 @@ export async function updateInventoryAction(formData: FormData) {
   revalidatePath("/admin/inventory");
   revalidatePath("/admin/dashboard");
   redirect(`/admin/inventory/${input.inventoryId}`);
+}
+
+export async function removeInventoryAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const input = z.object({ inventoryId: z.string().min(1) }).parse(Object.fromEntries(formData));
+  await removeInventoryFromShop(admin, input.inventoryId);
+  revalidatePath("/admin/inventory");
+  revalidatePath("/admin/dashboard");
+  redirect("/admin/inventory");
 }

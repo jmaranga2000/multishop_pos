@@ -1,13 +1,12 @@
-import Link from "next/link";
-import { Building2 } from "lucide-react";
+import { Building2, Plus } from "lucide-react";
 import { requireAdmin } from "@/lib/rbac";
 import { listAdminShops } from "@/services/admin/shop-service";
 import { PageHeading } from "@/components/ui/page-heading";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { archiveShopAction } from "@/actions/admin/shop-actions";
 import ArchiveButton from "@/components/admin/archive-button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +18,7 @@ export default async function ShopsPage() {
     <>
       <PageHeading title="Shops and login accounts" description="Create each physical location and issue one shared shop login." />
       <div className="flex justify-end mb-4">
-        <Link href="/admin/shops/new" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">New shop</Link>
+        <Button href="/admin/shops/new"><Plus className="h-4 w-4" />New shop</Button>
       </div>
       <div className="grid gap-5">
         <Card className="overflow-hidden">

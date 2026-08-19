@@ -49,6 +49,9 @@ export function ShopEditForm({ shop }: ShopEditFormProps) {
         setSaved(true);
         toast.success("Changes saved");
       } catch (error) {
+        if (error && typeof error === "object" && "digest" in error && String(error.digest).startsWith("NEXT_REDIRECT")) {
+          return;
+        }
         toast.error(error instanceof Error ? error.message : "Unable to save changes");
       }
     });

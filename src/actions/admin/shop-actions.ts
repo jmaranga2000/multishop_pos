@@ -53,5 +53,6 @@ export async function updateShopAction(formData: FormData) {
   const input = updateShopSchema.parse(Object.fromEntries(formData));
   await updateShopAndAccount(admin, input);
   revalidatePath("/admin/shops");
-  redirect("/admin/shops");
+  revalidatePath(`/admin/shops/${input.shopId}`);
+  return { success: true };
 }
