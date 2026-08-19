@@ -7,7 +7,6 @@ import { PageHeading } from "@/components/ui/page-heading";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Button } from "@/components/ui/button";
 import { getStockStatusMeta } from "@/lib/stock-status";
 import { ReportPdfExportButton } from "@/components/admin/report-pdf-export-button";
 
@@ -46,18 +45,11 @@ export default async function ReportsPage() {
           {data.latestReport ? (
             <>
               <div className="mt-6 flex flex-wrap items-center gap-3">
-                <Button href={`/admin/reports/inventory/${data.latestReport.id}`} size="sm" variant="secondary">
-                  View latest report
-                </Button>
-                <Button href="/admin/reports/inventory" size="sm" variant="ghost">
-                  All inventory reports
-                </Button>
+                <a href={`/admin/reports/inventory/${data.latestReport.id}`} className="inline-flex h-9 items-center rounded-xl bg-blue-700 px-4 text-sm font-semibold text-white shadow-sm hover:bg-blue-800">View latest report</a>
+                <a href="/admin/reports/inventory" className="inline-flex h-9 items-center rounded-xl bg-blue-700 px-4 text-sm font-semibold text-white shadow-sm hover:bg-blue-800">All inventory reports</a>
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-3">
-                <Button href={`/api/reports/inventory/${data.latestReport.id}/excel`} target="_blank" rel="noreferrer" size="sm" variant="secondary">
-                  <FileSpreadsheet className="h-4 w-4" />
-                  Excel
-                </Button>
+                <a href={`/api/reports/inventory/${data.latestReport.id}/excel`} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center gap-2 rounded-xl bg-blue-700 px-4 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"><FileSpreadsheet className="h-4 w-4" />Excel</a>
                 <ReportPdfExportButton url={`/api/reports/inventory/${data.latestReport.id}/pdf`} fileName={`weekly-inventory-${data.latestReport.periodStart.toISOString().slice(0, 10)}.pdf`} label="PDF" variant="ghost" />
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -175,9 +167,9 @@ export default async function ReportsPage() {
               <p className="mt-2 text-2xl font-black">{formatMoney(data.dailySales.total.toString(), data.business.currency)}</p>
               <p className="mt-1 text-sm text-slate-500">{data.dailySales.transactions} transactions</p>
             </div>
-            <Button href="/admin/reports/daily" size="md">
+            <a href="/admin/reports/daily" className="inline-flex h-11 items-center rounded-xl bg-blue-700 px-4 text-sm font-semibold text-white shadow-sm hover:bg-blue-800">
               View today&apos;s snapshot
-            </Button>
+            </a>
           </div>
         </Card>
       </div>

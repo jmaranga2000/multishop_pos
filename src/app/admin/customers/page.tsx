@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { requireAdmin } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { formatMoney, fromMinorUnits } from "@/lib/utils";
@@ -34,15 +33,9 @@ export default async function AdminCustomersPage(props: { searchParams: Promise<
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-2xl font-bold">Customers (Admin)</h1>
           <div className="flex flex-row flex-wrap items-center gap-2">
-            <Link href="/admin/credit">
-              <Button variant="secondary" className="whitespace-nowrap">Credit Dashboard</Button>
-            </Link>
-            <Link href="/admin/customers/archived">
-              <Button variant="secondary" className="whitespace-nowrap">Archived Customers</Button>
-            </Link>
-            <Link href="/admin/customers/new">
-              <Button className="whitespace-nowrap">Create Customer</Button>
-            </Link>
+            <Link href="/admin/credit" className="inline-flex items-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">Credit Dashboard</Link>
+            <Link href="/admin/customers/archived" className="inline-flex items-center rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-600">Archived Customers</Link>
+            <Link href="/admin/customers/new" className="inline-flex items-center rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800">Create Customer</Link>
           </div>
         </div>
 

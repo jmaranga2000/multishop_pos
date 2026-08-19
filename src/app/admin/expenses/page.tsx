@@ -5,9 +5,9 @@ import { getAdminExpensePageData } from "@/services/admin/expense-service";
 import { formatMoney } from "@/lib/utils";
 import { PageHeading } from "@/components/ui/page-heading";
 import { Card, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +22,9 @@ export default async function ExpensesPage() {
           title="Expense types"
           description="Create the expense categories that shops can select when recording expenses."
         />
-        <Button href="/admin/expenses/new" size="sm" variant="secondary">
-          <Plus className="h-4 w-4" />
-          New expense type
-        </Button>
+        <a href="/admin/expenses/new" className="inline-flex h-9 items-center gap-2 rounded-xl bg-blue-700 px-4 text-sm font-semibold text-white shadow-sm hover:bg-blue-800">
+          <Plus className="h-4 w-4" />New expense type
+        </a>
       </div>
 
       <Card className="overflow-hidden">

@@ -18,7 +18,7 @@ export default async function SalespeoplePage() {
     <>
       <PageHeading title="Salespeople" description="Optional PIN profiles identify the person operating a shared shop login and their assigned counter." />
       <div className="mb-4 flex justify-end">
-        <Link href="/admin/salespeople/new" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+        <Link href="/admin/salespeople/new" className="inline-flex items-center rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800">
           New salesperson
         </Link>
       </div>

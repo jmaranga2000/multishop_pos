@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Download } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 
 export function ReportPdfExportButton({ url, fileName, label = "PDF", variant = "primary" }: { url: string; fileName: string; label?: string; variant?: "primary" | "secondary" | "ghost" }) {
   const [loading, setLoading] = useState(false);
@@ -43,5 +42,8 @@ export function ReportPdfExportButton({ url, fileName, label = "PDF", variant = 
     }
   }
 
-  return <Button type="button" variant={variant} onClick={() => void exportPdf()} isLoading={loading} disabled={loading} loadingText="Preparing PDF..."><Download className="h-4 w-4" />{label}</Button>;
+  const colorClass = variant === "ghost" ? "bg-blue-700 hover:bg-blue-800" : variant === "secondary" ? "bg-blue-700 hover:bg-blue-800" : "bg-blue-700 hover:bg-blue-800";
+  return <button type="button" onClick={() => void exportPdf()} disabled={loading} className={`inline-flex h-9 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60 ${colorClass}`}>
+    <Download className="h-4 w-4" />{loading ? "Preparing PDF..." : label}
+  </button>;
 }

@@ -18,16 +18,16 @@ export default async function ProductsPage() {
     <>
       <PageHeading title="Product catalogue" description="Products are created centrally and receive separate stock records in every shop." />
       <div className="flex flex-wrap justify-end gap-2 mb-4">
-        <Link href="/admin/products/categories" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+        <Link href="/admin/products/categories" className="inline-flex items-center rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800">
           Categories
         </Link>
-        <Link href="/admin/products/brands" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+        <Link href="/admin/products/brands" className="inline-flex items-center rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800">
           Brands
         </Link>
-        <Link href="/admin/products/units" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+        <Link href="/admin/products/units" className="inline-flex items-center rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800">
           Units
         </Link>
-        <Link href="/admin/products/new" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+        <Link href="/admin/products/new" className="inline-flex items-center rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800">
           New product
         </Link>
       </div>

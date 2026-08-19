@@ -29,7 +29,7 @@ export default async function InventoryPage() {
     <>
       <PageHeading title="Shop inventory" description="Every product and shop combination has an independent quantity, price and threshold." />
       <div className="mb-4 flex justify-end">
-        <Link href="/admin/inventory/new" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">
+        <Link href="/admin/inventory/new" className="inline-flex items-center rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800">
           New stock movement
         </Link>
       </div>

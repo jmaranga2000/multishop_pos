@@ -17,7 +17,7 @@ export default async function SuppliersPage() {
     <>
       <PageHeading title="Suppliers" description="Manage suppliers and configure restock requests." />
       <div className="flex justify-end mb-4">
-        <Link href="/admin/suppliers/new" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium">New supplier</Link>
+        <Link href="/admin/suppliers/new" className="inline-flex items-center rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800">New supplier</Link>
       </div>
       <div className="grid gap-5">
         <Card className="overflow-hidden">
