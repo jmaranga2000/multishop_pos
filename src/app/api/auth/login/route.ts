@@ -8,7 +8,7 @@ const MAX_LOGIN_ATTEMPTS_PER_SESSION = 3;
 
 const requestSchema = z.object({
   email: z.string().trim().email().max(50),
-  password: z.string().min(1).max(20),
+  password: z.string().min(1).max(30),
 });
 
 export async function POST(request: Request) {

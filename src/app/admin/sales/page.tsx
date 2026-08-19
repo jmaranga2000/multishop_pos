@@ -86,6 +86,7 @@ export default async function SalesPage() {
                       <tr>
                         <th>Receipt</th>
                         <th>Shop</th>
+                        <th>Counter</th>
                         <th>Time</th>
                         <th>Items</th>
                         <th>Products sold</th>
@@ -99,6 +100,7 @@ export default async function SalesPage() {
                         <tr key={sale.id}>
                           <td className="font-mono text-xs font-bold">{sale.receiptNumber}</td>
                           <td>{sale.shop.name}</td>
+                          <td>{sale.counter ? <div><p className="font-medium">{sale.counter.name}</p><p className="text-xs text-slate-500">{sale.counter.code}</p></div> : <span className="text-slate-500">—</span>}</td>
                           <td>{new Date(sale.occurredAt).toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" })}</td>
                           <td>{sale._count.items}</td>
                           <td>

@@ -11,6 +11,11 @@ export type AdminSale = {
     id: string;
     name: string;
   };
+  counter: {
+    id: string;
+    name: string;
+    code: string;
+  } | null;
   payments: Array<{
     method: string;
   }>;
@@ -37,6 +42,7 @@ type ShopDocument = {
 type SaleDocument = {
   id: string;
   shopId: string;
+  counterId?: string | null;
   receiptNumber: string;
   occurredAt: Date | string;
   total: number | string;
@@ -109,7 +115,7 @@ async function getSalesWithDetails(
   if (!sales.length) return { business, sales: [] };
 
   const saleIds = sales.map((sale) => sale.id);
-  const [paymentsResult, itemCounts, saleItemsResult] = await Promise.all([
+  const [paymentsResult, itemCounts, saleItemsResult, countersResult] = await Promise.all([
     database.collection("payments").find(
       { saleId: { $in: saleIds } },
       { projection: { _id: 0 } },
@@ -122,11 +128,17 @@ async function getSalesWithDetails(
       { saleId: { $in: saleIds } },
       { projection: { _id: 0, saleId: 1, productName: 1, sku: 1, quantity: 1 } },
     ).toArray(),
+    database.collection("counters").find(
+      { shopId: { $in: shopIds } },
+      { projection: { _id: 0, id: 1, shopId: 1, name: 1, code: 1 } },
+    ).toArray(),
   ]);
   const payments = paymentsResult as unknown as PaymentDocument[];
   const saleItems = saleItemsResult as unknown as SaleItemDocument[];
+  const counters = countersResult as unknown as Array<{ id: string; shopId: string; name: string; code: string }>;
 
   const shopsById = new Map(shops.map((shop) => [shop.id, shop]));
+  const countersById = new Map(counters.map((counter) => [counter.id, counter]));
   const paymentsBySaleId = new Map<string, PaymentDocument[]>();
   for (const payment of payments) {
     const salePayments = paymentsBySaleId.get(payment.saleId) ?? [];
@@ -154,6 +166,7 @@ async function getSalesWithDetails(
         ...sale,
         syncedAt: sale.syncedAt ?? null,
         shop,
+        counter: sale.counterId ? countersById.get(sale.counterId) ?? null : null,
         payments: paymentsBySaleId.get(sale.id) ?? [],
         _count: { items: itemCountBySaleId.get(sale.id) ?? 0 },
         products: productsBySaleId.get(sale.id) ?? [],
