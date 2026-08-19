@@ -5,7 +5,7 @@ import { PageHeading } from "@/components/ui/page-heading";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Button } from "@/components/ui/button";
+import { SalesPdfExportButton } from "@/components/admin/sales-pdf-export-button";
 import { endOfMonth, endOfQuarter, endOfWeek, isSameDay } from "date-fns";
 
 export const dynamic = "force-dynamic";
@@ -39,11 +39,11 @@ export default async function SalesPage() {
   const showQuarter = isSameDay(today, endOfQuarter(today));
 
   const actionButtons = [
-    <Button key="today" href="/api/reports/sales/today/pdf" target="_blank" rel="noreferrer">Download today sales</Button>,
+    <SalesPdfExportButton key="today" period="today" label="Download today sales" />,
   ];
-  if (showWeek) actionButtons.push(<Button key="week" href="/api/reports/sales/week/pdf" target="_blank" rel="noreferrer">Download weekly sales</Button>);
-  if (showMonth) actionButtons.push(<Button key="month" href="/api/reports/sales/month/pdf" target="_blank" rel="noreferrer">Download monthly sales</Button>);
-  if (showQuarter) actionButtons.push(<Button key="quarter" href="/api/reports/sales/quarter/pdf" target="_blank" rel="noreferrer">Download quarterly sales</Button>);
+  if (showWeek) actionButtons.push(<SalesPdfExportButton key="week" period="week" label="Download weekly sales" />);
+  if (showMonth) actionButtons.push(<SalesPdfExportButton key="month" period="month" label="Download monthly sales" />);
+  if (showQuarter) actionButtons.push(<SalesPdfExportButton key="quarter" period="quarter" label="Download quarterly sales" />);
 
   const availableExports = [
     "Today",
