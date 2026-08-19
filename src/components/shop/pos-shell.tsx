@@ -162,6 +162,7 @@ export function PosShell({
   const [completedSaleLocalId, setCompletedSaleLocalId] = useState<string | null>(null);
   const [receiptSettings, setReceiptSettings] = useState<ReceiptSettings | null>(null);
   const [reprintInFlight, setReprintInFlight] = useState(false);
+  const [shareInFlight, setShareInFlight] = useState(false);
   const [saleLifecycleStatus, setSaleLifecycleStatus] = useState<SaleLifecycleStatus>("LOCAL_ONLY");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -1016,10 +1017,24 @@ export function PosShell({
     await downloadReceiptPdf(activeCompletedSale);
   }
 
-  function handleShareWhatsapp() {
+  async function handleShareWhatsapp() {
     if (!activeCompletedSale) return;
-    const message = encodeURIComponent(buildReceiptSummary(activeCompletedSale));
-    window.open(`https://wa.me/?text=${message}`, "_blank", "noopener,noreferrer");
+    setShareInFlight(true);
+    try {
+      const response = await fetch("/api/shop/receipts/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(activeCompletedSale),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) throw new Error(payload.error || "Unable to create receipt link.");
+      const message = encodeURIComponent(`${buildReceiptSummary(activeCompletedSale)}\nView and download receipt: ${payload.url}`);
+      window.open(`https://wa.me/?text=${message}`, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to create receipt link.");
+    } finally {
+      setShareInFlight(false);
+    }
   }
 
   function handleSendEmail() {
@@ -1191,7 +1206,7 @@ export function PosShell({
             <Button type="button" variant="secondary" onClick={() => void handleDownloadReceiptPdf()}>Download PDF</Button>
             <Button type="button" variant="secondary" onClick={handleSendSms}>Send SMS</Button>
             <Button type="button" variant="secondary" onClick={handleSendEmail}>Send email</Button>
-            <Button type="button" variant="secondary" onClick={handleShareWhatsapp}>Share WhatsApp</Button>
+            <Button type="button" variant="secondary" onClick={() => void handleShareWhatsapp()} isLoading={shareInFlight} disabled={shareInFlight} loadingText="Preparing link...">Share WhatsApp</Button>
             {canReprintReceipts ? <Button type="button" variant="ghost" onClick={() => void handleReprintReceipt()} isLoading={reprintInFlight} disabled={reprintInFlight} loadingText="Reprinting...">Reprint receipt</Button> : null}
           </div>
         </Card>
