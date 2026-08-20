@@ -1124,12 +1124,19 @@ export function PosShell({
     }
   }
 
-  function buildReceiptSummary(data: ThermalReceiptData) {
-    return [
-      `Receipt ${data.receiptNumber}`,
-      `Total paid: ${formatMoney(fromMinorUnits(data.grandTotalMinor))}`,
-      `Payment method: ${data.paymentMethod}`,
-    ].join("\n");
+  async function createReceiptShareUrl(data: ThermalReceiptData) {
+    const response = await fetch("/api/shop/receipts/share", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    const payload = await response.json() as { ok?: boolean; url?: string; error?: string };
+    if (!response.ok || !payload.ok || !payload.url) throw new Error(payload.error || "Unable to create receipt link.");
+    return payload.url;
+  }
+
+  function buildReceiptShareMessage(data: ThermalReceiptData, url: string) {
+    return [`Receipt ${data.receiptNumber}`, `Total: ${formatMoney(fromMinorUnits(data.grandTotalMinor))}`, `Download receipt: ${url}`].join("\n");
   }
 
   function handlePrintReceipt() {
@@ -1152,14 +1159,8 @@ export function PosShell({
     if (!activeCompletedSale) return;
     setShareInFlight(true);
     try {
-      const response = await fetch("/api/shop/receipts/share", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(activeCompletedSale),
-      });
-      const payload = await response.json();
-      if (!response.ok || !payload.ok) throw new Error(payload.error || "Unable to create receipt link.");
-      const message = encodeURIComponent(`${buildReceiptSummary(activeCompletedSale)}\nView and download receipt: ${payload.url}`);
+      const url = await createReceiptShareUrl(activeCompletedSale);
+      const message = encodeURIComponent(buildReceiptShareMessage(activeCompletedSale, url));
       window.open(`https://wa.me/?text=${message}`, "_blank", "noopener,noreferrer");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to create receipt link.");
@@ -1168,17 +1169,33 @@ export function PosShell({
     }
   }
 
-  function handleSendEmail() {
+  async function handleSendEmail() {
     if (!activeCompletedSale) return;
-    const subject = encodeURIComponent(`Receipt ${activeCompletedSale.receiptNumber}`);
-    const body = encodeURIComponent(buildReceiptSummary(activeCompletedSale));
-    window.location.assign(`mailto:?subject=${subject}&body=${body}`);
+    setShareInFlight(true);
+    try {
+      const url = await createReceiptShareUrl(activeCompletedSale);
+      const subject = encodeURIComponent(`Receipt ${activeCompletedSale.receiptNumber}`);
+      const body = encodeURIComponent(buildReceiptShareMessage(activeCompletedSale, url));
+      window.location.assign(`mailto:?subject=${subject}&body=${body}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to create receipt link.");
+    } finally {
+      setShareInFlight(false);
+    }
   }
 
-  function handleSendSms() {
+  async function handleSendSms() {
     if (!activeCompletedSale) return;
-    const body = encodeURIComponent(buildReceiptSummary(activeCompletedSale));
-    window.location.assign(`sms:?body=${body}`);
+    setShareInFlight(true);
+    try {
+      const url = await createReceiptShareUrl(activeCompletedSale);
+      const body = encodeURIComponent(buildReceiptShareMessage(activeCompletedSale, url));
+      window.location.assign(`sms:?body=${body}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to create receipt link.");
+    } finally {
+      setShareInFlight(false);
+    }
   }
 
   async function handleReprintReceipt() {
