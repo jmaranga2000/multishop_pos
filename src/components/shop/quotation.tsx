@@ -47,8 +47,7 @@ export function buildQuotationHtml(data: QuotationData) {
   </td>
   </tr>`
 ).join("");
-  return 
-  `<!doctype html>
+  return `<!doctype html>
   <html>
   <head>
   <meta charset="utf-8">
