@@ -4,14 +4,19 @@ import { OfflineProvider } from "@/components/shop/offline-provider";
 import { ConnectivityStatus } from "@/components/shop/connectivity-status";
 import { ShopPortalLockGuard } from "@/components/shop/portal-lock-guard";
 import { requireShop } from "@/lib/rbac";
+import { getCounterAccess } from "@/lib/auth";
 import { getShopRegisterData } from "@/services/shop/register-service";
 
 export const dynamic = "force-dynamic";
 
 export default async function ShopLayout({children}:{children:React.ReactNode}){
  const user=await requireShop();
- const { openSession } = await getShopRegisterData(user.shopId, user.businessId);
-const nav=[
+ const [registerData, counterAccess] = await Promise.all([
+  getShopRegisterData(user.shopId, user.businessId),
+  getCounterAccess(user),
+ ]);
+ const openSession = registerData.openSessions[0] ?? null;
+const nav: Array<{ label: string; items: Array<{ href: string; label: string; icon: string }> }> = [{ label: "Shop", items: [
 	{ href: "/shop/dashboard", label: "Dashboard", icon: "Gauge" },
 	{ href: "/shop/pos", label: "Point of sale", icon: "ShoppingCart" },
 	{ href: "/shop/sales", label: "Sales", icon: "ReceiptText" },
@@ -23,7 +28,7 @@ const nav=[
 	{ href: "/shop/synchronization", label: "Synchronization", icon: "RefreshCw" },
 	{ href: "/shop/customers", label: "Customers", icon: "UsersRound" },
 	{ href: "/shop/profile", label: "Profile", icon: "Settings" },
-];
+] }];
  const cashierName = openSession?.salesperson?.name ?? "No cashier selected";
  const counterName = openSession?.register?.name ?? "No active counter";
 
@@ -35,5 +40,5 @@ const nav=[
   headerUserName={cashierName}
   headerAccountLabel={`Counter • ${counterName}`}
   headerExtra={<ConnectivityStatus/>}
-><ShopPortalLockGuard salespersonId={openSession?.salespersonId ?? null} salespersonName={openSession?.salesperson?.name ?? null} />{children}</AppShell></OfflineProvider>;
+><ShopPortalLockGuard salespersonId={openSession?.salespersonId ?? null} salespersonName={openSession?.salesperson?.name ?? null} counterId={counterAccess?.counterId ?? null} counterName={counterAccess?.counter?.name ?? null} counterAccessGranted={Boolean(counterAccess)} />{children}</AppShell></OfflineProvider>;
 }
