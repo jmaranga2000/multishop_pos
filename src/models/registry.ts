@@ -20,6 +20,7 @@ import { salesModels } from "./sales.model";
 import { systemModels } from "./system.model";
 import { customerModels } from "./customer.model";
 import { supplierModels } from "./supplier.model";
+import { quotationModels } from "./quotation.model";
 
 export const modelDefinitions = {
   ...coreModels,
@@ -31,6 +32,7 @@ export const modelDefinitions = {
   ...mpesaModels,
   ...notificationModels,
   ...supplierModels,
+  ...quotationModels,
   ...procurementModels,
   ...stocktakeModels,
   ...offlineModels,

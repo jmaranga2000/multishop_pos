@@ -67,11 +67,15 @@ type ReceiptSettings = {
   shopName?: string | null;
   shopLocation?: string | null;
   shopContact?: string | null;
+  shopEmail?: string | null;
   taxInfo?: string | null;
   receiptFooter?: string | null;
   cashierName?: string | null;
   returnPolicy?: string | null;
   thankYouMessage?: string | null;
+  counterId?: string | null;
+  counterName?: string | null;
+  paymentInfo?: QuotationData["paymentInfo"];
 };
 
 async function addReceiptQrCode(data: ThermalReceiptData) {
@@ -165,6 +169,9 @@ export function PosShell({
   const [reprintInFlight, setReprintInFlight] = useState(false);
   const [shareInFlight, setShareInFlight] = useState(false);
   const [quotation, setQuotation] = useState<QuotationData | null>(null);
+  const [loadedQuotationId, setLoadedQuotationId] = useState<string | null>(null);
+  const [quotationSearchNumber, setQuotationSearchNumber] = useState("");
+  const [quotationSearchBusy, setQuotationSearchBusy] = useState(false);
   const [saleLifecycleStatus, setSaleLifecycleStatus] = useState<SaleLifecycleStatus>("LOCAL_ONLY");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -613,6 +620,7 @@ export function PosShell({
     setManualConfirmationChecking(false);
     setCompletedSale(null);
     setCompletedSaleLocalId(null);
+    setLoadedQuotationId(null);
     setSaleLifecycleStatus("LOCAL_ONLY");
     setQuotation(null);
     setTimeout(() => {
@@ -620,28 +628,95 @@ export function PosShell({
     }, 0);
   }
 
-  function createQuotation() {
+  function buildQuotationSnapshot(): QuotationData | null {
     if (!cart.length) {
       toast.info("Add products to the cart before creating a quotation.");
-      return;
+      return null;
     }
     const quotationNumber = `QT-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
     const subtotal = cart.reduce((sum, item) => sum + Math.round(item.quantity * item.unitPriceMinor), 0);
     const discount = checkoutMode === "ETIMS" ? 0 : discountMinor;
-    setQuotation({
+    const issuedAt = new Date();
+    const validUntil = new Date(issuedAt);
+    validUntil.setDate(validUntil.getDate() + 14);
+    return {
       shopName: shopName || "MultiShop POS",
       businessName: receiptSettings?.businessName,
-      shopContact: receiptSettings?.shopContact,
-      shopLocation: receiptSettings?.shopLocation,
+      physicalAddress: receiptSettings?.shopLocation,
+      phoneNumber: receiptSettings?.shopContact,
+      email: receiptSettings?.shopEmail,
       quotationNumber,
-      issuedAt: new Date().toISOString(),
+      issuedAt: issuedAt.toISOString(),
+      validUntil: validUntil.toISOString(),
+      cashierName: receiptSettings?.cashierName ?? "Cashier",
+      counterName: receiptSettings?.counterName ?? "Counter",
       customerName,
-      items: cart.map((item) => ({ name: item.name, quantity: item.quantity, unitName: item.unitName, unitSymbol: item.unitSymbol, unitPriceMinor: item.unitPriceMinor, lineTotalMinor: Math.round(item.quantity * item.unitPriceMinor) })),
+      items: cart.map((item) => ({ productId: item.productId, sku: item.sku, name: item.name, quantity: item.quantity, unitName: item.unitName, unitSymbol: item.unitSymbol, unitPriceMinor: item.unitPriceMinor, lineTotalMinor: Math.round(item.quantity * item.unitPriceMinor), vatRate: item.taxRate, vatMinor: Math.round(item.quantity * item.unitPriceMinor * Math.max(0, item.taxRate) / (100 + Math.max(0, item.taxRate))) })),
       subtotalMinor: subtotal,
       discountMinor: discount,
-      totalMinor: checkoutMode === "ETIMS" ? checkoutTotalMinor : subtotal - discount,
+      vatMinor: etimsPreview.vatMinor,
+      totalMinor: Math.max(0, subtotal - discount + etimsPreview.vatMinor),
       notes,
-    });
+      paymentInfo: receiptSettings?.paymentInfo,
+    };
+  }
+
+  function createQuotation() {
+    const snapshot = buildQuotationSnapshot();
+    if (snapshot) setQuotation(snapshot);
+  }
+
+  async function convertQuotationToSale() {
+    const number = quotationSearchNumber.trim();
+    if (!number) {
+      toast.info("Enter a quotation number first.");
+      return;
+    }
+    setQuotationSearchBusy(true);
+    try {
+      const response = await fetch(`/api/shop/quotations?number=${encodeURIComponent(number)}`);
+      const result = await response.json() as { quotation?: { id: string; status: string; validUntil: string; customerId?: string | null; customerName: string; discountTotal: number; items: Array<{ productId: string; productName: string; sku: string; unitId?: string | null; unitName?: string | null; unitSymbol?: string | null; quantity: number; unitPriceMinor: number; vatRate: number }> } | null; error?: string };
+      if (!response.ok || !result.quotation) throw new Error(result.error ?? "Quotation was not found.");
+      const saved = result.quotation;
+      if (saved.status !== "ISSUED") throw new Error(`This quotation is already ${saved.status.toLowerCase()}.`);
+      if (new Date(saved.validUntil).getTime() <= Date.now()) throw new Error("This quotation has expired and cannot be converted.");
+      const nextCart: CartLine[] = [];
+      for (const item of saved.items) {
+        const inventory = products.find((entry) => entry.product?.id === item.productId);
+        if (!inventory || !inventory.isAvailable || inventory.projectedQuantity < item.quantity) throw new Error(`${item.productName} no longer has enough current stock.`);
+        nextCart.push({ productId: item.productId, name: item.productName, sku: item.sku, unitId: item.unitId ?? null, unitName: item.unitName ?? null, unitSymbol: item.unitSymbol ?? null, quantity: item.quantity, unitPriceMinor: item.unitPriceMinor, unitCostMinor: inventory.costPriceMinor, taxRate: item.vatRate, taxTreatment: "STANDARD", etimsItemCode: inventory.product?.etimsItemCode ?? null, available: inventory.projectedQuantity });
+      }
+      setCart(nextCart);
+      setLoadedQuotationId(saved.id);
+      setCustomerId(saved.customerId ?? null);
+      setCustomerName(saved.customerName);
+      setDiscountMinor(saved.discountTotal);
+      setQuotationSearchNumber("");
+      toast.success(`Quotation ${number} loaded. Confirm payment to complete the sale.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to convert quotation.");
+    } finally {
+      setQuotationSearchBusy(false);
+    }
+  }
+
+  async function saveQuotation() {
+    const snapshot = quotation ?? buildQuotationSnapshot();
+    if (!snapshot) return null;
+    setShareInFlight(true);
+    try {
+      const response = await fetch("/api/shop/quotations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ counterId: receiptSettings?.counterId, counterName: snapshot.counterName, cashierName: snapshot.cashierName, customerId, customerName: snapshot.customerName, quotationNumber: snapshot.quotationNumber, issuedAt: snapshot.issuedAt, validUntil: snapshot.validUntil, subtotal: snapshot.subtotalMinor, discountTotal: snapshot.discountMinor, vatTotal: snapshot.vatMinor, grandTotal: snapshot.totalMinor, notes: snapshot.notes, items: snapshot.items }) });
+      const result = await response.json() as { ok?: boolean; error?: string; pdfUrl?: string };
+      if (!response.ok || !result.ok || !result.pdfUrl) throw new Error(result.error ?? "Unable to save quotation.");
+      setQuotation({ ...snapshot, shareUrl: result.pdfUrl });
+      toast.success("Quotation saved as issued");
+      return result.pdfUrl;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to save quotation.");
+      return null;
+    } finally {
+      setShareInFlight(false);
+    }
   }
 
   function printQuotation() {
@@ -654,14 +729,18 @@ export function PosShell({
     printWindow.print();
   }
 
-  function shareQuotationWhatsapp() {
+  async function shareQuotationWhatsapp() {
     if (!quotation) return;
-    window.open(`https://wa.me/?text=${encodeURIComponent(quotationMessage(quotation))}`, "_blank", "noopener,noreferrer");
+    const url = quotation.shareUrl ?? await saveQuotation();
+    if (!url) return;
+    window.open(`https://wa.me/?text=${encodeURIComponent(quotationMessage({ ...quotation, shareUrl: url }, url))}`, "_blank", "noopener,noreferrer");
   }
 
-  function emailQuotation() {
+  async function emailQuotation() {
     if (!quotation) return;
-    window.location.assign(`mailto:?subject=${encodeURIComponent(`Quotation ${quotation.quotationNumber}`)}&body=${encodeURIComponent(quotationMessage(quotation))}`);
+    const url = quotation.shareUrl ?? await saveQuotation();
+    if (!url) return;
+    window.location.assign(`mailto:?subject=${encodeURIComponent(`Quotation ${quotation.quotationNumber}`)}&body=${encodeURIComponent(quotationMessage({ ...quotation, shareUrl: url }, url))}`);
   }
 
   function buildReceiptNumber(localId: string) {
@@ -951,6 +1030,11 @@ export function PosShell({
           taxRate: item.taxRate,
         })),
       });
+      if (loadedQuotationId && online) {
+        const conversionResponse = await fetch("/api/shop/quotations", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quotationId: loadedQuotationId, saleId: sale.localId }) });
+        if (!conversionResponse.ok) throw new Error("The quotation could not be marked as converted. The sale was not finalized.");
+        setLoadedQuotationId(null);
+      }
       const receiptNumber = sale.receiptNumber ?? buildReceiptNumber(sale.localId);
       
       // Determine display payment method
@@ -1264,7 +1348,7 @@ export function PosShell({
         <div className="relative flex max-h-[calc(100vh-3rem)] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-slate-100 shadow-2xl shadow-slate-950/30">
           <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-4"><div><h2 id="quotation-title" className="font-black text-slate-900">Quotation preview</h2><p className="text-xs text-slate-500">{quotation.quotationNumber}</p></div><button type="button" onClick={() => setQuotation(null)} aria-label="Close quotation preview" className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-600 hover:bg-slate-50"><X className="h-5 w-5" /></button></div>
           <iframe title="Quotation preview" srcDoc={buildQuotationHtml(quotation)} className="min-h-[520px] flex-1 border-0 bg-white" />
-          <div className="flex flex-wrap gap-2 border-t border-slate-200 bg-white p-4"><Button type="button" variant="primary" onClick={() => void downloadQuotationPdf(quotation)}>Download PDF</Button><Button type="button" variant="secondary" onClick={printQuotation}>Print quotation</Button><Button type="button" variant="secondary" onClick={shareQuotationWhatsapp}>Share WhatsApp</Button><Button type="button" variant="secondary" onClick={emailQuotation}>Share email</Button></div>
+          <div className="flex flex-wrap gap-2 border-t border-slate-200 bg-white p-4"><Button type="button" variant="primary" onClick={() => void downloadQuotationPdf(quotation)}>Download PDF</Button><Button type="button" variant="secondary" onClick={printQuotation}>Print quotation</Button><Button type="button" variant="secondary" onClick={() => void shareQuotationWhatsapp()} disabled={shareInFlight}>Share WhatsApp</Button><Button type="button" variant="secondary" onClick={() => void emailQuotation()} disabled={shareInFlight}>Share email</Button></div>
         </div>
       </div>
     ) : null}
@@ -1419,7 +1503,8 @@ export function PosShell({
                 if (Number.isNaN(value)) return;
                 setCartQuantity(item.productId, item.unitId, value);
               }} className="w-20 rounded-lg border border-slate-200 bg-white px-2 py-1 text-center text-sm" /><button className="rounded-lg border p-1" onClick={() => changeQuantity(item.productId, item.unitId, 0.25)}><Plus className="h-4 w-4"/></button></div><p className="font-black">{formatMoney(fromMinorUnits(Math.round(item.quantity * item.unitPriceMinor)))}</p></div></div>)}</div> : <div className="flex min-h-52 flex-col items-center justify-center text-center"><ShoppingCart className="h-10 w-10 text-slate-200"/><p className="mt-3 font-bold text-slate-700">Your cart is empty</p><p className="mt-1 text-sm text-slate-400">Select a product to begin.</p></div>}
-          <button type="button" onClick={createQuotation} disabled={!cart.length} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-800 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"><FileText className="h-4 w-4" />Generate quotation</button>
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3"><label className="mb-1 block text-xs font-bold text-slate-600">Convert an issued quotation</label><div className="flex gap-2"><Input value={quotationSearchNumber} onChange={(event) => setQuotationSearchNumber(event.target.value)} placeholder="Quotation number" /><Button type="button" variant="secondary" onClick={() => void convertQuotationToSale()} disabled={quotationSearchBusy}>{quotationSearchBusy ? "Loading..." : "Load quotation"}</Button></div></div>
+          <div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={createQuotation} disabled={!cart.length} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-800 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"><FileText className="h-4 w-4" />Generate quotation</button><button type="button" onClick={() => void saveQuotation()} disabled={!cart.length || shareInFlight} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50">{shareInFlight ? "Saving..." : "Save quotation"}</button></div>
           <div className="mt-4 border-t border-slate-200 bg-slate-50 p-4 -mx-4">
             <div className="checkout-summary-grid">
               <div className="checkout-summary-card">

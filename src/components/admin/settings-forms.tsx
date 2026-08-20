@@ -28,6 +28,11 @@ type BusinessSettingsFormProps = {
     weeklyReportDay: number;
     weeklyReportHour: number;
     posBarcodeScanningEnabled: boolean;
+    quotationMpesaTill?: string | null;
+    quotationMpesaPaybill?: string | null;
+    quotationBankName?: string | null;
+    quotationBankAccountNumber?: string | null;
+    quotationBankAccountName?: string | null;
   };
 };
 
@@ -48,6 +53,11 @@ export function BusinessSettingsForm({ business }: BusinessSettingsFormProps) {
     weeklyReportDay: String(business.weeklyReportDay),
     weeklyReportHour: String(business.weeklyReportHour),
     posBarcodeScanningEnabled: Boolean(business.posBarcodeScanningEnabled),
+    quotationMpesaTill: business.quotationMpesaTill ?? "",
+    quotationMpesaPaybill: business.quotationMpesaPaybill ?? "",
+    quotationBankName: business.quotationBankName ?? "",
+    quotationBankAccountNumber: business.quotationBankAccountNumber ?? "",
+    quotationBankAccountName: business.quotationBankAccountName ?? "",
   };
 
   const [values, setValues] = useState(initialValues);
@@ -94,6 +104,7 @@ export function BusinessSettingsForm({ business }: BusinessSettingsFormProps) {
           <div><label className="mb-1 block text-xs font-bold text-slate-600">Weekly report hour (0–23)</label><Input name="weeklyReportHour" type="number" min="0" max="23" value={values.weeklyReportHour} onChange={(event) => setField("weeklyReportHour", event.target.value)} required /></div>
           <div className="md:col-span-2"><label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-700"><input className={checkboxClass} type="checkbox" name="posBarcodeScanningEnabled" checked={values.posBarcodeScanningEnabled} onChange={(event) => setField("posBarcodeScanningEnabled", event.target.checked)} />Enable barcode scanning on the shop POS</label></div>
           <div className="md:col-span-2"><label className="mb-1 block text-xs font-bold text-slate-600">Receipt footer</label><textarea name="receiptFooter" value={values.receiptFooter} onChange={(event) => setField("receiptFooter", event.target.value)} className="min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm" /></div>
+          <div className="md:col-span-2"><p className="mb-2 text-sm font-extrabold text-slate-800">Quotation payment information</p><p className="mb-3 text-xs text-slate-500">These details appear on quotation PDFs sent to customers.</p><div className="grid gap-3 md:grid-cols-2"><div><label className="mb-1 block text-xs font-bold text-slate-600">M-Pesa Till</label><Input name="quotationMpesaTill" value={values.quotationMpesaTill} onChange={(event) => setField("quotationMpesaTill", event.target.value)} /></div><div><label className="mb-1 block text-xs font-bold text-slate-600">M-Pesa Paybill</label><Input name="quotationMpesaPaybill" value={values.quotationMpesaPaybill} onChange={(event) => setField("quotationMpesaPaybill", event.target.value)} /></div><div><label className="mb-1 block text-xs font-bold text-slate-600">Bank name</label><Input name="quotationBankName" value={values.quotationBankName} onChange={(event) => setField("quotationBankName", event.target.value)} /></div><div><label className="mb-1 block text-xs font-bold text-slate-600">Bank account number</label><Input name="quotationBankAccountNumber" value={values.quotationBankAccountNumber} onChange={(event) => setField("quotationBankAccountNumber", event.target.value)} /></div><div><label className="mb-1 block text-xs font-bold text-slate-600">Bank account name</label><Input name="quotationBankAccountName" value={values.quotationBankAccountName} onChange={(event) => setField("quotationBankAccountName", event.target.value)} /></div></div></div>
           <div className="md:col-span-2"><Button type="submit" isLoading={isPending} disabled={!dirty || isPending} loadingText="Saving business settings...">Save business settings</Button></div>
         </form>
       </CardContent>

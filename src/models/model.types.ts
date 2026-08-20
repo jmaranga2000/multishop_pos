@@ -21,6 +21,7 @@ export type PaymentMethod = "CASH" | "MPESA" | "CARD" | "BANK_TRANSFER" | "MIXED
 export type PaymentStatus = "PENDING" | "VERIFIED" | "FAILED";
 export type TransferStatus = "DRAFT" | "DISPATCHED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CANCELLED";
 export type RefundStatus = "PENDING" | "APPROVED" | "REJECTED" | "COMPLETED";
+export type QuotationStatus = "ISSUED" | "CONVERTED" | "EXPIRED" | "CANCELLED";
 export type ExpenseStatus = "PENDING" | "APPROVED" | "REJECTED";
 export type QueueStatus = "PENDING" | "PROCESSING" | "SENT" | "FAILED";
 export type NotificationPriority = "LOW" | "NORMAL" | "HIGH" | "URGENT";
@@ -59,6 +60,11 @@ export interface BusinessDocument extends BaseDocument {
   weeklyReportDay: number;
   weeklyReportHour: number;
   posBarcodeScanningEnabled: boolean;
+  quotationMpesaTill?: string | null;
+  quotationMpesaPaybill?: string | null;
+  quotationBankName?: string | null;
+  quotationBankAccountNumber?: string | null;
+  quotationBankAccountName?: string | null;
 }
 
 export interface ShopDocument extends BaseDocument {
@@ -511,6 +517,43 @@ export interface RefundRequestDocument extends BaseDocument {
   requestedAt: Date;
   reviewedAt?: Date | null;
   reviewNote?: string | null;
+}
+
+export interface QuotationItemDocument {
+  productId: string;
+  productName: string;
+  sku: string;
+  unitId?: string | null;
+  unitName?: string | null;
+  unitSymbol?: string | null;
+  quantity: number;
+  unitPriceMinor: number;
+  lineTotalMinor: number;
+  vatRate: number;
+  vatMinor: number;
+}
+
+export interface QuotationDocument extends BaseDocument {
+  businessId: string;
+  shopId: string;
+  counterId?: string | null;
+  cashierId?: string | null;
+  quotationNumber: string;
+  status: QuotationStatus;
+  issuedAt: Date;
+  validUntil: Date;
+  customerId?: string | null;
+  customerName: string;
+  cashierName: string;
+  counterName: string;
+  subtotal: number;
+  discountTotal: number;
+  vatTotal: number;
+  grandTotal: number;
+  notes?: string | null;
+  items: QuotationItemDocument[];
+  shareToken: string;
+  convertedSaleId?: string | null;
 }
 
 export interface RefundDocument extends BaseDocument {

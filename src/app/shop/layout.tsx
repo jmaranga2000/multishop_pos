@@ -4,39 +4,25 @@ import { OfflineProvider } from "@/components/shop/offline-provider";
 import { ConnectivityStatus } from "@/components/shop/connectivity-status";
 import { ShopPortalLockGuard } from "@/components/shop/portal-lock-guard";
 import { requireShop } from "@/lib/rbac";
-import { getCounterAccess } from "@/lib/auth";
 import { getShopRegisterData } from "@/services/shop/register-service";
 
 export const dynamic = "force-dynamic";
 
 export default async function ShopLayout({children}:{children:React.ReactNode}){
  const user=await requireShop();
- const counterAccess = await getCounterAccess(user);
- if (!counterAccess) {
-  return <ShopPortalLockGuard counterAccessGranted={false} />;
- }
- const { openSessions } = await getShopRegisterData(user.shopId, user.businessId, counterAccess?.counterId ?? undefined);
- const openSession = openSessions[0] ?? null;
+ const { openSession } = await getShopRegisterData(user.shopId, user.businessId);
 const nav=[
-  { label: "Workspace", items: [
-	  { href: "/shop/dashboard", label: "Dashboard", icon: "Gauge" },
-	  { href: "/shop/pos", label: "Point of sale", icon: "ShoppingCart" },
-	  { href: "/shop/register", label: "Register", icon: "Wallet" },
-  ] },
-  { label: "Stock & sales", items: [
-	  { href: "/shop/sales", label: "Sales", icon: "ReceiptText" },
-	  { href: "/shop/stock", label: "Stock", icon: "Boxes" },
-	  { href: "/shop/procurement", label: "Procurement", icon: "ClipboardList" },
-	  { href: "/shop/stocktake", label: "Stocktake", icon: "ScanLine" },
-	  { href: "/shop/transfers", label: "Transfers", icon: "ArrowLeftRight" },
-  ] },
-  { label: "Customers & controls", items: [
-	  { href: "/shop/customers", label: "Customers", icon: "UsersRound" },
-	  { href: "/shop/expenses", label: "Expenses", icon: "Store" },
-	  { href: "/shop/refund-request", label: "Refund request", icon: "RotateCcw" },
-	  { href: "/shop/synchronization", label: "Synchronization", icon: "RefreshCw" },
-	  { href: "/shop/profile", label: "Profile", icon: "Settings" },
-  ] },
+	{ href: "/shop/dashboard", label: "Dashboard", icon: "Gauge" },
+	{ href: "/shop/pos", label: "Point of sale", icon: "ShoppingCart" },
+	{ href: "/shop/sales", label: "Sales", icon: "ReceiptText" },
+	{ href: "/shop/stock", label: "Stock", icon: "Boxes" },
+	{ href: "/shop/register", label: "Register", icon: "Wallet" },
+	{ href: "/shop/transfers", label: "Transfers", icon: "ArrowLeftRight" },
+	{ href: "/shop/expenses", label: "Expenses", icon: "Store" },
+	{ href: "/shop/refund-request", label: "Refund request", icon: "RotateCcw" },
+	{ href: "/shop/synchronization", label: "Synchronization", icon: "RefreshCw" },
+	{ href: "/shop/customers", label: "Customers", icon: "UsersRound" },
+	{ href: "/shop/profile", label: "Profile", icon: "Settings" },
 ];
  const cashierName = openSession?.salesperson?.name ?? "No cashier selected";
  const counterName = openSession?.register?.name ?? "No active counter";
@@ -47,8 +33,7 @@ const nav=[
   userEmail={user.email}
   accountLabel={`Shop account • ${user.shop.code}`}
   headerUserName={cashierName}
-	headerAccountLabel={`Counter • ${counterAccess?.counter.name ?? "Not selected"}`}
+  headerAccountLabel={`Counter • ${counterName}`}
   headerExtra={<ConnectivityStatus/>}
-  showNotifications={false}
-><ShopPortalLockGuard counterId={counterAccess.counterId} counterName={counterAccess.counter.name} counterAccessGranted salespersonId={openSession?.salespersonId ?? null} salespersonName={openSession?.salesperson?.name ?? null} />{children}</AppShell></OfflineProvider>;
+><ShopPortalLockGuard salespersonId={openSession?.salespersonId ?? null} salespersonName={openSession?.salesperson?.name ?? null} />{children}</AppShell></OfflineProvider>;
 }

@@ -26,6 +26,11 @@ export async function updateBusinessSettings(
     weeklyReportDay: number;
     weeklyReportHour: number;
     posBarcodeScanningEnabled: boolean;
+    quotationMpesaTill: string;
+    quotationMpesaPaybill: string;
+    quotationBankName: string;
+    quotationBankAccountNumber: string;
+    quotationBankAccountName: string;
   },
 ) {
   return db.$transaction(async (tx) => {
@@ -47,6 +52,11 @@ export async function updateBusinessSettings(
         weeklyReportDay: input.weeklyReportDay,
         weeklyReportHour: input.weeklyReportHour,
         posBarcodeScanningEnabled: input.posBarcodeScanningEnabled,
+        quotationMpesaTill: input.quotationMpesaTill || null,
+        quotationMpesaPaybill: input.quotationMpesaPaybill || null,
+        quotationBankName: input.quotationBankName || null,
+        quotationBankAccountNumber: input.quotationBankAccountNumber || null,
+        quotationBankAccountName: input.quotationBankAccountName || null,
       },
     });
     await writeAuditLog(tx, {

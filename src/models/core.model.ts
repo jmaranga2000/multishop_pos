@@ -19,6 +19,11 @@ export const BusinessModel = defineModel<BusinessDocument>({
     weeklyReportDay: 5,
     weeklyReportHour: 21,
     posBarcodeScanningEnabled: true,
+    quotationMpesaTill: null,
+    quotationMpesaPaybill: null,
+    quotationBankName: null,
+    quotationBankAccountNumber: null,
+    quotationBankAccountName: null,
   },
   indexes: [index({ code: 1 }, { unique: true })],
 });

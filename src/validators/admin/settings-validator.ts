@@ -19,6 +19,11 @@ export const businessSettingsSchema = z.object({
   weeklyReportDay: z.coerce.number().int().min(0).max(6),
   weeklyReportHour: z.coerce.number().int().min(0).max(23),
   posBarcodeScanningEnabled: checkboxSchema,
+  quotationMpesaTill: optionalText,
+  quotationMpesaPaybill: optionalText,
+  quotationBankName: optionalText,
+  quotationBankAccountNumber: optionalText,
+  quotationBankAccountName: optionalText,
 }).refine((data) => data.defaultCriticalLevel <= data.defaultReorderLevel, {
   message: "Critical level must not exceed the reorder level.",
   path: ["defaultCriticalLevel"],

@@ -6,9 +6,9 @@ import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { SignOutButton } from "@/components/layout/sign-out-button";
 import { Button } from "@/components/ui/button";
 
-export function AppShell({ children, navItems, userName, userEmail, accountLabel, notificationCount = 0, headerExtra, headerUserName, headerAccountLabel, showNotifications = true }: {
+export function AppShell({ children, navItems, userName, userEmail, accountLabel, notificationCount = 0, headerExtra, headerUserName, headerAccountLabel }: {
   children: React.ReactNode;
-  navItems: { label: string; items: { href: string; label: string; icon: string; count?: number; countTone?: "danger" | "warning" | "success" }[] }[];
+  navItems: { href: string; label: string; icon: string; count?: number; countTone?: "danger" | "warning" | "success" }[];
   userName: string;
   userEmail?: string;
   accountLabel: string;
@@ -16,7 +16,6 @@ export function AppShell({ children, navItems, userName, userEmail, accountLabel
   headerExtra?: React.ReactNode;
   headerUserName?: string;
   headerAccountLabel?: string;
-  showNotifications?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -33,7 +32,7 @@ export function AppShell({ children, navItems, userName, userEmail, accountLabel
   return <div className={`app-grid ${collapsed ? "sidebar-collapsed" : ""}`}>
     <aside className={`app-sidebar ${collapsed ? "collapsed" : ""} flex flex-col`}>
       <div className="flex items-center gap-3 px-2"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-500 text-white shadow-lg shadow-blue-950/30"><Store className="h-6 w-6" /></div><div className="min-w-0"><p className="font-extrabold text-white">MultiShop POS</p><p className="text-xs text-blue-200">Offline-first retail</p></div></div>
-      <SidebarNav groups={navItems} collapsed={collapsed} />
+      <SidebarNav items={navItems} collapsed={collapsed} />
       <div className="sidebar-footer mt-8 border-t border-white/10 pt-4"><div className="rounded-xl bg-white/5 px-3 py-3"><p className="truncate text-sm font-bold text-white">{userName}</p><p className="truncate text-xs text-blue-200">{accountLabel}</p></div><SignOutButton /></div>
     </aside>
     <div className="app-main">
@@ -50,22 +49,18 @@ export function AppShell({ children, navItems, userName, userEmail, accountLabel
           </div>
         </div>
         <div className="relative flex items-center gap-3">
-          {showNotifications && (
-            <>
-              <button type="button" aria-label="Notifications" aria-expanded={notificationOpen} onClick={() => setNotificationOpen((open) => !open)} className="relative inline-flex h-10 w-10 items-center justify-center overflow-visible rounded-xl border border-slate-200 bg-white text-slate-800 transition hover:bg-slate-50">
-                <Bell className="h-5 w-5" />
-                {notificationCount > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">{notificationCount > 99 ? "99+" : notificationCount}</span>}
-              </button>
-              {notificationOpen && (
-                <div className="absolute right-0 top-12 z-50 w-72 rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl shadow-slate-900/10">
-                  <p className="text-sm font-bold text-slate-900">Notifications</p>
-                  <p className="mt-1 text-xs text-slate-500">{notificationCount > 0 ? `${notificationCount} unread notifications` : "No unread notifications"}</p>
-                  <Button href="/admin/notifications" variant="primary" size="sm" className="mt-3 w-full" onClick={() => setNotificationOpen(false)}>
-                    Open notifications
-                  </Button>
-                </div>
-              )}
-            </>
+          <button type="button" aria-label="Notifications" aria-expanded={notificationOpen} onClick={() => setNotificationOpen((open) => !open)} className="relative inline-flex h-10 w-10 items-center justify-center overflow-visible rounded-xl border border-slate-200 bg-white text-slate-800 transition hover:bg-slate-50">
+            <Bell className="h-5 w-5" />
+            {notificationCount > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">{notificationCount > 99 ? "99+" : notificationCount}</span>}
+          </button>
+          {notificationOpen && (
+            <div className="absolute right-0 top-12 z-50 w-72 rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl shadow-slate-900/10">
+              <p className="text-sm font-bold text-slate-900">Notifications</p>
+              <p className="mt-1 text-xs text-slate-500">{notificationCount > 0 ? `${notificationCount} unread notifications` : "No unread notifications"}</p>
+              <Button href="/admin/notifications" variant="primary" size="sm" className="mt-3 w-full" onClick={() => setNotificationOpen(false)}>
+                Open notifications
+              </Button>
+            </div>
           )}
           <div className="hidden text-right sm:block"><p className="text-sm font-bold text-slate-900">{headerUserName ?? userName}</p><p className="text-xs text-slate-500">{headerAccountLabel ?? accountLabel}</p></div>
         </div>
@@ -74,7 +69,7 @@ export function AppShell({ children, navItems, userName, userEmail, accountLabel
         <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
         <aside className="absolute left-0 top-0 h-full w-64 overflow-y-auto bg-[#0b1739] p-6">
           <div className="flex items-center gap-3 mb-4"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-500 text-white"><Store className="h-6 w-6" /></div><div><p className="font-extrabold text-white">MultiShop POS</p><p className="text-xs text-blue-200">{accountLabel}</p></div></div>
-          <SidebarNav groups={navItems} onNavigate={() => setMobileOpen(false)} />
+          <SidebarNav items={navItems} />
           <div className="mt-6"><SignOutButton /></div>
         </aside>
       </div>}
