@@ -22,6 +22,12 @@ export type PaymentStatus = "PENDING" | "VERIFIED" | "FAILED";
 export type TransferStatus = "DRAFT" | "DISPATCHED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CANCELLED";
 export type RefundStatus = "PENDING" | "APPROVED" | "REJECTED" | "COMPLETED";
 export type QuotationStatus = "ISSUED" | "CONVERTED" | "EXPIRED" | "CANCELLED";
+
+export interface ReceiptShareDocument extends BaseDocument {
+  token: string;
+  receipt: Record<string, unknown>;
+  expiresAt: Date;
+}
 export type ExpenseStatus = "PENDING" | "APPROVED" | "REJECTED";
 export type QueueStatus = "PENDING" | "PROCESSING" | "SENT" | "FAILED";
 export type NotificationPriority = "LOW" | "NORMAL" | "HIGH" | "URGENT";

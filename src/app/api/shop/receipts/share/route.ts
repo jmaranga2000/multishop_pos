@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireShop } from "@/lib/rbac";
-import { createReceiptShareToken } from "@/lib/receipt-share-token";
+import { db } from "@/lib/db";
+import crypto from "node:crypto";
 
 const receiptSchema = z.object({
   businessName: z.string(),
@@ -45,7 +46,14 @@ export async function POST(request: Request) {
     await requireShop();
     const body = await request.json();
     const receipt = receiptSchema.parse(body);
-    const token = createReceiptShareToken(receipt);
+    const token = crypto.randomBytes(6).toString("base64url");
+    await db.receiptShare.create({
+      data: {
+        token,
+        receipt,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
     const url = new URL(`/receipt/${encodeURIComponent(token)}`, request.url);
     return NextResponse.json({ ok: true, url: url.toString(), expiresInDays: 7 });
   } catch (error) {
