@@ -16,29 +16,29 @@ export default async function ShopLayout({children}:{children:React.ReactNode}){
   getCounterAccess(user),
  ]);
  const openSession = registerData.openSessions[0] ?? null;
-const nav: Array<{ label: string; items: Array<{ href: string; label: string; icon: string }> }> = [
- { label: "Workspace", items: [
-	{ href: "/shop/dashboard", label: "Dashboard", icon: "Gauge" },
-	{ href: "/shop/pos", label: "Point of sale", icon: "ShoppingCart" },
-	{ href: "/shop/sales", label: "Sales", icon: "ReceiptText" },
- ] },
- { label: "Stock & procurement", items: [
-	{ href: "/shop/stock", label: "Stock", icon: "Boxes" },
-	{ href: "/shop/procurement", label: "Procurement", icon: "ClipboardList" },
-	{ href: "/shop/stocktake", label: "Stocktaking", icon: "ScanLine" },
-	{ href: "/shop/transfers", label: "Transfers", icon: "ArrowLeftRight" },
- ] },
- { label: "Operations", items: [
-	{ href: "/shop/register", label: "Register", icon: "Wallet" },
-	{ href: "/shop/expenses", label: "Expenses", icon: "Store" },
-	{ href: "/shop/refund-request", label: "Refund request", icon: "RotateCcw" },
-	{ href: "/shop/synchronization", label: "Synchronization", icon: "RefreshCw" },
- ] },
- { label: "Customers & account", items: [
-	{ href: "/shop/customers", label: "Customers", icon: "UsersRound" },
-	{ href: "/shop/profile", label: "Profile", icon: "Settings" },
- ] },
-];
+ const nav = [
+  { label: "Workspace", items: [
+   { href: "/shop/dashboard", label: "Dashboard", icon: "Gauge" },
+   { href: "/shop/pos", label: "Point of sale", icon: "ShoppingCart" },
+   { href: "/shop/sales", label: "Sales", icon: "ReceiptText" },
+  ] },
+  { label: "Stock & procurement", items: [
+   { href: "/shop/stock", label: "Stock", icon: "Boxes" },
+   { href: "/shop/procurement", label: "Procurement", icon: "ClipboardList" },
+   { href: "/shop/stocktake", label: "Stocktaking", icon: "ScanLine" },
+   { href: "/shop/transfers", label: "Transfers", icon: "ArrowLeftRight" },
+  ] },
+  { label: "Operations", items: [
+   { href: "/shop/register", label: "Register", icon: "Wallet" },
+   { href: "/shop/expenses", label: "Expenses", icon: "Store" },
+   { href: "/shop/refund-request", label: "Refund request", icon: "RotateCcw" },
+   { href: "/shop/synchronization", label: "Synchronization", icon: "RefreshCw" },
+  ] },
+  { label: "Customers & account", items: [
+   { href: "/shop/customers", label: "Customers", icon: "UsersRound" },
+   { href: "/shop/profile", label: "Profile", icon: "Settings" },
+  ] },
+ ];
  const cashierName = openSession?.salesperson?.name ?? "No cashier selected";
  const counterName = openSession?.register?.name ?? "No active counter";
 

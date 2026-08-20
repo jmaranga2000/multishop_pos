@@ -633,7 +633,7 @@ export function PosShell({
       toast.info("Add products to the cart before creating a quotation.");
       return null;
     }
-    const quotationNumber = `QT-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
+    const quotationNumber = String(Math.floor(1000 + Math.random() * 9000));
     const subtotal = cart.reduce((sum, item) => sum + Math.round(item.quantity * item.unitPriceMinor), 0);
     const discount = checkoutMode === "ETIMS" ? 0 : discountMinor;
     const issuedAt = new Date();
