@@ -4,7 +4,7 @@ import Image from "next/image";
 import QRCode from "qrcode";
 import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Banknote, Camera, CreditCard, Minus, PackageX, Plus, ScanLine, Search, ShoppingCart, Trash2, WifiOff, X } from "lucide-react";
+import { Banknote, Camera, CreditCard, FileText, Minus, PackageX, Plus, ScanLine, Search, ShoppingCart, Trash2, WifiOff, X } from "lucide-react";
 import { MdPhoneAndroid } from "react-icons/md";
 import { toast } from "sonner";
 import { offlineDb } from "@/lib/offline/db";
@@ -20,6 +20,7 @@ import { describeSaleLifecycleMessage, type SaleLifecycleStatus } from "@/lib/of
 import { formatMoney, fromMinorUnits, getStockStatus } from "@/lib/utils";
 import { CreditLimitOverrideModal } from "@/components/shop/credit-limit-override-modal";
 import { calculateVatTotals } from "@/services/tax/tax-service";
+import { buildQuotationHtml, downloadQuotationPdf, quotationMessage, type QuotationData } from "@/components/shop/quotation";
 
 type PricingOption = {
   unitId?: string | null;
@@ -163,6 +164,7 @@ export function PosShell({
   const [receiptSettings, setReceiptSettings] = useState<ReceiptSettings | null>(null);
   const [reprintInFlight, setReprintInFlight] = useState(false);
   const [shareInFlight, setShareInFlight] = useState(false);
+  const [quotation, setQuotation] = useState<QuotationData | null>(null);
   const [saleLifecycleStatus, setSaleLifecycleStatus] = useState<SaleLifecycleStatus>("LOCAL_ONLY");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -612,9 +614,54 @@ export function PosShell({
     setCompletedSale(null);
     setCompletedSaleLocalId(null);
     setSaleLifecycleStatus("LOCAL_ONLY");
+    setQuotation(null);
     setTimeout(() => {
       searchInputRef.current?.focus();
     }, 0);
+  }
+
+  function createQuotation() {
+    if (!cart.length) {
+      toast.info("Add products to the cart before creating a quotation.");
+      return;
+    }
+    const quotationNumber = `QT-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
+    const subtotal = cart.reduce((sum, item) => sum + Math.round(item.quantity * item.unitPriceMinor), 0);
+    const discount = checkoutMode === "ETIMS" ? 0 : discountMinor;
+    setQuotation({
+      shopName: shopName || "MultiShop POS",
+      businessName: receiptSettings?.businessName,
+      shopContact: receiptSettings?.shopContact,
+      shopLocation: receiptSettings?.shopLocation,
+      quotationNumber,
+      issuedAt: new Date().toISOString(),
+      customerName,
+      items: cart.map((item) => ({ name: item.name, quantity: item.quantity, unitName: item.unitName, unitSymbol: item.unitSymbol, unitPriceMinor: item.unitPriceMinor, lineTotalMinor: Math.round(item.quantity * item.unitPriceMinor) })),
+      subtotalMinor: subtotal,
+      discountMinor: discount,
+      totalMinor: checkoutMode === "ETIMS" ? checkoutTotalMinor : subtotal - discount,
+      notes,
+    });
+  }
+
+  function printQuotation() {
+    if (!quotation) return;
+    const printWindow = window.open("", "_blank", "width=900,height=800");
+    if (!printWindow) return;
+    printWindow.document.write(buildQuotationHtml(quotation));
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  }
+
+  function shareQuotationWhatsapp() {
+    if (!quotation) return;
+    window.open(`https://wa.me/?text=${encodeURIComponent(quotationMessage(quotation))}`, "_blank", "noopener,noreferrer");
+  }
+
+  function emailQuotation() {
+    if (!quotation) return;
+    window.location.assign(`mailto:?subject=${encodeURIComponent(`Quotation ${quotation.quotationNumber}`)}&body=${encodeURIComponent(quotationMessage(quotation))}`);
   }
 
   function buildReceiptNumber(localId: string) {
@@ -1212,6 +1259,15 @@ export function PosShell({
         </Card>
       </div>
     ) : null}
+    {quotation ? (
+      <div className="fixed inset-0 z-[85] flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="quotation-title">
+        <div className="relative flex max-h-[calc(100vh-3rem)] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-slate-100 shadow-2xl shadow-slate-950/30">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-4"><div><h2 id="quotation-title" className="font-black text-slate-900">Quotation preview</h2><p className="text-xs text-slate-500">{quotation.quotationNumber}</p></div><button type="button" onClick={() => setQuotation(null)} aria-label="Close quotation preview" className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-600 hover:bg-slate-50"><X className="h-5 w-5" /></button></div>
+          <iframe title="Quotation preview" srcDoc={buildQuotationHtml(quotation)} className="min-h-[520px] flex-1 border-0 bg-white" />
+          <div className="flex flex-wrap gap-2 border-t border-slate-200 bg-white p-4"><Button type="button" variant="primary" onClick={() => void downloadQuotationPdf(quotation)}>Download PDF</Button><Button type="button" variant="secondary" onClick={printQuotation}>Print quotation</Button><Button type="button" variant="secondary" onClick={shareQuotationWhatsapp}>Share WhatsApp</Button><Button type="button" variant="secondary" onClick={emailQuotation}>Share email</Button></div>
+        </div>
+      </div>
+    ) : null}
     <div className="pos-layout">
       <section className="min-w-0">
         <Card className="mb-4 p-4">
@@ -1363,6 +1419,7 @@ export function PosShell({
                 if (Number.isNaN(value)) return;
                 setCartQuantity(item.productId, item.unitId, value);
               }} className="w-20 rounded-lg border border-slate-200 bg-white px-2 py-1 text-center text-sm" /><button className="rounded-lg border p-1" onClick={() => changeQuantity(item.productId, item.unitId, 0.25)}><Plus className="h-4 w-4"/></button></div><p className="font-black">{formatMoney(fromMinorUnits(Math.round(item.quantity * item.unitPriceMinor)))}</p></div></div>)}</div> : <div className="flex min-h-52 flex-col items-center justify-center text-center"><ShoppingCart className="h-10 w-10 text-slate-200"/><p className="mt-3 font-bold text-slate-700">Your cart is empty</p><p className="mt-1 text-sm text-slate-400">Select a product to begin.</p></div>}
+          <button type="button" onClick={createQuotation} disabled={!cart.length} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-800 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"><FileText className="h-4 w-4" />Generate quotation</button>
           <div className="mt-4 border-t border-slate-200 bg-slate-50 p-4 -mx-4">
             <div className="checkout-summary-grid">
               <div className="checkout-summary-card">
